@@ -1,0 +1,4512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- iPhone Safari has no Fullscreen API, so the in-game button cannot help there.
+     These let "Add to Home Screen" launch it chrome-free instead, which is the
+     only route to a full screen on iOS. Harmless everywhere else. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#05020c">
+<!-- iOS reads apple-mobile-web-app-title for the home-screen label and falls
+     back to <title> without it. Setting it explicitly stops the two drifting
+     apart the next time the name changes. -->
+<meta name="apple-mobile-web-app-title" content="Vapor Lane">
+<meta name="application-name" content="Vapor Lane">
+<meta name="description" content="Vapor Lane — a neon-lit arcade racer. Four lanes, rising traffic, power-ups and drift-loaded shots. Runs in the browser, installs to your phone.">
+<title>VAPOR LANE</title>
+<!-- Installable-app wiring. Paths are relative, so the repo can be renamed
+     or the game moved into a subfolder without any of this breaking. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<style>
+  :root{
+    --cyan:#21e6ff;
+    --pink:#ff2fbe;
+    --violet:#7c3aed;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at 50% 0%, #2a0b4a 0%, #0d0520 55%, #05020c 100%);
+    color:#cfd6ff;
+    font-family:ui-monospace,"SFMono-Regular",Menlo,"Courier New",monospace;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;padding:18px;min-height:100%;overflow:hidden;
+  }
+  
+  /* A fixed element with z-index:0 still paints ABOVE static in-flow content,
+     so everything that must sit on top of the board needs lifting explicitly.
+     Missing one would bury it behind the background. */
+  #circuit{ position:fixed; inset:0; width:100%; height:100%;
+            z-index:0; pointer-events:none }
+  #stage{
+    position:relative; z-index:1;width:100%;max-width:940px;aspect-ratio:8/5;
+    border-radius:10px;background:#05020c;
+    box-shadow:
+      0 0 0 2px #2b1050,
+      0 0 22px rgba(255,47,190,.35),
+      0 0 60px rgba(33,230,255,.18),
+      0 26px 70px rgba(0,0,0,.7);
+    overflow:hidden;
+  }
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+  #scan{
+    position:absolute;inset:0;pointer-events:none;
+    background:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,.22) 0 1px, rgba(0,0,0,0) 1px 3px),
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);
+    mix-blend-mode:multiply;
+  }
+  
+  .keys{
+    position:relative; z-index:1;
+    display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a7ec4;
+  }
+  .keys b{color:var(--cyan);font-weight:700}
+  @media (max-width:560px){ .keys{font-size:10px} }
+
+  /* ------------------------------------------------------------------
+     TOUCH LAYOUT
+     Everything below only comes into play when body.touch is set, which
+     the script does after sniffing for a coarse pointer. On a desktop
+     none of it exists, so the original layout is untouched.
+     ------------------------------------------------------------------ */
+  body.touch{ justify-content:flex-start; padding:6px 8px 14px; gap:8px;
+              overscroll-behavior:none; }
+  body.touch .keys{ display:none }
+
+  /* about 1.5cm of breathing room between the screen and your thumbs */
+  /* 2cm further from the screen than the old layout: thumbs sit lower on a
+     phone than the eye expects, and the pad was crowding the canvas. */
+  #pad{ display:none; position:relative; z-index:1; width:100%; max-width:540px; margin-top:calc(56px + 2cm); }
+  body.touch #pad{ display:block }
+
+  #padDrive{ display:flex; justify-content:space-between; align-items:flex-end; gap:4px }
+  #padL,#padR{ display:flex; flex-direction:column; align-items:center; gap:7px }
+  /* Both thumbs get the same 135-degree arc, mirrored. Each pivots at the
+     corner the thumb actually lives in, so the whole range is one sweep. */
+  .fanpad{ display:block; touch-action:none;
+           -webkit-user-select:none; user-select:none }
+  /* The right hand does more work — three live pedals plus the trigger —
+     so it gets the bigger arc. Removing the centre pause button paid for it. */
+  /* The steering pad rides 2cm higher than the pedals: the left thumb sits
+     further up the phone than the right one, which is doing bar-and-arc work. */
+  #padL{ margin-bottom:2cm }
+  #fanL{ width:172px; height:172px }
+  #fanR{ width:184px; height:184px }
+  .wedge{ fill:rgba(20,11,40,.92); stroke:rgba(124,58,237,.75); stroke-width:2.5;
+          transition:fill .05s linear }
+  .wedge.on{ fill:rgba(33,230,255,.30); stroke:#21e6ff }
+  /* Traffic-light logic, so the pedal you are on is readable at a glance
+     without looking away from the road: green go, yellow drift, red stop. */
+  .wedge.gas{ fill:rgba(20,11,40,.96); stroke:rgba(124,255,79,.45) }
+  .wedge.gas.on  { fill:rgba(124,255,79,.32); stroke:#7cff4f }
+  .wedge.drift.on{ fill:rgba(255,210,63,.34); stroke:#ffd23f }
+  .wedge.brake.on{ fill:rgba(255,61,79,.32);  stroke:#ff3d4f }
+  .wlab{ fill:#a99fdc; text-anchor:middle; dominant-baseline:central;
+         pointer-events:none }
+  .wlab.ar{ font-size:26px }
+  /* The centre of the steering fan is not a direction, it is where the thumb
+     sits when you are going straight. Dashed and dimmed so it reads as a
+     rest position rather than a third control. */
+  /* The centre of the steering pad is not a direction, it is where the thumb
+     sits when you are going straight — a ridged strip with the wheel on it,
+     so it reads as a rest position rather than a third control. */
+  .wedge.mid{ fill:rgba(28,18,54,.92); stroke:rgba(124,58,237,.5) }
+  .wedge.mid.on{ fill:rgba(124,58,237,.22); stroke:rgba(167,140,255,.9) }
+  .wedge.steer.on{ fill:rgba(33,230,255,.30); stroke:#21e6ff }
+  .ridge{ stroke:rgba(150,125,220,.45); stroke-width:2; fill:none;
+          pointer-events:none }
+  .wheelicon{ pointer-events:none }
+  .wheelicon circle{ fill:none; stroke:rgba(167,140,255,.75); stroke-width:2.2 }
+  .wheelicon circle.hub{ fill:rgba(167,140,255,.75); stroke:none }
+  .wheelicon path{ stroke:rgba(167,140,255,.75); stroke-width:2.2; fill:none }
+  .wlab.sm{ font-size:15px; font-weight:700; letter-spacing:.02em;
+            font-family:ui-monospace,Menlo,"Courier New",monospace }
+  #bPause{ width:184px; height:34px; font-size:13px; letter-spacing:.3em }
+  #bFire{ width:184px; height:54px }
+
+  #padMenu{ display:none; flex-wrap:wrap; gap:8px; justify-content:center; padding:2px 0 }
+
+  /* ------------------------------------------------------------------
+     SLAB MENU  —  title, pause and game over
+     Two columns that echo where your thumbs already are: the actions
+     that start or change a run stack down the LEFT, under the steering
+     fan, and the settings sit as icon tiles on the RIGHT, over the
+     pedals. Garage and info are untouched — one is a D-pad and the
+     other is two arrows, and neither wants a column.
+     ------------------------------------------------------------------ */
+  #padMenu.slabs{ flex-wrap:nowrap; align-items:stretch; justify-content:center;
+                  gap:12px; padding:0 }
+  #padMenu.slabs .col{ display:flex; min-width:0 }
+  #padMenu.slabs .col.l{ flex:1 1 auto; flex-direction:column; gap:8px; max-width:236px }
+  #padMenu.slabs .col.r{ flex:0 0 auto; display:grid; gap:8px;
+                         grid-template-columns:repeat(2,72px);
+                         grid-auto-rows:minmax(0,1fr) }
+
+  /* A marquee, not a pill: square corners, a heavy lit edge down the
+     left, and the label pushed off it rather than centred. */
+  #padMenu .tbtn.slab{
+    width:100%; min-width:0; height:52px; flex:0 0 auto;
+    justify-content:flex-start; text-align:left;
+    padding:0 12px 0 22px; border-radius:3px; border-width:2px;
+    font-size:14px; letter-spacing:.15em; color:#eaf6ff;
+    position:relative; overflow:hidden;
+  }
+  #padMenu .tbtn.slab::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:7px;
+    background:rgba(150,110,255,.9); box-shadow:0 0 12px rgba(124,58,237,.9);
+  }
+  #padMenu .tbtn.slab.big::before{
+    background:#ff2fbe; box-shadow:0 0 15px rgba(255,47,190,.95);
+  }
+  #padMenu .tbtn.slab.on::before, #padMenu .tbtn.slab:active::before{
+    background:#ffffff; box-shadow:0 0 18px rgba(255,255,255,.9);
+  }
+
+  #padMenu .tbtn.tile{
+    min-width:0; width:100%; height:100%; padding:6px 3px;
+    flex-direction:column; gap:5px; border-radius:9px;
+    font-size:9.5px; letter-spacing:.05em; line-height:1.1; text-align:center;
+  }
+  #padMenu .tbtn.tile svg{ width:26px; height:26px; flex:0 0 auto;
+                           stroke:currentColor; fill:none; stroke-width:1.7;
+                           stroke-linecap:round; stroke-linejoin:round }
+  #padMenu .tbtn.tile .lab{ display:block; max-width:100%; word-break:break-word }
+  #padMenu .tbtn{ min-width:104px; height:46px; flex:0 1 auto; padding:0 14px }
+  #padMenu .tbtn.wide{ min-width:150px }
+  #padMenu .tbtn.nav{ min-width:60px; font-size:17px }
+  /* Garage navigation as a D-pad cross rather than a row of four arrows.
+     Up/down move between rows and left/right change the part, so a cross
+     maps the buttons onto what they actually do — a horizontal row made
+     "up" and "left" look like the same kind of move. Back spans the
+     bottom, well clear of the arrows you are repeatedly tapping. */
+  #padMenu.cross{ grid-template-columns:repeat(3, 62px);
+                  grid-auto-rows:46px; gap:7px;
+                  justify-content:center; align-content:center; flex-wrap:nowrap }
+  #padMenu.cross .up   { grid-area:1 / 2 }
+  #padMenu.cross .left { grid-area:2 / 1 }
+  #padMenu.cross .right{ grid-area:2 / 3 }
+  #padMenu.cross .down { grid-area:3 / 2 }
+  #padMenu.cross .backbtn{ grid-area:4 / 1 / 5 / 4; height:44px; min-width:0 }
+
+  .tbtn{
+    -webkit-tap-highlight-color:transparent; touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:13px; border:2px solid rgba(124,58,237,.75);
+    background:linear-gradient(180deg, rgba(26,14,48,.92), rgba(10,5,22,.92));
+    color:#cfd6ff; font-family:inherit; font-weight:700;
+    font-size:12px; letter-spacing:.13em; text-transform:uppercase;
+    box-shadow:0 0 10px rgba(33,230,255,.12), inset 0 0 14px rgba(124,58,237,.20);
+  }
+  .tbtn.big{ font-size:13px; border-color:rgba(255,47,190,.75) }
+  .tbtn.on, .tbtn:active{
+    background:linear-gradient(180deg, rgba(33,230,255,.30), rgba(33,230,255,.14));
+    border-color:#21e6ff; color:#ffffff;
+    box-shadow:0 0 20px rgba(33,230,255,.55), inset 0 0 18px rgba(33,230,255,.25);
+  }
+  .tbtn.big.on, .tbtn.big:active{
+    background:linear-gradient(180deg, rgba(255,47,190,.32), rgba(255,47,190,.14));
+    border-color:#ff2fbe;
+    box-shadow:0 0 20px rgba(255,47,190,.55), inset 0 0 18px rgba(255,47,190,.25);
+  }
+  .tbtn svg{ display:block }
+
+  /* ------------------------------------------------------------------
+     FULLSCREEN OFFSETS
+     Going fullscreen reclaims the browser chrome, which shifts everything
+     up under thumbs that have not moved. These put it back.
+
+     Portrait is scoped to its own orientation query on purpose. Written
+     unscoped, `body.touch.fs #padL` would out-specify the landscape rules
+     below and leak a portrait transform into landscape — which would also
+     break the pinned pads, since a transformed ancestor becomes the
+     containing block for position:fixed descendants.
+     ------------------------------------------------------------------ */
+  @media (orientation: portrait) and (pointer: coarse){
+    /* The stage was starting under the front camera. Shift it down, again as
+       a transform rather than a margin: a margin would push the pads down by
+       the same amount, and they are already sitting as low as short phones
+       allow. The pad clears the stage by 56px + 2cm, so spending 0.7cm of
+       that gap costs nothing. Landscape already has room and is untouched. */
+    body.touch #stage{ transform:translateY(0.7cm) }
+  }
+  @media (orientation: portrait) and (pointer: coarse){
+    /* A transform, not a margin. Two reasons:
+
+       1. The margin version was clamped against 100dvh so it could not push
+          the bolt bar off a short screen — but the clamp's floor was the
+          non-fullscreen value, so on any viewport under ~709px it resolved
+          to exactly where the pad already was and moved nothing at all. A
+          safety rail that silently cancels the feature is worse than no
+          rail. This has no conditions left to misfire.
+
+       2. transform is visual only. It never changes layout height, so it
+          cannot reflow the stage or alter what the flex column measures —
+          it just slides both groups down into the space fullscreen freed. */
+    body.touch.fs #padL,
+    body.touch.fs #padR{ transform:translateY(1cm) }
+  }
+
+  /* ------------------------------------------------------------------
+     LANDSCAPE — PASS 1: layout only
+     A pure override layer. Every rule here is scoped to landscape *and* a
+     coarse pointer, so the portrait build above is bit-for-bit untouched:
+     nothing in this block can fire on a desktop or on a phone held upright.
+
+     The trick that keeps it simple is taking the two pads out of flow with
+     position:fixed and pinning them to the screen edges. The stage then
+     stays a plain centred block and just gets a tighter max-width. Because
+     the pads are still DOM children of #padDrive, the existing JS that hides
+     that container when you are not driving keeps working untouched — an
+     ancestor set to display:none hides fixed descendants too.
+     ------------------------------------------------------------------ */
+  @media (orientation: landscape) and (pointer: coarse){
+    /* #circuit and the z-index layering are now global — nothing to add. */
+    /* In landscape the notch moves to one SIDE and the home indicator runs
+       along the bottom. The pads are position:fixed, so body padding never
+       reaches them — they have to read the insets themselves. */
+    body.touch{ justify-content:center; gap:4px;
+                padding:4px calc(6px + env(safe-area-inset-right, 0px))
+                        calc(4px + env(safe-area-inset-bottom, 0px))
+                        calc(6px + env(safe-area-inset-left, 0px)); }
+    body.touch #pad{ margin-top:0; width:auto; max-width:none }
+    body.touch #padDrive{ display:block }
+
+    #padL, #padR{ position:fixed; top:50%; transform:translateY(-50%);
+                  margin:0; z-index:5 }
+    #padL{ left:calc(6px + env(safe-area-inset-left, 0px)) }
+    #padR{ right:calc(6px + env(safe-area-inset-right, 0px)) }
+    /* Only the steering pad: the pedal stack is taller and already sits
+       where the right thumb wants it. */
+    body.fs #padL{ transform:translateY(calc(-50% + 1cm)) }
+
+    /* ~15% smaller than portrait, traded for stage width */
+    #fanL{ width:146px; height:146px }
+    #fanR{ width:156px; height:156px }
+    #bPause{ width:156px; height:30px; font-size:12px }
+    #bFire{ width:156px; height:46px }
+    #padL, #padR{ gap:6px }
+
+    /* 336px is the two pinned columns plus their gutters */
+    #stage{ width:100%; height:auto;
+            max-width:calc(100vw - 336px
+                           - env(safe-area-inset-left, 0px)
+                           - env(safe-area-inset-right, 0px));
+            max-height:calc(100dvh - 10px - env(safe-area-inset-bottom, 0px)) }
+
+    /* The menu strip floats over the lower canvas instead of stacking under
+       it. Stacking would cost the stage ~100px of height on every screen,
+       including while driving, to make room for buttons that only appear
+       when you are stopped. */
+    #padMenu{ position:fixed; left:50%; transform:translateX(-50%);
+              bottom:calc(8px + env(safe-area-inset-bottom, 0px));
+              max-width:calc(100vw - 348px
+                             - env(safe-area-inset-left, 0px)
+                             - env(safe-area-inset-right, 0px));
+              gap:6px; z-index:6 }
+    #padMenu .tbtn{ min-width:92px; height:40px; font-size:11px; padding:0 11px }
+    #padMenu .tbtn.wide{ min-width:126px }
+    #padMenu .tbtn.nav{ min-width:52px; font-size:16px }
+
+    /* In landscape the slab block stops being a strip and splits: the run
+       actions pin to the left edge where the steering fan lives, the setting
+       tiles pin to the right edge over the pedals. The two columns land in
+       the same gutters the stage already reserves for the driving pads, so
+       the track stays fully visible behind a menu instead of wearing one.
+
+       The layer spans the viewport with pointer-events:none and hands them
+       back on the columns only, so a tap in the middle still reaches the
+       canvas — which is what starts a run from the title screen. */
+    #padMenu.slabs{
+      position:fixed; left:0; right:0; top:0; bottom:0;
+      transform:none; max-width:none; width:auto; gap:0;
+      align-items:center; justify-content:space-between;
+      padding:0 calc(6px + env(safe-area-inset-right, 0px))
+              0 calc(6px + env(safe-area-inset-left, 0px));
+      pointer-events:none;
+    }
+    #padMenu.slabs .col{ pointer-events:auto }
+    /* 6 + 158 = 164px, inside the 168px gutter the stage leaves on each
+       side, so neither column can reach onto the canvas. */
+    #padMenu.slabs .col.l{ max-width:158px; gap:6px }
+    #padMenu.slabs .col.r{ grid-template-columns:repeat(2,56px);
+                           grid-auto-rows:56px; gap:6px }
+    #padMenu .tbtn.slab{ height:42px; font-size:11px; letter-spacing:.06em;
+                         padding:0 8px 0 16px }
+    #padMenu .tbtn.slab::before{ width:6px }
+    #padMenu .tbtn.tile{ font-size:8.5px; gap:3px; padding:4px 2px }
+    #padMenu .tbtn.tile svg{ width:22px; height:22px }
+    /* The garage cross moves out of the middle and into the steering pad's
+       column, which is empty on that screen anyway — padDrive is hidden
+       whenever you are not driving. Centred, it sat on top of the car you
+       are trying to look at. Sized to stay clear of the stage's left edge
+       (6 + 146 + 8 = 160px in), so it overlaps nothing. */
+    #padMenu.cross{ grid-template-columns:repeat(3, 48px);
+                    grid-auto-rows:34px; gap:4px;
+                    left:calc(6px + env(safe-area-inset-left, 0px));
+                    right:auto; bottom:auto; top:50%;
+                    transform:translateY(-50%); max-width:none }
+    #padMenu.cross .backbtn{ height:32px }
+  }
+  @supports not (height: 100dvh){
+    @media (orientation: landscape) and (pointer: coarse){
+      #stage{ max-height:calc(100vh - 10px - env(safe-area-inset-bottom, 0px)) }
+    }
+  }
+  /* Small phones in landscape (iPhone SE and friends, ~667px wide).
+     At the sizes above, the two pinned columns eat 336px of a 667px screen
+     and the stage comes out SMALLER than it is in portrait — which would
+     make the rotate hint an advertisement for a downgrade. Tighter pads
+     here keep landscape an upgrade on every device, not just big ones. */
+  @media (orientation: landscape) and (pointer: coarse) and (max-width: 740px){
+    #fanL{ width:118px; height:118px }
+    #fanR{ width:126px; height:126px }
+    #bPause{ width:126px; height:26px; font-size:11px }
+    #bFire{ width:126px; height:40px }
+    #padL, #padR{ gap:5px }
+    #stage{ max-width:calc(100vw - 272px
+                           - env(safe-area-inset-left, 0px)
+                           - env(safe-area-inset-right, 0px)) }
+    #padMenu{ max-width:calc(100vw - 284px
+                             - env(safe-area-inset-left, 0px)
+                             - env(safe-area-inset-right, 0px)) }
+    #padMenu .tbtn{ min-width:82px; height:36px; font-size:10px; padding:0 9px }
+    #padMenu .tbtn.wide{ min-width:112px }
+    /* Small screens reserve only 136px a side, so the columns come in with
+       the pads they are standing in for. */
+    #padMenu.slabs .col.l{ max-width:128px; gap:5px }
+    #padMenu.slabs .col.r{ grid-template-columns:repeat(2,47px);
+                           grid-auto-rows:47px; gap:5px }
+    #padMenu .tbtn.slab{ height:35px; font-size:9.5px; letter-spacing:.03em;
+                         padding:0 6px 0 13px }
+    #padMenu .tbtn.slab::before{ width:5px }
+    #padMenu .tbtn.tile{ font-size:7.5px; gap:2px; padding:3px 1px }
+    #padMenu .tbtn.tile svg{ width:17px; height:17px }
+    /* Small screens reserve only 118px for the steering column, so the
+       cross has to come down with it or it would reach onto the stage. */
+    #padMenu.cross{ grid-template-columns:repeat(3, 38px);
+                    grid-auto-rows:30px; gap:4px }
+    #padMenu.cross .backbtn{ height:28px }
+  }
+  /* The trigger is its own thing, not a pedal — white so it never reads as
+     one of the three coloured wedges above it. */
+  #bFire.on, #bFire:active{
+    background:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.15));
+    border-color:#ffffff; color:#ffffff;
+    box-shadow:0 0 22px rgba(255,255,255,.55), inset 0 0 18px rgba(255,255,255,.22);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="circuit" aria-hidden="true"></canvas>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="scan"></div>
+</div>
+<div id="pad">
+  <div id="padDrive">
+    <div id="padL">
+      <svg id="fanL" class="fanpad" viewBox="0 0 218 218" aria-label="steering">
+        <polygon id="wLeft"  class="wedge steer" points="123.4,41.4 41.4,123.4 6.0,88.0 25.8,25.8 88.0,6.0"/>
+        <polygon id="wRight" class="wedge steer" points="177.1,95.1 95.1,177.1 130.5,212.5 192.7,192.7 212.5,130.5"/>
+        <polygon id="wUp"    class="wedge mid"   points="140.4,35.7 182.8,78.1 78.1,182.8 35.7,140.4"/>
+        <path class="ridge" d="M138.9,47.0 L171.5,79.5"/>
+        <path class="ridge" d="M132.9,53.0 L165.5,85.5"/>
+        <path class="ridge" d="M126.9,59.0 L159.4,91.6"/>
+        <path class="ridge" d="M120.9,65.0 L153.4,97.6"/>
+        <path class="ridge" d="M114.9,71.1 L147.4,103.6"/>
+        <path class="ridge" d="M108.9,77.1 L141.4,109.6"/>
+        <path class="ridge" d="M72.8,113.1 L105.3,145.7"/>
+        <path class="ridge" d="M66.8,119.1 L99.3,151.7"/>
+        <path class="ridge" d="M60.8,125.1 L93.3,157.7"/>
+        <path class="ridge" d="M54.8,131.2 L87.3,163.7"/>
+        <path class="ridge" d="M48.8,137.2 L81.3,169.7"/>
+        <g class="wheelicon" transform="translate(109.2,109.2)">
+          <circle r="13"/>
+          <circle r="4.2" class="hub"/>
+          <path d="M0,-13 L0,-4.2 M-11.3,6.5 L-3.6,2.1 M11.3,6.5 L3.6,2.1"/>
+        </g>
+        <text class="wlab ar" x="49.8" y="49.8">&#9664;</text>
+        <text class="wlab ar" x="168.6" y="168.6">&#9654;</text>
+      </svg>
+    </div>
+    <div id="padR">
+      <button class="tbtn" id="bPause" aria-label="pause">&#10073;&#10073;</button>
+      <svg id="fanR" class="fanpad" viewBox="0 0 210 210" aria-label="throttle">
+        <path id="wGas"   class="wedge gas"   d="M205.0,205.0 L205.0,85.0 A120,120 0 0 0 85.0,205.0 Z"/>
+        <path id="wDrift" class="wedge drift" d="M205.0,73.0 L205.0,5.0 A200,200 0 0 0 63.6,63.6 L111.7,111.7 A132,132 0 0 1 205.0,73.0 Z"/>
+        <path id="wBrake" class="wedge brake" d="M111.7,111.7 L63.6,63.6 A200,200 0 0 0 5.0,205.0 L73.0,205.0 A132,132 0 0 1 111.7,111.7 Z"/>
+        <text class="wlab sm" id="lblGas"   x="155.5" y="155.5">Gas</text>
+        <text class="wlab sm" id="lblDrift" x="141.5" y="51.6">Drift</text>
+        <text class="wlab sm" id="lblBrake" x="51.6" y="141.5">Brake</text>
+      </svg>
+      <button class="tbtn" id="bFire" aria-label="bolt">
+        <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+          <polygon points="10.9,1 18.8,1 13.8,10 19.9,10 8.9,23 12.2,13.1 6.5,13.1"
+                   fill="#eaf6ff"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div id="padMenu"></div>
+</div>
+
+<div class="keys">
+  <span><b>&uarr;</b> <span id="kThrottle">throttle</span></span>
+  <span><b>&darr;</b> <span id="kBrakeDrift">brake/drift</span></span>
+  <span><b>&larr; &rarr;</b> <span id="kSteer">steer</span></span>
+  <span><b>Space</b> <span id="kFire">fire</span></span>
+  <span><b>Enter</b> <span id="kStart">start</span></span>
+  <span><b>G</b> <span id="kGarage">garage</span></span>
+  <span><b>I</b> <span id="kInfo">info</span></span>
+  <span><b>P</b> <span id="kPause">pause</span></span>
+  <span><b>M</b> <span id="kSound">sound</span></span>
+  <span><b>L</b> <span id="kLang">language</span></span>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var W = 800, H = 500; // Base logical resolution
+var dpr = window.devicePixelRatio || 1;
+cv.width = W * dpr;
+cv.height = H * dpr;
+ctx.scale(dpr, dpr); // Scale the context so everything draws crisply on high-res screens
+
+/* ---------------------------------------------------------------
+   PROJECTION
+--------------------------------------------------------------- */
+var FOV = 100;
+var camDepth  = 1 / Math.tan((FOV/2) * Math.PI/180);
+var camH      = 1500;
+var yOff      = -38;
+var roadWidth = 1200;
+var segLength = 200;
+/* A coarse pointer means fingers, not a mouse. Everything mobile-specific
+   hangs off this one flag so the desktop build is bit-for-bit unchanged. */
+var TOUCH = (function(){
+  try{
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+    return (navigator.maxTouchPoints||0) > 0 && !window.matchMedia('(pointer: fine)').matches;
+  }catch(e){ return false; }
+})();
+/* Shorter sight line on a phone: ~25% fewer sprites, props and grid lines to
+   push each frame. Still leaves about 2.5s of warning on approaching traffic. */
+var MAXZ      = TOUCH ? 42000 : 56000;
+var horizonY  = H/2 + yOff;
+var topRow    = Math.ceil(horizonY) + 2;
+
+/* The player sprite is not at the camera — it sits some way down the road.
+   Everything the car interacts with (the bend it is drawn on, its hitbox,
+   the road edges, the checkpoint line) is measured from HERE, not from the
+   camera, otherwise the picture and the physics disagree on a curve. */
+var PLAYER_Y = H - 34;
+var Z_CAR    = camDepth*camH*(H/2)/(PLAYER_Y - H/2 - yOff);
+var PPU_CAR  = (camDepth/Z_CAR)*roadWidth*W/2;
+
+var LANES = [-0.75, -0.25, 0.25, 0.75];
+var CAR_W = 0.26;                 // car width in road units (road spans -1..1)
+/* how deep the hitbox is, front and back — measured so a crash fires exactly
+   when the two sprites start to overlap on screen, not before */
+var HIT_FRONT = 270;
+var HIT_BACK  = 215;
+var DRIFT_HOLD = 0.80;  // throttle+brake settles here: drifting costs 20% of top speed
+var MAX_HULL   = 4;      // default only; the chassis decides the real cap
+var WEAVE_EVERY= 5;      // a van reconsiders its lane this often
+var WEAVE_TTC  = 1.7;    // ...but never inside this many seconds of you
+var CP_MSG     = 3.4;   // lap banners hold on screen this long
+var MAX_SHOTS  = 3;
+var OD_TIME    = 11;     // overdrive: unlimited fire
+/* Two rate limits, not one. Overdrive rounds pierce and keep travelling, so
+   at 9 a second they cleared the road faster than it could fill and the lap
+   drove itself; 2 a second still clears a queue but you have to aim it. The
+   manual trigger keeps the old, snappier gate — with three shots in the
+   magazine there is nothing there to farm. */
+var OD_CD      = 0.50;   // overdrive: rounds a second while the trigger is held
+var FIRE_CD    = 0.11;   // ...the three manual shots stay as quick as they were
+var OD_COLS    = ['#b06cff','#7cff4f','#ff6a3d','#ffffff'];
+var DINO_TIME  = 15;     // seconds of rampage
+var DINO_WARN  = 2;      // ...with this long of a warning before it drops
+var DINO_CAR_W = 0.62;   // you, as a dinosaur, in road units (a car is 0.26)
+var DINO_PU_W  = 0.45;   // the pickup itself, a shade larger than the heart (1.5x)
+var DINO_HIT   = 0.44;   // half your width plus half a car's
+var HEART_W   = 0.285;  // heart and bolt pickups, both drawn from this (1.5x)
+/* Reach is derived, not typed in: the pickups were scaled up 1.5x and a
+   hand-written radius would have left you driving through a sprite you
+   visibly overlapped. Half a car plus half a pickup, same as before. */
+var HEART_R   = CAR_W/2 + HEART_W/2;    // 0.2725
+var DINO_R    = CAR_W/2 + DINO_PU_W/2;  // 0.355
+/* NEAR MISS tuning. A lane is 0.5 road units wide and a car is 0.26, so the
+   band below reaches 0.115 units past the paintwork on each side — under half
+   a lane. Sitting in the next lane over is ~0.5 away and never fires; you have
+   to deliberately shave the gap. */
+var NM_BAND     = 0.375;
+var NM_CHAIN_T  = 1.6;    // seconds before the chain lapses
+var NM_BASE     = 55;     // points for one clean pass at chain 1
+var NM_MAX_MULT = 8;      // chain multiplier ceiling
+var NM_POP_LIFE = 1.5;    // seconds the closeness readout stays up
+/* Drifting charges a bolt, gated three ways so the meter cannot be farmed by
+   waggling the wheel down an empty straight:
+     1. BEND  — the rate scales with how hard the road curves where the car
+                actually is, and is exactly zero on a straight, so the farm is
+                impossible rather than merely slow.
+     2. SPEED — below DR_MIN_SPD of top speed a drift earns nothing. Note that
+                holding both pedals settles at DRIFT_HOLD (0.80) exactly, so
+                the gate sits just under it: an exact-equality test would be
+                knife-edge against float and the shoulder drag.
+     3. EXIT  — charge accrues into a pot that only becomes a bank when you
+                come out of the drift still on the road. Crash out of it, or
+                put a wheel on the shoulder, and the pot is gone. */
+var DR_RATE     = 0.198;  // bank per second at a full-strength bend
+var DR_MIN_SPD  = 0.78;   // share of maxS below which a drift pays nothing
+var DR_MIN_BEND = 0.18;   // share of S_PEAK below which the road reads straight
+var PW    = CAR_W * PPU_CAR;      // drawn width == hitbox width
+var CP_BONUS   = 32;   // (legacy) the real award now scales with the leg
+var CLOCK_CAP  = 48;   // ...but only through lap 3; after that time banks freely
+var CRASH_TIME = 2;
+
+var FOG = [44,14,74];
+function mix(c, f){
+  return 'rgb(' + ((c[0]+(FOG[0]-c[0])*f)|0) + ',' +
+                  ((c[1]+(FOG[1]-c[1])*f)|0) + ',' +
+                  ((c[2]+(FOG[2]-c[2])*f)|0) + ')';
+}
+var C_ROAD_A=[27,23,44], C_ROAD_B=[19,16,32],
+    C_RUM_A=[0,236,255], C_RUM_B=[255,46,190],
+    C_LANE=[228,235,255];
+
+var rowZ=[], rowPPU=[], rowFog=[], rowCol=[];
+for (var y=0; y<H; y++){
+  if (y < topRow){ rowZ[y]=Infinity; rowPPU[y]=0; rowFog[y]=1; rowCol[y]=null; continue; }
+  var denom = y - H/2 - yOff;
+  var z = camDepth*camH*(H/2)/denom;
+  var sc = camDepth/z;
+  var f  = Math.pow(Math.min(1, z/MAXZ), 3.2);
+  rowZ[y]=z; rowPPU[y]=sc*roadWidth*W/2; rowFog[y]=f;
+  rowCol[y]={ a:mix(C_ROAD_A,f), b:mix(C_ROAD_B,f),
+              ra:mix(C_RUM_A,f), rb:mix(C_RUM_B,f), ln:mix(C_LANE,f) };
+}
+
+function fogAt(z){ return Math.pow(Math.min(1, Math.max(0,z)/MAXZ), 3.2); }
+function proj(zRel){
+  var sc = camDepth/zRel;
+  return { ppu: sc*roadWidth*W/2, y: H/2 + sc*camH*(H/2) + yOff };
+}
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function pad(n,l){ var s=String(n); while(s.length<l) s='0'+s; return s; }
+function hexA(hex,a){
+  var n=parseInt(hex.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+/* ---------------------------------------------------------------
+   THE ROAD'S CENTRELINE
+--------------------------------------------------------------- */
+var CH = 400;                 // chunk length in world units
+var SLOPE_MAX = 8.2e-4;       // safety ceiling
+var S_PEAK    = 6.0e-4;       // sharpest bend at full strength
+var P_STRAIGHT= 0.42;         // share of sections that are straight
+
+var kA=[], slA=[0], ofA=[0], genN=0;
+var secAmp=0, secLen=26, secPos=0, lastDir=1;
+
+function trackReset(){
+  kA=[]; slA=[0]; ofA=[0]; genN=0;
+  secAmp=0; secLen=26; secPos=0;      // open on a short straight
+  lastDir = Math.random()<0.5 ? -1 : 1;
+}
+function newSection(){
+  secPos=0;
+  if (Math.random() < P_STRAIGHT){
+    secLen=(50+Math.random()*100)|0;  // 20k–60k units of open road
+    secAmp=0;
+    slA[genN]=0;                      // land it perfectly flat
+    return;
+  }
+  secLen=(90+Math.random()*110)|0;    // 36k–80k units: a long sweeper
+  var dir = Math.random()<0.72 ? -lastDir : lastDir;
+  lastDir = dir;
+  var peak = (0.5+Math.random()*0.5)*S_PEAK;
+  secAmp = dir * peak*Math.PI/(secLen*CH);
+}
+
+function genChunk(){
+  if (secPos >= secLen) newSection();
+  var k = secAmp * Math.sin(2*Math.PI*(secPos+0.5)/secLen);
+  secPos++;
+  var s0=slA[genN], s1=s0 + k*CH;
+  if (secPos>=secLen && secAmp!==0) s1=0;             // exit the bend flat
+  if (s1 >  SLOPE_MAX) s1 =  SLOPE_MAX;
+  if (s1 < -SLOPE_MAX) s1 = -SLOPE_MAX;
+  k = (s1-s0)/CH;
+  kA[genN]   = k;
+  ofA[genN+1]= ofA[genN] + s0*CH + 0.5*k*CH*CH;
+  slA[genN+1]= s1;
+  genN++;
+}
+function ensure(z){
+  var need=Math.floor(z/CH)+2;
+  while (genN < need) genChunk();
+}
+function curveAt(z){
+  if (z<0) z=0;
+  var i=Math.floor(z/CH); if (i>=genN) ensure(z);
+  var t=z-i*CH;
+  return ofA[i] + slA[i]*t + 0.5*kA[i]*t*t;
+}
+function slopeAt(z){
+  if (z<0) z=0;
+  var i=Math.floor(z/CH); if (i>=genN) ensure(z);
+  return slA[i] + kA[i]*(z-i*CH);
+}
+var cAnchor=0;
+function bend(zRel){ return curveAt(position+zRel)-cAnchor; }
+
+/* ---------------------------------------------------------------
+   DIFFICULTY
+--------------------------------------------------------------- */
+function maxSpeedFor(l){ return Math.min(14400, 10300 + (l-1)*780) * CH_().spd; }
+/* What one wrecked car is worth. Doubled while you are the dinosaur: rampage
+   is short, it ends whether you used it well or not, and paying flat made it
+   a survival break rather than a scoring window. Both kill sites read this,
+   so ramming and shooting can never drift apart. */
+function killScore(){ return 300*(1+0.2*(lap-1))*(dinoT>0?2:1); }
+function lapLength(l){   return Math.min(460000, 220000 + (l-1)*45000); }
+/* Legs get longer every checkpoint, so a flat award slowly starved you: by
+   lap 7 a PERFECT run cleared the leg with 0.1s to spare. The award now pays
+   for the leg you are about to drive, plus 28% for traffic and mistakes. */
+function cpBonus(l){     return Math.round(lapLength(l)/maxSpeedFor(l)*1.28); }
+/* Two slopes, not one. Every curve in this block used to flatten at lap 7,
+   which is why laps 9 and 10 played identically to 7 — measured at 2.14 cars
+   passed per second and 11.3 cars on the road ahead, flat forever. The second
+   slope runs from 7 to 12 at roughly a quarter of the first one's rate and
+   lands at 3.1 cars/sec with 17.9 ahead: about half again as much traffic,
+   arrived at over five laps rather than in one step.
+   Note that the spawn gate is what actually sets density here — clusterWin
+   and maxCluster measured a 0% rejection rate at every lap, so they are not
+   the lever and are left alone. */
+function trafficTop(l){  return l<=7 ? Math.min(6600, 3300 + (l-1)*550)
+                                     : Math.min(7300, 6600 + (l-7)*140); }
+function spawnGap(l){    return l<=7 ? Math.max(0.42, 1.15 - (l-1)*0.122)
+                                     : Math.max(0.28, 0.42 - (l-7)*0.028); }
+function clusterWin(l){  return Math.max(3000, 5600 - (l-1)*435); }
+function maxCluster(l){  return l<3 ? 2 : 3; }
+function weaverOdds(l){  return l<8 ? 0 : Math.min(0.42, 0.18 + (l-8)*0.06); }
+
+/* ---------------------------------------------------------------
+   THE CAR YOU BUILT
+--------------------------------------------------------------- */
+var NEONS=[
+  {n:'CYAN',    c:'#21e6ff'},
+  {n:'MAGENTA', c:'#ff2fbe'},
+  {n:'LIME',    c:'#7cff4f'},
+  {n:'AMBER',   c:'#ffd23f'},
+  {n:'VIOLET',  c:'#b06cff'},
+  {n:'EMBER',   c:'#ff6a3d'},
+  {n:'ICE',     c:'#eaf6ff'},
+  {n:'CRIMSON', c:'#ff3b5c'}
+];
+var PAINTS=[
+  {n:'VOID VIOLET', a:'#2a1145', b:'#120a20'},
+  {n:'MIDNIGHT',    a:'#12203f', b:'#080d1a'},
+  {n:'CARBON',      a:'#26262f', b:'#0d0d12'},
+  {n:'OXBLOOD',     a:'#3c1022', b:'#170710'},
+  {n:'JADE',        a:'#0f3229', b:'#061512'},
+  {n:'RUST',        a:'#3d1c0e', b:'#170a06'}
+];
+var BARS=[
+  {n:'BAR'},{n:'SAWTOOTH'},{n:'SPIKES'},{n:'CROWN'},{n:'HORNS'},{n:'HALO'},{n:'PULSE'}
+];
+var EYES=[
+  {n:'NONE'},{n:'WIDE'},{n:'ANGRY'},{n:'SLEEPY'},{n:'DIZZY'},{n:'CYCLOPS'},{n:'VISOR'}
+];
+/* The one garage row that isn't cosmetic. Every value is a multiplier on an
+   existing tuned constant, so the balance work already done still holds — a
+   chassis bends the curve, it doesn't replace it. `hp` is absolute, not a
+   multiplier, because health is counted in whole bars. */
+var CHASSIS=[
+  {n:'BALANCED', spd:1.00, grip:1.00, hp:4, c:'#21e6ff'},
+  {n:'SPRINTER', spd:1.10, grip:0.87, hp:3, c:'#ffd23f'},
+  {n:'TANK',     spd:0.93, grip:1.00, hp:5, c:'#7cff4f'},
+  {n:'GLASS',    spd:1.16, grip:1.12, hp:2, c:'#ff2fbe'}
+];
+var trimI=0, lightI=1, paintI=0, shapeI=0, eyeI=0, chassisI=0;
+var garRow=0, garFrom='title', infoFrom='paused';
+var lang='en';
+var mode='run';                 /* 'run' = the timed game, 'cruise' = no fail */
+/* Landscape is opt-in: rotating the phone IS the opt-in, and this flag only
+   controls the nudge. Once you have actually held it sideways we stop
+   suggesting it, because plenty of people will prefer upright and a hint
+   that never goes away is nagging rather than helping. */
+var sawLandscape=false;
+function isLandscape(){
+  return !!(window.matchMedia && window.matchMedia('(orientation: landscape)').matches);
+}
+/* Guarded: maxSpeedFor() is declared above this table and is hoisted, so a
+   top-level call during init could otherwise read CHASSIS before it exists. */
+function CH_(){
+  return (typeof CHASSIS!=='undefined' && CHASSIS[chassisI]) ||
+         {n:'BALANCED', spd:1, grip:1, hp:4, c:'#21e6ff'};
+}
+
+/* ---------------------------------------------------------------
+   TEXT / LANGUAGE
+   Every displayed string lives here, keyed by screen. Garage part
+   names (NEONS/PAINTS/BARS/EYES above) stay in English on purpose —
+   they're brand-style names, not translated. T(key) looks up the
+   current language with an English fallback so a missing key never
+   breaks a draw call.
+--------------------------------------------------------------- */
+var STR={
+  en:{
+    SCORE:'SCORE', BEST:'BEST', NEW:'NEW', LAP:'LAP', TIME:'TIME', SPEED:'SPEED',
+    HULL:'HEALTH', SHOTS:'SHOTS', UNLIMITED:'UNLIMITED', RAMPAGE:'RAMPAGE',
+    DRIFTM:'DRIFT',
+    OVERDRIVE:'OVERDRIVE', NEXT_CP:'NEXT LAP', OFF_ROAD:'OFF ROAD',
+    CHECKPOINT:'CHECKPOINT',
+    LOGO_A:'VAPOR', LOGO_B:'LANE',
+    HINT2:'Pick up power-ups and health along the way.',
+    HINT3:'Drift through the bends for better grip.',
+    PRESS_DRIVE_TOUCH:'TAP DRIVE BELOW', PRESS_DRIVE_KEY:'PRESS ENTER TO DRIVE',
+    /* Title footer: one key cap each, so these are labels only now. */
+    TF_GARAGE:'GARAGE', TF_INFO:'HOW IT WORKS', TF_LANG:'IDIOMA',
+    BEST_LINE:'BEST  ', SAVED_ON:'PROGRESS SAVED ON THIS DEVICE',
+    SAVED_OFF:'PROGRESS NOT SAVED HERE \u2014 DOWNLOAD THE FILE TO KEEP IT',
+    PAUSED:'PAUSED', PAUSE_TOUCH:'USE THE BUTTONS BELOW',
+    PAUSE_RESUME:'P OR ENTER \u2014 BACK TO THE ROAD', PAUSE_GARAGE:'G \u2014 GARAGE',
+    PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
+    HOW_IT_WORKS:'HOW IT WORKS', INFO_BACK:'I OR ENTER \u2014 BACK',
+    H_CONTROLS:'CONTROLS', H_DRIVING:'DRIVING', H_SAVED:'SAVED',
+    H_RUN:'THE RUN', H_HAZARDS:'HAZARDS', H_PICKUPS:'PICKUPS',
+    CTRL1:'ARROWS \u2014 throttle, brake, steer',
+    CTRL2:'SPACE \u2014 fire a loaded shot',
+    DRV3:'Drift through bends to fill the DRIFT bar.',
+    DRV4:'A full bar loads one shot.',
+    DRV5:'Shave past traffic to chain NEAR MISS.',
+    SAVED_YES1:'Best score and garage colours are',
+    SAVED_YES2:'kept in this browser.',
+    SAVED_NO1:'Storage is blocked here, so nothing',
+    SAVED_NO2:'persists. Download the file and open',
+    SAVED_NO3:'it from your own machine to keep it.',
+    RUN1:'1 crash  =  \u22121 health, \u22122 seconds',
+    RUN2:'1 lap  =  more time + more speed',
+    RUN3:'Closer + longer chains = more points.',
+    CRU1:'CRUISE mode (C on the title) removes the',
+    CRU2:'clock and the wreck. Score is not saved.',
+    H_CRUISE:'CRUISE',
+    HAZ1:'change lane \u2014 watch the roof arrows',
+    PU_HEART:'Restores 1 health.',
+    PU_BOLT1:'Loads a shot. SPACE fires it,',
+    PU_BOLT2:'piercing every car in its lane.',
+    PU_BOLT3:'Stack 3 = OVERDRIVE, ',
+    PU_BOLT3B:'s',
+    PU_BOLT4:'of unlimited fire. A crash still',
+    PU_BOLT5:'hurts, but no longer stops you.',
+    PU_DINO1:'Become the dinosaur for ',
+    PU_DINO1B:'s:',
+    PU_DINO2:'anything you touch is scrap.',
+    GARAGE:'GARAGE', GAR_HINT:'UP / DOWN pick a part      LEFT / RIGHT change it',
+    GAR_TRIM:'TRIM', GAR_BARCOL:'BAR COLOUR', GAR_BARSHAPE:'BAR SHAPE',
+    GAR_EYES:'EYES', GAR_PAINT:'PAINT', GAR_BACK:'ENTER \u2014 BACK',
+    GAR_CHASSIS:'CHASSIS', GAR_SPD:'SPD', GAR_GRIP:'GRIP', GAR_HP:'HP',
+    MODE_RUN:'TIMED RUN', MODE_CRUISE:'CRUISE', CRUISE_TAG:'CRUISE \u2014 NO CLOCK, NO WRECK',
+    T_CHAIN:'CHAIN x', NEARMISS:'NEAR MISS',
+    OVER_WRECKED:'WRECKED', OVER_TIMEUP:'TIME UP', OVER_FINAL:'FINAL SCORE',
+    OVER_LAPS:'LAPS ', OVER_OVERTAKES:'     OVERTAKES ', OVER_BEST:'     BEST ',
+    OVER_AGAIN:'PRESS ENTER TO RACE AGAIN', OVER_GARAGE:'G \u2014 GARAGE',
+    T_SOUND_OFF:'SOUND OFF', T_SOUND_ON:'SOUND ON',
+    T_MUSIC_OFF:'MUSIC OFF', T_MUSIC_ON:'MUSIC ON', T_SFX_OFF:'EFFECTS OFF',
+    T_CRASH:'CRASH  -', T_CRASH_S:'s',
+    T_CP:'CHECKPOINT  +', T_CP_S:'s',
+    T_LAP:'LAP ', T_LAP_END:'  \u00b7  TOP SPEED UP',
+    T_HULL_N:' HEALTH PICKUPS THIS LEG', T_HULL_1:'HEALTH PICKUP THIS LEG',
+    T_ENERGY:'ENERGY SHOT THIS LEG', T_RAMPAGE_LEG:'RAMPAGE THIS LEG',
+    T_WEAVERS:'AMBER VANS CHANGE LANE \u2014 WATCH THE ROOF ARROWS',
+    T_HULL_UP:'+1 HEALTH', T_HULL_FULL:'HEALTH FULL  +10000',
+    T_OD_REFRESH:'OVERDRIVE REFRESHED', T_OD_ON:'OVERDRIVE  ',
+    T_SHOT_LOADED1:'SHOT LOADED  ', T_SHOT_LOADED2:'/',
+    T_RAMPAGE_ON:'RAMPAGE  ',
+    T_OD_ENDING:'OVERDRIVE ENDING', T_OD_SPENT:'OVERDRIVE SPENT',
+    T_RAMPAGE_ENDING:'RAMPAGE ENDING', T_BACK_TO_CAR:'BACK TO THE CAR',
+    MOB_DRIVE:'Drive', MOB_GARAGE:'Garage', MOB_INFO:'Info',
+    MOB_SOUND_ON:'Sound on', MOB_SOUND_OFF:'All off',
+    MOB_MUSIC_OFF:'Music off', MOB_SFX_OFF:'Effects off',
+    MOB_RESUME:'Resume', MOB_MAIN_MENU:'Main menu', MOB_RACE_AGAIN:'Race again',
+    MOB_BACK:'Back', MOB_LANG:'Language',
+    MOB_FULL:'Fullscreen', MOB_UNFULL:'Exit full',
+    /* Tile captions. The strip labels above are still used by the garage and
+       info screens; a 68px tile needs shorter words than a 150px pill. */
+    TIL_SND0:'Sound', TIL_SND1:'No music', TIL_SND2:'No FX', TIL_SND3:'Muted',
+    TIL_FULL:'Full', TIL_EXIT:'Windowed',
+    PAD_BRAKE:'Brake', PAD_DRIFT:'Drift', PAD_GAS:'Gas',
+    ROTATE_HINT:'\u21BB  TURN YOUR PHONE SIDEWAYS FOR A WIDER ROAD',
+    K_THROTTLE:'throttle', K_BRAKEDRIFT:'brake/drift', K_STEER:'steer',
+    K_FIRE:'fire', K_START:'start', K_GARAGE:'garage', K_INFO:'info',
+    K_PAUSE:'pause', K_SOUND:'audio', K_LANG:'language'
+  },
+  es:{
+    SCORE:'PUNTOS', BEST:'R\u00c9CORD', NEW:'NUEVO', LAP:'VUELTA', TIME:'TIEMPO', SPEED:'VELOCIDAD',
+    HULL:'SALUD', SHOTS:'DISPAROS', UNLIMITED:'ILIMITADO', RAMPAGE:'ARRASE',
+    DRIFTM:'DERRAPE',
+    OVERDRIVE:'SOBRECARGA', NEXT_CP:'PR\u00d3X. VUELTA', OFF_ROAD:'FUERA DE PISTA',
+    CHECKPOINT:'CONTROL',
+    LOGO_A:'VAPOR', LOGO_B:'LANE',
+    HINT2:'Recoge potenciadores y salud por el camino.',
+    HINT3:'Derrapa en las curvas para mejor agarre.',
+    PRESS_DRIVE_TOUCH:'TOCA CONDUCIR ABAJO', PRESS_DRIVE_KEY:'PULSA ENTER PARA CONDUCIR',
+    TF_GARAGE:'GARAJE', TF_INFO:'C\u00d3MO FUNCIONA', TF_LANG:'LANGUAGE',
+    BEST_LINE:'R\u00c9CORD  ', SAVED_ON:'PROGRESO GUARDADO EN ESTE DISPOSITIVO',
+    SAVED_OFF:'PROGRESO NO GUARDADO \u2014 DESCARGA EL ARCHIVO PARA CONSERVARLO',
+    PAUSED:'PAUSA', PAUSE_TOUCH:'USA LOS BOTONES DE ABAJO',
+    PAUSE_RESUME:'P O ENTER \u2014 VOLVER A LA PISTA', PAUSE_GARAGE:'G \u2014 GARAJE',
+    PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
+    HOW_IT_WORKS:'C\u00d3MO FUNCIONA', INFO_BACK:'I O ENTER \u2014 VOLVER',
+    H_CONTROLS:'CONTROLES', H_DRIVING:'CONDUCCI\u00d3N', H_SAVED:'GUARDADO',
+    H_RUN:'LA CARRERA', H_HAZARDS:'PELIGROS', H_PICKUPS:'OBJETOS',
+    CTRL1:'FLECHAS \u2014 acelerar, frenar, girar',
+    CTRL2:'ESPACIO \u2014 disparar arma cargada',
+    DRV3:'Derrapa en las curvas para llenar DERRAPE.',
+    DRV4:'Una barra llena carga un disparo.',
+    DRV5:'Roza el tr\u00e1fico para encadenar ROCES.',
+    SAVED_YES1:'Tu mejor puntuaci\u00f3n y el garaje',
+    SAVED_YES2:'se guardan en este navegador.',
+    SAVED_NO1:'El almacenamiento est\u00e1 bloqueado, as\u00ed',
+    SAVED_NO2:'que nada se guarda. Descarga el archivo',
+    SAVED_NO3:'y \u00e1brelo en tu equipo para conservarlo.',
+    RUN1:'1 choque  =  \u22121 salud, \u22122 segundos',
+    RUN2:'1 vuelta  =  m\u00e1s tiempo + velocidad',
+    RUN3:'M\u00e1s cerca y m\u00e1s cadena = m\u00e1s puntos.',
+    CRU1:'El modo PASEO (C en el t\u00edtulo) quita el',
+    CRU2:'reloj y los choques. No guarda puntaje.',
+    H_CRUISE:'PASEO',
+    HAZ1:'cambian de carril. Mira las flechas.',
+    PU_HEART:'Restaura 1 de salud.',
+    PU_BOLT1:'Carga un disparo. ESPACIO lo',
+    PU_BOLT2:'lanza y atraviesa su carril.',
+    PU_BOLT3:'Junta 3 = SOBRECARGA, ',
+    PU_BOLT3B:'s',
+    PU_BOLT4:'de disparo ilimitado. Un choque',
+    PU_BOLT5:'duele, pero ya no te detiene.',
+    PU_DINO1:'Convi\u00e9rtete en dinosaurio ',
+    PU_DINO1B:'s:',
+    PU_DINO2:'todo lo que toques queda destruido.',
+    GARAGE:'GARAJE', GAR_HINT:'ARRIBA / ABAJO elige una pieza      IZQ. / DER. c\u00e1mbiala',
+    GAR_TRIM:'ACABADO', GAR_BARCOL:'COLOR DE BARRA', GAR_BARSHAPE:'FORMA DE BARRA',
+    GAR_EYES:'OJOS', GAR_PAINT:'PINTURA', GAR_BACK:'ENTER \u2014 VOLVER',
+    GAR_CHASSIS:'CHASIS', GAR_SPD:'VEL', GAR_GRIP:'AGARRE', GAR_HP:'SAL',
+    MODE_RUN:'CONTRARRELOJ', MODE_CRUISE:'PASEO', CRUISE_TAG:'PASEO \u2014 SIN RELOJ NI CHOQUES',
+    T_CHAIN:'CADENA x', NEARMISS:'ROCE',
+    OVER_WRECKED:'DESTRUIDO', OVER_TIMEUP:'TIEMPO AGOTADO', OVER_FINAL:'PUNTUACI\u00d3N FINAL',
+    OVER_LAPS:'VUELTAS ', OVER_OVERTAKES:'     ADELANTOS ', OVER_BEST:'     R\u00c9CORD ',
+    OVER_AGAIN:'PULSA ENTER PARA VOLVER A CORRER', OVER_GARAGE:'G \u2014 GARAJE',
+    T_SOUND_OFF:'SONIDO DESACTIVADO', T_SOUND_ON:'SONIDO ACTIVADO',
+    T_MUSIC_OFF:'MUSICA DESACTIVADA', T_MUSIC_ON:'MUSICA ACTIVADA', T_SFX_OFF:'EFECTOS DESACTIVADOS',
+    T_CRASH:'CHOQUE  -', T_CRASH_S:'s',
+    T_CP:'CONTROL  +', T_CP_S:'s',
+    T_LAP:'VUELTA ', T_LAP_END:'  \u00b7  M\u00c1S VELOCIDAD M\u00c1XIMA',
+    T_HULL_N:' CURACIONES ESTE TRAMO', T_HULL_1:'CURACI\u00d3N ESTE TRAMO',
+    T_ENERGY:'DISPARO DE ENERG\u00cdA ESTE TRAMO', T_RAMPAGE_LEG:'ARRASE ESTE TRAMO',
+    T_WEAVERS:'LAS FURGONETAS \u00c1MBAR CAMBIAN DE CARRIL \u2014 MIRA LAS FLECHAS',
+    T_HULL_UP:'+1 SALUD', T_HULL_FULL:'SALUD AL M\u00c1XIMO  +10000',
+    T_OD_REFRESH:'SOBRECARGA RENOVADA', T_OD_ON:'SOBRECARGA  ',
+    T_SHOT_LOADED1:'DISPARO CARGADO  ', T_SHOT_LOADED2:'/',
+    T_RAMPAGE_ON:'ARRASE  ',
+    T_OD_ENDING:'SOBRECARGA TERMINANDO', T_OD_SPENT:'SOBRECARGA AGOTADA',
+    T_RAMPAGE_ENDING:'ARRASE TERMINANDO', T_BACK_TO_CAR:'DE VUELTA AL AUTO',
+    MOB_DRIVE:'Conducir', MOB_GARAGE:'Garaje', MOB_INFO:'Info',
+    MOB_SOUND_ON:'Sonido activado', MOB_SOUND_OFF:'Todo apagado',
+    MOB_MUSIC_OFF:'Musica apagada', MOB_SFX_OFF:'Efectos apagados',
+    MOB_RESUME:'Continuar', MOB_MAIN_MENU:'Men\u00fa principal', MOB_RACE_AGAIN:'Correr de nuevo',
+    MOB_BACK:'Volver', MOB_LANG:'Idioma',
+    MOB_FULL:'Pantalla completa', MOB_UNFULL:'Salir',
+    TIL_SND0:'Sonido', TIL_SND1:'Sin m\u00fasica', TIL_SND2:'Sin efectos', TIL_SND3:'Silencio',
+    TIL_FULL:'Pantalla', TIL_EXIT:'Ventana',
+    PAD_BRAKE:'Freno', PAD_DRIFT:'Derrape', PAD_GAS:'Gas',
+    ROTATE_HINT:'\u21BB  GIRA EL TEL\u00c9FONO PARA VER M\u00c1S CARRETERA',
+    K_THROTTLE:'acelerar', K_BRAKEDRIFT:'frenar/derrape', K_STEER:'girar',
+    K_FIRE:'disparar', K_START:'iniciar', K_GARAGE:'garaje', K_INFO:'info',
+    K_PAUSE:'pausa', K_SOUND:'audio', K_LANG:'idioma'
+  }
+};
+function T(key){ return (STR[lang]&&STR[lang][key]!==undefined) ? STR[lang][key] : STR.en[key]; }
+function toggleLang(){ lang = (lang==='en') ? 'es' : 'en'; saveGame(); applyStaticText(); }
+function toggleMode(){ mode = (mode==='run') ? 'cruise' : 'run'; saveGame(); }
+/* Static DOM labels (mobile drive-pad buttons, desktop key legend) aren't
+   drawn on canvas, so they don't go through render() — refresh them here,
+   once at load and again on every language toggle. */
+function applyStaticText(){
+  var ids={
+    lblGas:'PAD_GAS', lblDrift:'PAD_DRIFT', lblBrake:'PAD_BRAKE',
+    kThrottle:'K_THROTTLE', kBrakeDrift:'K_BRAKEDRIFT', kSteer:'K_STEER',
+    kFire:'K_FIRE', kStart:'K_START', kGarage:'K_GARAGE', kInfo:'K_INFO',
+    kPause:'K_PAUSE', kSound:'K_SOUND', kLang:'K_LANG'
+  };
+  for (var id in ids){
+    var node=el(id);
+    if (node) node.textContent=T(ids[id]);
+  }
+}
+
+/* ---------------------------------------------------------------
+   LOCAL SAVE
+   One versioned record kept in the browser. Adding something new later
+   is a single line in each of save/load: every field is read and range
+   checked on its own, so an older save simply keeps its defaults for
+   whatever it doesn't have yet, and a newer one degrades the same way.
+   Storage is unavailable in some sandboxes and in Safari's private mode,
+   where touching it throws — so every access is guarded and the game
+   falls back to running in memory rather than breaking.
+--------------------------------------------------------------- */
+var SAVE_KEY='vaporlane.save', SAVE_KEY_OLD='neonrush.save', SAVE_V=1;
+var store=null, saveOK=false;
+(function(){
+  try{
+    var probe='__vl__';
+    window.localStorage.setItem(probe,'1');
+    window.localStorage.removeItem(probe);
+    store=window.localStorage; saveOK=true;
+  }catch(e){ store=null; saveOK=false; }
+})();
+
+/* keep an index only if it is a real slot in the list it points at */
+function pickIdx(v,n,def){
+  v=parseInt(v,10);
+  return (isFinite(v)&&v>=0&&v<n)?v:def;
+}
+function loadGame(){
+  if (!saveOK) return;
+  var raw,d;
+  try{ raw=store.getItem(SAVE_KEY); }catch(e){ saveOK=false; return; }
+  /* Nothing under the new name yet: read the NEON RUSH record once. It is
+     left in place rather than deleted, so an older build still finds it if
+     this one has to be rolled back. The next saveGame() writes the new key. */
+  if (!raw){ try{ raw=store.getItem(SAVE_KEY_OLD); }catch(e){ raw=null; } }
+  if (!raw) return;
+  try{ d=JSON.parse(raw); }catch(e){ return; }        /* corrupt: keep defaults */
+  if (!d || typeof d!=='object') return;
+  var b=parseInt(d.best,10);
+  if (isFinite(b) && b>0) best=b;
+  trimI =pickIdx(d.trim , NEONS.length , trimI);
+  shapeI=pickIdx(d.shape, BARS.length  , shapeI);
+  eyeI  =pickIdx(d.eye  , EYES.length  , eyeI);
+  lightI=pickIdx(d.light, NEONS.length , lightI);
+  paintI=pickIdx(d.paint, PAINTS.length, paintI);
+  chassisI=pickIdx(d.chassis, CHASSIS.length, chassisI);
+  lang = (d.lang==='es') ? 'es' : 'en';
+  mode = (d.mode==='cruise') ? 'cruise' : 'run';
+  var am=parseInt(d.audio,10);
+  audioMode = (isFinite(am) && am>=0 && am<=3) ? am
+            : (d.music===false ? AUD_NOMUSIC : AUD_ALL);   /* legacy save */
+  applyAudioMode();
+  sawLandscape = !!d.sawLand;
+}
+function saveGame(){
+  if (!saveOK) return;
+  try{
+    store.setItem(SAVE_KEY, JSON.stringify({
+      v:SAVE_V, best:Math.max(0,best|0),
+      trim:trimI, light:lightI, paint:paintI, shape:shapeI, eye:eyeI, lang:lang,
+      chassis:chassisI, mode:mode, sawLand:sawLandscape, audio:audioMode
+    }));
+  }catch(e){ saveOK=false; }                          /* quota or perms lost */
+}
+
+/* ---------------------------------------------------------------
+   STATE
+--------------------------------------------------------------- */
+var state='title';
+var position=0, playerX=0, speed=0, steerVel=0;
+var health=MAX_HULL, lap=1, timeLeft=45, score=0, best=0, overtakes=0;
+var bestAtStart=0;   // the record this run is chasing
+var spinT=0, invT=0, shake=0, spinAng=0;
+var cars=[], spawnT=0, cpStart=0, cpLen=lapLength(1), nextCP=cpLen, endReason='';
+var msgs=[], flash=0, hitFlash=0, bgX=0, curSlope=0, warnSlope=0;
+var pickups=[], dinoT=0, taughtWeavers=false;
+var chain=0, chainT=0, chainBest=0, nmPops=[];
+var shots=0, pshots=[], blasts=[];
+var odT=0, odShotN=0, fireCd=0;
+var dBank=0, dPot=0, drifting=false, scrapeCd=0;
+var ufo=null, ufoT=14;
+var keys={};
+/* The keyboard and the on-screen pad can each be holding a direction, so
+   they are tracked apart and merged. Otherwise letting go of DRIFT would
+   cancel a throttle the other thumb is still holding. */
+var kbd={}, held={up:0,down:0,left:0,right:0}, fireHeld=false;
+function applyKeys(){
+  keys.up   = !!kbd.up   || held.up>0;
+  keys.down = !!kbd.down || held.down>0;
+  keys.left = !!kbd.left || held.left>0;
+  keys.right= !!kbd.right|| held.right>0;
+}
+
+var PAL=['#ff2fbe','#21e6ff','#ffd23f','#7cff4f','#ff6a3d','#b06cff'];
+var stars=[], skyline=[], TILE=W+80;
+
+(function(){
+  var s=1234;
+  function rnd(){ s=(s*16807)%2147483647; return s/2147483647; }
+  for (var i=0;i<90;i++) stars.push({x:rnd()*W, y:rnd()*(horizonY-14), r:rnd()<0.15?1.6:1, a:0.25+rnd()*0.6});
+  var x=0;
+  while (x < TILE-20){
+    var w=16+rnd()*46, h=18+rnd()*82;
+    if (x+w > TILE) w=TILE-x;
+    skyline.push({x:x, w:w, h:h, lit:rnd()<0.5});
+    x += w + 4 + rnd()*16;
+  }
+})();
+
+function reset(){
+  trackReset();
+  position=0; playerX=0; speed=0; steerVel=0;
+  health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0;
+  spinT=0; invT=0; shake=0; spinAng=0; bgX=0; curSlope=0;
+  cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
+  shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
+  dBank=0; dPot=0; drifting=false;
+  ufo=null; ufoT=14;
+  cpStart=0; cpLen=lapLength(1); nextCP=cpLen;
+  taughtWeavers=false; endReason='';
+  chain=0; chainT=0; chainBest=0; nmPops=[];
+  bestAtStart=best;
+  ensure(MAXZ+Z_CAR+CH); cAnchor=curveAt(Z_CAR);
+}
+/* pickups are placed in bands down the leg so they never land on top of
+   each other, and each one picks its own lane */
+function addPickup(kind,lo,hi){
+  pickups.push({ kind:kind,
+                 z: cpStart + cpLen*(lo+Math.random()*(hi-lo)),
+                 x: LANES[(Math.random()*LANES.length)|0] });
+}
+
+function say(text,color,big,icon,life){
+  msgs.push({t:text, c:color||'#ffffff', life:(life||1.9), big:!!big, icon:icon||null});
+  if (msgs.length>5) msgs.shift();
+}
+
+/* ---------------------------------------------------------------
+   AUDIO
+--------------------------------------------------------------- */
+/* Audio is one control with four states, cycled by M on a keyboard and by the
+   Sound button on the touch pad. `muted` (effects + engine) and `musicOn` are
+   DERIVED from it, so every existing check in this file keeps working as
+   written and nothing has to know the cycle exists. */
+var AUD_ALL=0, AUD_NOMUSIC=1, AUD_NOSFX=2, AUD_NONE=3;
+var AUD_MSG=['T_SOUND_ON','T_MUSIC_OFF','T_SFX_OFF','T_SOUND_OFF'];
+/* The pad's own audio caption now comes from TIL_SND — the four MOB_SOUND_*
+   strings are still in the tables for the desktop legend. */
+var audioMode=AUD_ALL;
+var A=null, muted=false, musicOn=true;
+
+function applyAudioMode(){
+  muted   = (audioMode===AUD_NOSFX || audioMode===AUD_NONE);
+  musicOn = (audioMode===AUD_ALL   || audioMode===AUD_NOSFX);
+}
+function cycleAudio(){
+  audioMode=(audioMode+1)%4;
+  applyAudioMode();
+  say(T(AUD_MSG[audioMode]),'#21e6ff');
+  padState=null;                  /* the pad label changed: force a repaint */
+  saveGame();
+}
+function audioInit(){
+  if (A) return;
+  try{
+    var C=window.AudioContext||window.webkitAudioContext; if(!C) return;
+    var actx=new C();
+    var master=actx.createGain(); master.gain.value=0.55;
+    /* Everything sums into master and master used to hit the speakers raw, so
+       any dense moment clipped. A gentle limiter costs one node. */
+    var comp=actx.createDynamicsCompressor();
+    comp.threshold.value=-8; comp.knee.value=6; comp.ratio.value=8;
+    comp.attack.value=0.003; comp.release.value=0.15;
+    master.connect(comp); comp.connect(actx.destination);
+    var lp=actx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=760; lp.connect(master);
+    var g=actx.createGain(); g.gain.value=0; g.connect(lp);
+    var o1=actx.createOscillator(); o1.type='sawtooth'; o1.frequency.value=52; o1.connect(g);
+    var o2=actx.createOscillator(); o2.type='square';   o2.frequency.value=26; o2.connect(g);
+    /* a third saw a few cents off o1: the two beat against each other and the
+       slow throb reads as strain. Cheaper and more alive than a 4th harmonic. */
+    var o3=actx.createOscillator(); o3.type='sawtooth'; o3.frequency.value=52;
+    o3.detune.value=ENG_DETUNE; o3.connect(g);
+    /* wind and tyre roar: a looping noise bed that opens only near the top of
+       the speed range, which is the stretch that used to sound like the rest */
+    var nb=actx.createBuffer(1, Math.floor(actx.sampleRate*2), actx.sampleRate);
+    var nd=nb.getChannelData(0);
+    for (var ni=0;ni<nd.length;ni++) nd[ni]=Math.random()*2-1;
+    var ns=actx.createBufferSource(); ns.buffer=nb; ns.loop=true;
+    var wf=actx.createBiquadFilter(); wf.type='bandpass';
+    wf.frequency.value=900; wf.Q.value=0.55;
+    var wg=actx.createGain(); wg.gain.value=0;
+    ns.connect(wf); wf.connect(wg); wg.connect(master);
+    /* tyre screech: same noise source, its own resonant band */
+    var sf=actx.createBiquadFilter(); sf.type='bandpass';
+    sf.frequency.value=1600; sf.Q.value=3.2;
+    var sg=actx.createGain(); sg.gain.value=0;
+    ns.connect(sf); sf.connect(sg); sg.connect(master);
+    o1.start(); o2.start(); o3.start(); ns.start();
+    A={ctx:actx, master:master, g:g, o1:o1, o2:o2, o3:o3, lp:lp, wg:wg, wf:wf, sg:sg, sf:sf};
+    if (actx.state==='suspended') actx.resume();
+    musInit();
+  }catch(e){ A=null; }
+}
+
+/* Engine pitch is keyed to ABSOLUTE speed, not speed/maxS. Normalised, flat
+   out on lap 1 and flat out on lap 11 were both 1.0 and produced the identical
+   note: the run got 62% faster without the ear ever being told. `rev` is speed
+   over lap-1 top speed, so it reads 1.0 early and past 1.6 on GLASS late.
+   rev 1.0 reproduces the old top-speed tone exactly — everything above it is
+   new range that did not exist before. */
+var SPD_REF    = 10300;  // lap-1 top speed, BALANCED: the 1.0 mark
+var ENG_IDLE   = 0.12;   // title screen and any not-driving state
+var ENG_DETUNE = 7;      // cents between o1 and o3; raise for more throb
+var ENG_VOL    = 0.33;   // engine trim: 1.0 is the original level, this is -67%
+var ENG_WIND   = 0.72;   // rev at which the wind bed starts to open
+var ENG_WMAX   = 1.62;   // rev where it is fully up (GLASS at the speed cap)
+var ENG_WVOL   = 0.030;  // wind ceiling; noise masks melody, so keep it low
+var ENG_SNAP   = true;   // false = the old continuous glide, for A/B
+var ENG_GLIDE  = 0.045;  // seconds to slide between steps; 0.12 = lazy gearbox
+/* Scale to snap to. null means WORK IT OUT FROM THE MUSIC — the engine reads
+   MUS_PAT, counts which pitch classes the song actually uses, and tunes itself
+   to those. Change the tune, change the key, change the scale: this follows,
+   with no edit here. Set it to an array of semitone offsets from the song key
+   (e.g. [0,2,4,7,9] for major pentatonic) only if you want to override. */
+var ENG_SCALE  = null;
+var ENG_MINUSE = 0.07;   // pitch classes rarer than this are passing tones
+
+var engPC=null, engCur=null, engLastF=-1;
+
+/* Build the allowed pitch classes once, on the first note the engine plays. */
+function engBuildScale(){
+  var i,ch,pi,n,pc=[];
+  if (ENG_SCALE){
+    for (i=0;i<ENG_SCALE.length;i++) pc.push(((MUS_KEY+ENG_SCALE[i])%12+12)%12);
+  } else {
+    var cnt=[0,0,0,0,0,0,0,0,0,0,0,0], tot=0;
+    for (ch=0;ch<MUS_PAT.length;ch++)
+      for (pi=0;pi<MUS_PAT[ch].length;pi++)
+        for (n=0;n<MUS_PAT[ch][pi].length;n++){
+          cnt[((MUS_KEY+MUS_PAT[ch][pi][n][2])%12+12)%12]++; tot++;
+        }
+    /* the threshold is what separates the scale from a blue note: this song
+       has two F#s among 46 notes, which belong in the tune but not in the
+       engine's ladder. */
+    for (i=0;i<12;i++) if (tot && cnt[i]>=tot*ENG_MINUSE) pc.push(i);
+  }
+  if (!pc.length) pc=[0,2,4,7,9];        /* nothing usable: major pentatonic */
+  engPC=pc;
+}
+
+/* Nearest note of that scale, in any octave, with hysteresis so a frequency
+   sitting on a boundary cannot flutter between two steps. */
+function engSnapHz(f){
+  if (!engPC) engBuildScale();
+  var m=69+12*Math.log(f/440)/Math.LN2, base=Math.round(m);
+  var best=null, bd=99, d, c, dd;
+  for (d=-7;d<=7;d++){
+    c=base+d;
+    if (engPC.indexOf(((c%12)+12)%12)<0) continue;
+    dd=Math.abs(m-c);
+    if (dd<bd){ bd=dd; best=c; }
+  }
+  if (best===null) return f;
+  if (engCur!==null && best!==engCur && Math.abs(m-engCur)-bd < 0.12) best=engCur;
+  engCur=best;
+  return 440*Math.pow(2,(best-69)/12);
+}
+
+function engine(rev,on){
+  if (!A) return;
+  try{
+    var off=(muted||!on);
+    A.g.gain.value=off?0:(0.05+Math.min(1,rev)*0.075)*ENG_VOL;
+    /* o2 has always sat exactly an octave under o1, so snapping o1 tunes the
+       whole stack. The glide keeps the step from clicking. */
+    var f=46+rev*128;
+    if (ENG_SNAP) f=engSnapHz(f);
+    if (f!==engLastF){
+      engLastF=f;
+      var t=A.ctx.currentTime;
+      A.o1.frequency.setTargetAtTime(f,     t, ENG_GLIDE);
+      A.o2.frequency.setTargetAtTime(f*0.5, t, ENG_GLIDE);
+      A.o3.frequency.setTargetAtTime(f,     t, ENG_GLIDE);
+    }
+    /* darker ceiling than before: the saw's bright upper harmonics were
+       sitting right on top of the music. Still opens with speed, just less. */
+    A.lp.frequency.value=380+Math.min(ENG_WMAX,rev)*920;
+    var w=clamp((rev-ENG_WIND)/(ENG_WMAX-ENG_WIND),0,1);
+    A.wg.gain.value=off?0:w*w*ENG_WVOL;
+    A.wf.frequency.value=900+rev*1500;
+  }catch(e){}
+}
+/* `pan` is -1 left .. 1 right, `slide` a frequency ratio to glide to over the
+   note. Both optional, so every existing call site is unchanged. */
+function blip(freq,dur,type,vol,pan,slide){
+  if (!A||muted) return;
+  try{
+    var t=A.ctx.currentTime, dest=A.master;
+    var o=A.ctx.createOscillator(), g=A.ctx.createGain();
+    if (pan && A.ctx.createStereoPanner){   /* feature-detect: fall back to mono */
+      var pn=A.ctx.createStereoPanner();
+      pn.pan.value=clamp(pan,-1,1); pn.connect(A.master); dest=pn;
+    }
+    o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20,freq*slide),t+dur);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.linearRampToValueAtTime(vol||0.18,t+0.005);   /* 5ms, kills the click */
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+/* a chirpy two-tone siren, the sort a cartoon uses for "look out" */
+function rampageWarn(){
+  if (!A||muted) return;
+  var seq=[[988,0],[740,95],[988,190],[740,285],[988,380],[740,475],[1245,585]];
+  for (var i=0;i<seq.length;i++){
+    (function(f,d){ setTimeout(function(){ blip(f,0.085,'square',0.18); }, d); })(seq[i][0],seq[i][1]);
+  }
+}
+/* a long rising charge, the way a power-up ought to announce itself */
+function overdriveSfx(){
+  if (!A||muted) return;
+  try{
+    var t=A.ctx.currentTime;
+    var o=A.ctx.createOscillator(), g=A.ctx.createGain(), f=A.ctx.createBiquadFilter();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(90,t);
+    o.frequency.exponentialRampToValueAtTime(1500,t+0.85);
+    f.type='lowpass';
+    f.frequency.setValueAtTime(420,t);
+    f.frequency.exponentialRampToValueAtTime(6500,t+0.85);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.30,t+0.62);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+1.15);
+    o.connect(f); f.connect(g); g.connect(A.master);
+    o.start(t); o.stop(t+1.2);
+  }catch(e){}
+  setTimeout(function(){ blip(1568,0.18,'square',0.15); },760);
+  setTimeout(function(){ blip(2093,0.28,'square',0.13); },890);
+}
+function roar(){
+  if (!A||muted) return;
+  try{
+    var t=A.ctx.currentTime;
+    var o=A.ctx.createOscillator(), g=A.ctx.createGain(), f=A.ctx.createBiquadFilter();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(190,t);
+    o.frequency.exponentialRampToValueAtTime(46,t+0.55);
+    f.type='lowpass'; f.frequency.setValueAtTime(1100,t);
+    g.gain.setValueAtTime(0.30,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.75);
+    o.connect(f); f.connect(g); g.connect(A.master);
+    o.start(t); o.stop(t+0.8);
+  }catch(e){}
+}
+function crashSfx(){
+  if (!A||muted) return;
+  try{
+    var t=A.ctx.currentTime, len=0.45;
+    var buf=A.ctx.createBuffer(1, Math.floor(A.ctx.sampleRate*len), A.ctx.sampleRate);
+    var d=buf.getChannelData(0);
+    for (var i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+    var src=A.ctx.createBufferSource(); src.buffer=buf;
+    var f=A.ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=420; f.Q.value=0.7;
+    var g=A.ctx.createGain(); g.gain.setValueAtTime(0.5,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    src.connect(f); f.connect(g); g.connect(A.master); src.start(t);
+  }catch(e){}
+  blip(120,0.3,'sawtooth',0.2);
+}
+
+
+/* ---------------------------------------------------------------
+   MUSIC  —  16-bar loop written in BeepBox, played by the same
+   oscillators as everything else. No audio file: the whole track is
+   the tables below, ~1.5KB of numbers.
+
+   Key D♯, 150 BPM, 32 ticks per bar, 16 bars. Three channels, two
+   patterns each; the 16-bar shape comes from the channels switching
+   between their two patterns at different bars, which is why so
+   little material goes so far.
+
+   The three channels are used as intensity LAYERS, not as one fixed
+   mix — see musMix(). Bass always, body once you are moving, lead
+   only when a chain is live or Overdrive is up.
+--------------------------------------------------------------- */
+var MUS_BPM   = 150;
+var MUS_TPBAR = 32;
+var MUS_BARS  = 16;
+var MUS_TICK  = 60/MUS_BPM/4;      /* seconds per tick */
+var MUS_KEY   = 15;                  /* BeepBox base pitch for the key */
+var MUS_VOL   = 1.9;                 /* whole-track trim, 0 silences music */
+
+/* note = [startTick, lengthTicks, pitch] inside one bar */
+var MUS_PAT=[
+  [[[4,2,60],[12,2,55],[18,2,57],[20,4,55],[24,2,52],[26,2,50],[30,2,45]],
+   [[2,2,48],[8,2,50],[10,2,51],[12,2,52],[16,2,48],[18,2,45],[20,2,43],[22,2,43],[26,2,45],[28,2,43],[30,2,40]]],
+  [[[18,2,50],[20,4,52],[28,4,60]],
+   [[8,4,67],[12,4,62],[16,4,60],[22,2,52],[24,2,57],[26,2,57],[30,2,69]]],
+  [[[0,2,24],[6,2,24],[8,2,19],[14,2,19],[16,2,21],[22,2,21],[24,2,21],[28,2,21]],
+   [[0,2,28],[6,2,28],[10,2,26],[14,2,26],[16,2,26],[20,2,16],[22,2,16],[24,4,19],[28,2,27],[30,2,21]]]
+];
+var MUS_SEQ=[[1,1,1,2,1,1,1,1,1,1,1,2,1,1,2,1],[1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,2],[1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1]];
+
+/* RAMPAGE VARIANT. While you are the dinosaur the same 16 bars play, but
+   every bar is reversed in time and the clock runs 25% faster. Each bar is
+   flipped on its own rather than the whole song, so MUS_SEQ still lands its
+   pattern changes on the same bars and the shape of the tune survives — it
+   is the phrasing inside each bar that runs backwards.
+
+   A note [start,len] becomes [TPBAR-start-len,len], which is an exact
+   mirror: lengths are untouched and every bar still fills the same 32 ticks.
+   Pitches never move, so the SCALE the engine snaps itself to is identical
+   and the two versions stay in tune with each other and with the car. */
+var MUS_PAT_R=(function(){
+  var out=[],ch,pi,n,src,ns;
+  for (ch=0;ch<MUS_PAT.length;ch++){
+    out.push([]);
+    for (pi=0;pi<MUS_PAT[ch].length;pi++){
+      src=MUS_PAT[ch][pi]; ns=[];
+      for (n=0;n<src.length;n++) ns.push([MUS_TPBAR-src[n][0]-src[n][1],src[n][1],src[n][2]]);
+      ns.sort(function(a,b){ return a[0]-b[0]; });
+      out[ch].push(ns);
+    }
+  }
+  return out;
+})();
+var MUS_DINO_RATE = 1.25;              /* 150 BPM becomes 187.5 while it lasts */
+var MUS_TICK_D    = MUS_TICK/MUS_DINO_RATE;
+
+/* one voice per channel: waveform, level, bus filter cutoff, release */
+var MUS_VOICE=[
+  {w:'sawtooth', v:0.050, cut:2400, rel:0.18},   /* body   (harmonics) */
+  {w:'square',   v:0.042, cut:3000, rel:0.26},   /* lead   (PWM)       */
+  {w:'sawtooth', v:0.075, cut:320,  rel:0.14}    /* bass   (FM)        */
+];
+
+/* The tyre screech used to be a one-shot sawtooth fired on 35% of frames:
+   ~21 notes a second, each jumping to full volume instantly. The onsets
+   stacked into crackle and the sum drove the output into clipping. It is now
+   one continuous filtered-noise voice — no allocation, no onset, no stack. */
+var scrLast=-1;
+function screech(amt){
+  if (!A || !A.sg) return;
+  if (muted || amt<0) amt=0;
+  if (Math.abs(amt-scrLast)<0.02) return;      /* only touch it when it moves */
+  scrLast=amt;
+  try{
+    var t=A.ctx.currentTime;
+    A.sg.gain.setTargetAtTime(0.05*Math.min(1,amt),t,0.05);
+    A.sf.frequency.setTargetAtTime(1500+Math.min(1,amt)*1000,t,0.08);
+  }catch(e){}
+}
+
+/* Lookahead scheduler. A setInterval decides WHAT to schedule; the audio
+   clock decides WHEN it sounds. Timing a rhythm off setTimeout alone drags
+   audibly under frame load, which is why the one-shot sfx pattern used
+   elsewhere in this file is not reused here. */
+var musTick=0, musNext=0, musTimer=null, musLast=[-1,-1,-1];
+
+function musInit(){
+  if (!A || A.mus) return;
+  var buses=[];
+  for (var i=0;i<MUS_VOICE.length;i++){
+    var f=A.ctx.createBiquadFilter(); f.type='lowpass';
+    f.frequency.value=MUS_VOICE[i].cut; f.connect(A.master);
+    var g=A.ctx.createGain(); g.gain.value=0; g.connect(f);
+    buses.push(g);
+  }
+  A.mus=buses;
+  musTick=0; musNext=A.ctx.currentTime+0.08;
+  musTimer=setInterval(musSched,25);
+}
+
+function musSched(){
+  if (!A || !A.mus) return;
+  try{
+    /* a backgrounded tab throttles setInterval to ~1Hz; without this the
+       catch-up loop would dump every missed note at once on return */
+    if (musNext < A.ctx.currentTime-0.5) musNext=A.ctx.currentTime+0.05;
+    var horizon=A.ctx.currentTime+0.12;
+    /* Read once per pass rather than per tick: the horizon is 120ms, so the
+       switch lands within a frame or two of the pickup either way. */
+    var rage = (dinoT>0);
+    var pats = rage ? MUS_PAT_R : MUS_PAT;
+    var tick = rage ? MUS_TICK_D : MUS_TICK;
+    while (musNext < horizon){
+      var bar=Math.floor(musTick/MUS_TPBAR), tb=musTick%MUS_TPBAR;
+      for (var ch=0; ch<MUS_SEQ.length; ch++){
+        if (musLast[ch]<=0.0005) continue;      /* layer is down: no notes */
+        var pat=MUS_SEQ[ch][bar]; if (!pat) continue;
+        var notes=pats[ch][pat-1];
+        for (var n=0;n<notes.length;n++){
+          if (notes[n][0]===tb) musNote(ch, notes[n][2], notes[n][1]*tick, musNext);
+        }
+      }
+      musTick=(musTick+1)%(MUS_BARS*MUS_TPBAR);
+      musNext+=tick;
+    }
+  }catch(e){}
+}
+
+function musNote(ch,pitch,dur,when){
+  try{
+    var V=MUS_VOICE[ch];
+    var o=A.ctx.createOscillator(), g=A.ctx.createGain();
+    o.type=V.w;
+    o.frequency.value=440*Math.pow(2,(MUS_KEY+pitch-69)/12);
+    var v=V.v*MUS_VOL, end=when+dur;
+    g.gain.setValueAtTime(0.0001,when);
+    g.gain.linearRampToValueAtTime(v,when+0.012);          /* soft attack   */
+    g.gain.setValueAtTime(v*0.85,Math.max(when+0.013,end-V.rel));
+    g.gain.exponentialRampToValueAtTime(0.0001,end+V.rel); /* and a tail    */
+    o.connect(g); g.connect(A.mus[ch]);
+    o.start(when); o.stop(end+V.rel+0.02);
+  }catch(e){}
+}
+
+/* Which layers are up. Called every frame; only touches the audio graph when
+   a layer actually changes, so it costs nothing on a steady state. */
+function musMix(){
+  if (!A || !A.mus) return;
+  var live = musicOn && (state==='playing' || state==='title');
+  /* All three lines are always audible: they were composed to be heard
+     together, and gating one to a rare game state hid a whole melody. The
+     adaptive part is now a swell on the lead rather than an on/off switch. */
+  var hot = (state==='playing' && (chain>=3 || odT>0));
+  var tgt=[
+    live ? 1 : 0,                 /* body — harmonics */
+    live ? (hot?1:0.72) : 0,      /* lead — PWM, lifts on a chain or Overdrive */
+    live ? 1 : 0                  /* bass — FM */
+  ];
+  for (var i=0;i<tgt.length;i++){
+    if (tgt[i]===musLast[i]) continue;
+    musLast[i]=tgt[i];
+    try{ A.mus[i].gain.setTargetAtTime(tgt[i],A.ctx.currentTime,0.22); }catch(e){}
+  }
+}
+
+/* ---------------------------------------------------------------
+   INPUT
+--------------------------------------------------------------- */
+var MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+         KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
+
+function garageKey(code){
+  if (code==='ArrowUp'){   garRow=(garRow+5)%6; blip(520,0.05,'square',0.10); return; }
+  if (code==='ArrowDown'){ garRow=(garRow+1)%6; blip(520,0.05,'square',0.10); return; }
+  if (code==='ArrowLeft'||code==='ArrowRight'){
+    var d=code==='ArrowRight'?1:-1;
+    if (garRow===0) trimI =(trimI +d+NEONS.length)%NEONS.length;
+    if (garRow===1) lightI=(lightI+d+NEONS.length)%NEONS.length;
+    if (garRow===2) shapeI=(shapeI+d+BARS.length)%BARS.length;
+    if (garRow===3) eyeI  =(eyeI  +d+EYES.length)%EYES.length;
+    if (garRow===4) paintI=(paintI+d+PAINTS.length)%PAINTS.length;
+    if (garRow===5) chassisI=(chassisI+d+CHASSIS.length)%CHASSIS.length;
+    blip(880,0.05,'square',0.12);
+    saveGame();
+    return;
+  }
+  if (code==='Enter'||code==='Space'||code==='Escape'||code==='KeyG'){
+    state=garFrom; blip(660,0.09,'square',0.14);
+  }
+}
+
+window.addEventListener('keydown', function(e){
+  audioInit();
+  var c=e.code;
+  if (c.indexOf('Arrow')===0 || c==='Space') e.preventDefault();
+
+  if (state==='garage'){ garageKey(c); return; }
+  if (state==='info'){
+    if (TOUCH && c==='ArrowLeft')  infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES;
+    if (TOUCH && c==='ArrowRight') infoPage=(infoPage+1)%INFO_PAGES;
+    if (c==='KeyI'||c==='Enter'||c==='Space'||c==='Escape'||c==='KeyP') state=infoFrom;
+    return;
+  }
+
+  if (MAP[c]){ kbd[MAP[c]]=true; applyKeys(); }
+
+  if (c==='Space' && state==='playing') fire();
+  if (c==='Enter'){
+    if (state==='title'||state==='gameover'){ reset(); state='playing'; }
+    else if (state==='paused'){ state='playing'; }
+  }
+  if (c==='KeyG' && state!=='playing'){ garFrom=state; garRow=0; state='garage'; }
+  if (c==='KeyI' && state!=='playing' && state!=='garage'){ infoFrom=state; infoPage=0; state='info'; }
+  if (c==='KeyP'){
+    if (state==='playing') state='paused';
+    else if (state==='paused') state='playing';
+  }
+  if (c==='KeyM'){ cycleAudio(); }
+  if (c==='KeyL' && (state==='title'||state==='paused')){ toggleLang(); }
+  /* Title only: switching mode mid-run would mean deciding what happens to a
+     clock and a health bar that the other mode doesn't have. */
+  if (c==='KeyC' && state==='title'){ toggleMode(); }
+});
+window.addEventListener('keyup', function(e){
+  if (MAP[e.code]){ kbd[MAP[e.code]]=false; applyKeys(); e.preventDefault(); }
+});
+window.addEventListener('blur', function(){
+  kbd={}; held={up:0,down:0,left:0,right:0}; fireHeld=false; padDir=null; applyKeys();
+  var lit=document.querySelectorAll('.tbtn.on');
+  for (var li=0;li<lit.length;li++) lit[li].classList.remove('on');
+  if (state==='playing') state='paused';
+  saveGame();                       /* a record set mid-run isn't lost on a tab switch */
+});
+window.addEventListener('pagehide', saveGame);
+function el(id){ return document.getElementById(id); }
+function bindHold(node,on,off){
+  if (!node) return;
+  node.addEventListener('pointerdown', function(e){
+    e.preventDefault(); audioInit();
+    node.classList.add('on');
+    try{ node.setPointerCapture(e.pointerId); }catch(_){}
+    on();
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    node.addEventListener(t, function(e){
+      e.preventDefault(); node.classList.remove('on'); off();
+    });
+  });
+}
+function bindTap(node,fn){
+  if (!node) return;
+  node.addEventListener('pointerdown', function(e){
+    e.preventDefault(); audioInit(); node.classList.add('on'); fn();
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    node.addEventListener(t, function(){ node.classList.remove('on'); });
+  });
+}
+
+/* ------------------------------------------------------------------
+   THE THUMB FANS
+   Two sliding pads instead of one. Each is a 135-degree arc of three
+   wedges pivoting at the corner that thumb actually rests in, so a thumb
+   can travel its whole range without ever lifting.
+
+   LEFT  steers:   left / straight / right along one diagonal
+   RIGHT drives:   gas in the middle, brake and drift on an outer ring
+
+   Throttle used to ride along with steering, because the old layout had
+   no other way to hold it one-handed. Now that the right thumb owns the
+   pedals, steering is only steering — which is what makes it possible to
+   brake and turn at the same time instead of pinning DRIFT to survive.
+
+   The steering pad is one axis, not a fan: a thumb slides up-left to turn
+   left and down-right to turn right, across a ridged centre strip that is
+   deliberately dead. That strip is the whole point — it is somewhere to
+   rest without steering, and it is wide enough that going straight is a
+   position rather than a balancing act.
+
+   The right pad is two shapes. GAS is a solid disc at the corner where the
+   thumb rests flat — it is what you hold nearly all the time, so it gets
+   the biggest, closest, least deliberate target. BRAKE and DRIFT sit on a
+   ring further out, reached by *extending* the thumb, which is the
+   deliberate motion they deserve. The gap between disc and ring is real:
+   it stops a resting thumb grazing a pedal it did not mean to touch.
+   ------------------------------------------------------------------ */
+var FANS=[
+  { id:'fanL', vbw:218, vbh:218, pvx:109.2, pvy:109.2, dir:null,
+    axis:true, ang:45, neut:38,
+    ids:['wRight','wUp','wLeft'],
+    keys:[['right'],[],['left']] },
+  { id:'fanR', vbw:210, vbh:210, pvx:205, pvy:205, dir:null,
+    ring:true,  a0:90, span:90, rGas:132,
+    ids:['wGas','wDrift','wBrake'],
+    keys:[['up'],['up','down'],['down']] }
+];
+function fanSector(f,e){
+  var n=el(f.id); if (!n || !n.getBoundingClientRect) return f.axis?1:0;
+  var r=n.getBoundingClientRect();
+  var px=r.left+r.width*(f.pvx/f.vbw), py=r.top+r.height*(f.pvy/f.vbh);
+  var dx=e.clientX-px, dy=e.clientY-py;      /* screen space, y downwards */
+  var sc=(r.width/f.vbw)||1;
+
+  if (f.axis){
+    /* Project onto the diagonal and ignore the perpendicular entirely, so
+       the strip works however far along its length the thumb happens to be. */
+    var rad=f.ang*Math.PI/180;
+    var t=(dx*Math.cos(rad)+dy*Math.sin(rad))/sc;
+    if (t> f.neut) return 0;                 /* down-right  -> steer right */
+    if (t<-f.neut) return 2;                 /* up-left     -> steer left  */
+    return 1;                                /* on the strip -> straight   */
+  }
+
+  var a=Math.atan2(-dy,dx)*180/Math.PI;      /* arc maths wants y upwards */
+  var rel=a-f.a0;
+  while (rel<0)    rel+=360;
+  while (rel>=360) rel-=360;
+
+  if (f.ring){
+    /* Radius decides disc vs ring first, angle only splits the ring. The
+       whole visual gap belongs to GAS: overshooting into it costs you
+       nothing, overshooting into BRAKE at speed costs you the run. */
+    if (Math.sqrt(dx*dx+dy*dy)/sc < f.rGas) return 0;
+    if (rel<f.span) return rel < f.span/2 ? 1 : 2;
+    return rel < (f.span+360)/2 ? 2 : 1;     /* nearest end of the ring wins */
+  }
+  return 0;
+}
+function fanSet(f,idx){
+  if (idx===f.dir) return;
+  var i,ks,n;
+  if (f.dir!==null){ ks=f.keys[f.dir];
+    for (i=0;i<ks.length;i++) held[ks[i]]=Math.max(0,held[ks[i]]-1); }
+  f.dir=idx;
+  if (idx!==null){ ks=f.keys[idx]; for (i=0;i<ks.length;i++) held[ks[i]]++; }
+  applyKeys();
+  for (i=0;i<f.ids.length;i++){ n=el(f.ids[i]); if (n) n.classList.remove('on'); }
+  if (idx!==null){ n=el(f.ids[idx]); if (n) n.classList.add('on'); }
+}
+function bindFan(f){
+  var n=el(f.id); if (!n) return;
+  n.addEventListener('pointerdown', function(e){
+    e.preventDefault(); audioInit();
+    try{ n.setPointerCapture(e.pointerId); }catch(_){}
+    fanSet(f, fanSector(f,e));
+  });
+  n.addEventListener('pointermove', function(e){
+    if (f.dir===null) return;           /* only tracks while a thumb is down */
+    e.preventDefault();
+    fanSet(f, fanSector(f,e));
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    n.addEventListener(t, function(e){ e.preventDefault(); fanSet(f,null); });
+  });
+}
+/* Losing a pointer without an up event (app switch, call) would otherwise
+   leave a pedal stuck down for the rest of the run. */
+function fansRelease(){ for (var i=0;i<FANS.length;i++) fanSet(FANS[i],null); }
+
+(function(){
+  if (TOUCH) document.body.classList.add('touch');
+  bindHold(el('bFire'),
+    function(){ fireHeld=true; if (state==='playing') fire(); },
+    function(){ fireHeld=false; });
+  for (var i=0;i<FANS.length;i++) bindFan(FANS[i]);
+  bindTap(el('bPause'), function(){
+    if (state==='playing') state='paused'; else if (state==='paused') state='playing';
+  });
+  window.addEventListener('blur', fansRelease);
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) fansRelease();
+  });
+  /* Rotating moves both pads out from under the thumbs holding them. Without
+     this a pedal stays latched for the rest of the run. */
+  window.addEventListener('orientationchange', onRotate);
+  /* Fullscreen can also end by a route we never see — Esc, a swipe, the
+     system backing out — so listen rather than assuming our button is the
+     only way it changes. */
+  ['fullscreenchange','webkitfullscreenchange'].forEach(function(t){
+    document.addEventListener(t, function(){
+      padState=null; syncFsClass(); scheduleCircuit();
+    });
+  });
+  syncFsClass();
+  window.addEventListener('resize', scheduleCircuit);
+  if (window.matchMedia){
+    var mq=window.matchMedia('(orientation: landscape)');
+    if (mq.addEventListener) mq.addEventListener('change', onRotate);
+    else if (mq.addListener) mq.addListener(onRotate);
+  }
+})();
+
+function onRotate(){
+  fansRelease();
+  padState=null;                /* force the menu strip to re-lay-out */
+  noteLandscape();
+  scheduleCircuit();            /* the stage moved, so the board must follow */
+}
+
+/* ------------------------------------------------------------------
+   FULLSCREEN
+   Feature-detected rather than assumed, because iPhone Safari has no
+   Fullscreen API at all — only iPad and Android do. Where it is missing
+   the button never appears, instead of appearing and doing nothing. The
+   iOS route to a full screen is "Add to Home Screen", which the metas in
+   <head> already handle.
+   ------------------------------------------------------------------ */
+var FS_OK = (function(){
+  var e=document.documentElement;
+  return !!(e.requestFullscreen || e.webkitRequestFullscreen);
+})();
+function fsActive(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+/* CSS cannot match prefixed fullscreen reliably across engines, so the
+   state is mirrored onto <body> and the layout keys off that instead.
+   Going fullscreen reclaims the browser chrome, which shifts everything up
+   under thumbs that have not moved — these offsets put it back. */
+function syncFsClass(){
+  document.body.classList.toggle('fs', fsActive());
+}
+/* ------------------------------------------------------------------
+   CIRCUIT BACKGROUND
+   Procedural, because a hand-drawn board would be tens of KB against the
+   single-file rule and would not adapt to an arbitrary screen.
+
+   Composition: the stage is treated as the chip. Traces leave its edges
+   like pins, run outward on a grid at 0/45/90 degrees, and terminate in a
+   via, a pad, or a small component. That reads as intentional rather than
+   as noise, and it means the busiest area is the margin — where there is
+   nothing to compete with — while the region behind the stage is left
+   empty on purpose.
+
+   Counts scale with viewport AREA rather than being fixed, so a phone in
+   portrait and a desktop window both come out at the same visual density
+   instead of the big screen looking bare.
+
+   Drawn ONCE to its own canvas. It never touches the game loop. Repaint
+   only on resize/rotation, debounced.
+   ------------------------------------------------------------------ */
+var CIRCUIT={
+  /* density per 100k px^2, then clamped — a phone is ~330k, a laptop ~1.3M */
+  pinsPer100k:   8.5, minPins:16,   maxPins:74,
+  straysPer100k: 5.5, minStrays:10, maxStrays:48,
+  chipsPer100k:  1.5, minChips:4,   maxChips:22,
+  /* Phones read sparser than a monitor at the same per-area density: the
+     board is squeezed into thin margins around the stage rather than spread
+     over open desktop, so the eye samples less of it. Touch only — the
+     desktop amount is already right. */
+  mobileBoost:   1.28,
+
+  cell:       24,      /* grid pitch; every segment is a multiple */
+  segMin:     1,  segMax:3,
+  stepMin:    3,  stepMax:8,
+  turnOdds:   0.40,
+  width:      1.5,
+
+  base:      '150,110,255',
+  alpha:      0.34,    /* dim, but present */
+  accents:  ['33,230,255','255,47,190','124,255,79'],
+  accentEvery:4,       /* 1 in N traces gets colour + glow */
+  accentAlpha:0.60,
+
+  /* Glow is layered strokes, not shadowBlur: two wider faint passes under
+     the bright one. Same halo, a fraction of the cost, and it cannot bleed
+     across the whole canvas the way a large blur radius does. */
+  glowOuter:  0.20, glowOuterW:5.5,
+  glowMid:    0.42, glowMidW:2.6,
+
+  viaR:       3.2,
+  padOdds:    0.26,    /* chance a trace ends in a pad instead of a via */
+  chipOdds:   0.16,    /* ...or in a component */
+  maxDpr:     2        /* a dim backdrop does not need 3x pixels */
+};
+
+var circuitCv=el('circuit'), circuitT=null;
+
+function rrOn(g,x,y,w,h,r){
+  g.beginPath();
+  g.moveTo(x+r,y); g.lineTo(x+w-r,y); g.quadraticCurveTo(x+w,y,x+w,y+r);
+  g.lineTo(x+w,y+h-r); g.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  g.lineTo(x+r,y+h); g.quadraticCurveTo(x,y+h,x,y+h-r);
+  g.lineTo(x,y+r); g.quadraticCurveTo(x,y,x+r,y); g.closePath();
+}
+function rgba(rgb,a){ return 'rgba('+rgb+','+a.toFixed(3)+')'; }
+
+function ctrace(g,pts,rgb,a,w,glow){
+  function run(width,alpha){
+    var i;
+    g.beginPath();
+    g.moveTo(pts[0].x,pts[0].y);
+    for (i=1;i<pts.length-1;i++) g.arcTo(pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y,7);
+    g.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+    g.strokeStyle=rgba(rgb,alpha); g.lineWidth=width; g.stroke();
+  }
+  if (glow){
+    run(w*CIRCUIT.glowOuterW, a*CIRCUIT.glowOuter);
+    run(w*CIRCUIT.glowMidW,   a*CIRCUIT.glowMid);
+  }
+  run(w,a);
+}
+
+function cvia(g,p,rgb,a,glow){
+  var r=CIRCUIT.viaR;
+  /* every via gets a little bloom; accents get a lot */
+  g.beginPath(); g.arc(p.x,p.y,r*(glow?3.4:2.0),0,Math.PI*2);
+  g.fillStyle=rgba(rgb,a*(glow?0.30:0.12)); g.fill();
+  g.beginPath(); g.arc(p.x,p.y,r,0,Math.PI*2);
+  g.strokeStyle=rgba(rgb,a); g.lineWidth=CIRCUIT.width; g.stroke();
+  g.beginPath(); g.arc(p.x,p.y,r*0.42,0,Math.PI*2);
+  g.fillStyle=rgba(rgb,Math.min(1,a*1.3)); g.fill();
+}
+function cpad(g,p,rgb,a){
+  var w=11,h=7;
+  g.strokeStyle=rgba(rgb,a); g.lineWidth=CIRCUIT.width;
+  rrOn(g,p.x-w/2,p.y-h/2,w,h,2); g.stroke();
+}
+
+/* A small IC: body, a notch dot, and leg ticks down both long sides. */
+function cchip(g,x,y,rgb,a,glow){
+  var w=16+((Math.random()*16)|0), h=10+((Math.random()*9)|0), i;
+  var vert=Math.random()<0.4;
+  if (vert){ var t=w; w=h; h=t; }
+  g.lineWidth=CIRCUIT.width;
+  if (glow){
+    g.strokeStyle=rgba(rgb,a*CIRCUIT.glowOuter);
+    g.lineWidth=CIRCUIT.width*4; rrOn(g,x-w/2,y-h/2,w,h,2.5); g.stroke();
+    g.lineWidth=CIRCUIT.width;
+  }
+  g.fillStyle=rgba(rgb,a*0.10);
+  rrOn(g,x-w/2,y-h/2,w,h,2.5); g.fill();
+  g.strokeStyle=rgba(rgb,a); g.stroke();
+  var legs=2+((Math.random()*3)|0), span=(vert?h:w)-8;
+  g.beginPath();
+  for (i=0;i<legs;i++){
+    var f=legs===1?0.5:i/(legs-1), o=-span/2+span*f;
+    if (vert){
+      g.moveTo(x-w/2,y+o); g.lineTo(x-w/2-4,y+o);
+      g.moveTo(x+w/2,y+o); g.lineTo(x+w/2+4,y+o);
+    } else {
+      g.moveTo(x+o,y-h/2); g.lineTo(x+o,y-h/2-4);
+      g.moveTo(x+o,y+h/2); g.lineTo(x+o,y+h/2+4);
+    }
+  }
+  g.strokeStyle=rgba(rgb,a*0.8); g.stroke();
+  g.beginPath(); g.arc(x-w/2+3.5,y-h/2+3.5,1.2,0,Math.PI*2);
+  g.fillStyle=rgba(rgb,a); g.fill();
+}
+
+/* A breaker / resistor: a stubby body with a lead out of each end. */
+function cbreaker(g,x,y,rgb,a,glow){
+  var w=14+((Math.random()*10)|0), h=7, lead=7;
+  var rot=Math.random()<0.5?0:Math.PI/2;
+  g.save(); g.translate(x,y); g.rotate(rot);
+  g.lineWidth=CIRCUIT.width;
+  if (glow){
+    g.strokeStyle=rgba(rgb,a*CIRCUIT.glowOuter);
+    g.lineWidth=CIRCUIT.width*4; rrOn(g,-w/2,-h/2,w,h,2); g.stroke();
+    g.lineWidth=CIRCUIT.width;
+  }
+  g.fillStyle=rgba(rgb,a*0.12); rrOn(g,-w/2,-h/2,w,h,2); g.fill();
+  g.strokeStyle=rgba(rgb,a); g.stroke();
+  g.beginPath();
+  g.moveTo(-w/2,0); g.lineTo(-w/2-lead,0);
+  g.moveTo( w/2,0); g.lineTo( w/2+lead,0);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(-w/6,-h/2); g.lineTo(-w/6,h/2);
+  g.moveTo( w/6,-h/2); g.lineTo( w/6,h/2);
+  g.strokeStyle=rgba(rgb,a*0.55); g.stroke();
+  g.restore();
+}
+
+function cwalk(g,x,y,dir,rgb,a,glow,vw,vh,box){
+  var pts=[{x:x,y:y}], DIRS=8, steps=CIRCUIT.stepMin+
+      ((Math.random()*(CIRCUIT.stepMax-CIRCUIT.stepMin+1))|0);
+  for (var k=0;k<steps;k++){
+    if (k>0 && Math.random()<CIRCUIT.turnOdds)
+      dir=(dir + (Math.random()<0.5?1:DIRS-1))%DIRS;
+    var ang=dir*Math.PI/4;
+    var len=CIRCUIT.cell*(CIRCUIT.segMin+((Math.random()*
+             (CIRCUIT.segMax-CIRCUIT.segMin+1))|0));
+    var nx=x+Math.cos(ang)*len, ny=y+Math.sin(ang)*len;
+    /* never re-enter the chip, and stop at the screen edge */
+    if (box && nx>box.l-6 && nx<box.r+6 && ny>box.t-6 && ny<box.b+6) break;
+    if (nx<-20||nx>vw+20||ny<-20||ny>vh+20) break;
+    x=nx; y=ny; pts.push({x:x,y:y});
+  }
+  if (pts.length<2) return;
+  ctrace(g,pts,rgb,a,CIRCUIT.width,glow);
+  var end=pts[pts.length-1], roll=Math.random();
+  if (roll<CIRCUIT.chipOdds)             cchip(g,end.x,end.y,rgb,a,glow);
+  else if (roll<CIRCUIT.chipOdds+CIRCUIT.padOdds) cpad(g,end,rgb,a);
+  else                                   cvia(g,end,rgb,a,glow);
+}
+
+function ccount(per100k,mn,mx,area){
+  return Math.max(mn, Math.min(mx, Math.round(area/100000*per100k)));
+}
+
+function drawCircuit(){
+  if (!circuitCv || !circuitCv.getContext) return;   /* every layout draws it */
+  var vw=window.innerWidth, vh=window.innerHeight;
+  var d=Math.min(window.devicePixelRatio||1, CIRCUIT.maxDpr);
+  circuitCv.width=Math.round(vw*d); circuitCv.height=Math.round(vh*d);
+  var g=circuitCv.getContext('2d');
+  g.setTransform(d,0,0,d,0,0);
+  g.clearRect(0,0,vw,vh);
+  g.lineCap='round'; g.lineJoin='round';
+
+  var st=el('stage'), box=null;
+  if (st && st.getBoundingClientRect){
+    var r=st.getBoundingClientRect();
+    box={l:r.left,t:r.top,r:r.right,b:r.bottom};
+  }
+  var area=vw*vh, i, n=0;
+  var boost=TOUCH ? CIRCUIT.mobileBoost : 1;
+  var nPins  =ccount(CIRCUIT.pinsPer100k*boost,  CIRCUIT.minPins,  CIRCUIT.maxPins,  area);
+  var nStrays=ccount(CIRCUIT.straysPer100k*boost,CIRCUIT.minStrays,CIRCUIT.maxStrays,area);
+  var nChips =ccount(CIRCUIT.chipsPer100k*boost, CIRCUIT.minChips, CIRCUIT.maxChips, area);
+
+  function nextStyle(){
+    n++;
+    return (n % CIRCUIT.accentEvery)===0
+      ? { rgb:CIRCUIT.accents[(Math.random()*CIRCUIT.accents.length)|0],
+          a:CIRCUIT.accentAlpha, glow:true }
+      : { rgb:CIRCUIT.base, a:CIRCUIT.alpha, glow:false };
+  }
+  function clearOfBox(x,y,m){
+    return !box || x<box.l-m || x>box.r+m || y<box.t-m || y>box.b+m;
+  }
+
+  if (box){
+    for (i=0;i<nPins;i++){
+      var side=(Math.random()*4)|0, x,y,dir;
+      var t=0.06+Math.random()*0.88;
+      if (side===0){ x=box.l; y=box.t+(box.b-box.t)*t; dir=4; }
+      else if (side===1){ x=box.r; y=box.t+(box.b-box.t)*t; dir=0; }
+      else if (side===2){ x=box.l+(box.r-box.l)*t; y=box.t; dir=6; }
+      else { x=box.l+(box.r-box.l)*t; y=box.b; dir=2; }
+      var s1=nextStyle();
+      cpad(g,{x:x,y:y},s1.rgb,s1.a*0.9);
+      cwalk(g,x,y,dir,s1.rgb,s1.a,s1.glow,vw,vh,box);
+    }
+  }
+  for (i=0;i<nStrays;i++){
+    var sx=Math.random()*vw, sy=Math.random()*vh;
+    if (!clearOfBox(sx,sy,30)) continue;
+    var s2=nextStyle();
+    cwalk(g,sx,sy,(Math.random()*8)|0,s2.rgb,s2.a*0.85,s2.glow,vw,vh,box);
+  }
+  for (i=0;i<nChips;i++){
+    var cx2=20+Math.random()*(vw-40), cy2=20+Math.random()*(vh-40);
+    if (!clearOfBox(cx2,cy2,34)) continue;
+    var s3=nextStyle();
+    if (Math.random()<0.55) cchip(g,cx2,cy2,s3.rgb,s3.a,s3.glow);
+    else                    cbreaker(g,cx2,cy2,s3.rgb,s3.a,s3.glow);
+  }
+}
+function scheduleCircuit(){
+  if (circuitT) clearTimeout(circuitT);
+  circuitT=setTimeout(function(){ circuitT=null; drawCircuit(); }, 140);
+}
+
+function toggleFullscreen(){
+  try{
+    if (fsActive()){
+      var x=document.exitFullscreen || document.webkitExitFullscreen;
+      if (x) x.call(document);
+    } else {
+      var e=document.documentElement;
+      var r=e.requestFullscreen || e.webkitRequestFullscreen;
+      /* must be inside a user gesture, which bindTap guarantees */
+      if (r) r.call(e);
+    }
+  }catch(_){}                   /* a refusal is not worth breaking a run over */
+}
+/* Seeing landscape once is what retires the nudge — there is no button to
+   dismiss, because having actually tried it is better evidence than a tap. */
+function noteLandscape(){
+  if (!sawLandscape && TOUCH && isLandscape()){ sawLandscape=true; saveGame(); }
+}
+
+/* The menu strip swaps its buttons to match whatever screen is showing. */
+var padDrive=el('padDrive'), padMenu=el('padMenu'), padState=null, padAudio=null, padLang=null, padMode=null, padFull=null;
+var PAD_ACTS={
+  start:  function(){ reset(); state='playing'; },
+  resume: function(){ state='playing'; },
+  garage: function(){ garFrom=state; garRow=0; state='garage'; },
+  info:   function(){ infoFrom=state; infoPage=0; state='info'; },
+  infoPrev: function(){ infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES; },
+  infoNext: function(){ infoPage=(infoPage+1)%INFO_PAGES; },
+  back:   function(){ state = (state==='garage') ? garFrom : infoFrom; },
+  menu:   function(){ saveGame(); state='title'; },
+  sound:  function(){ cycleAudio(); },
+  lang:   function(){ toggleLang(); padState=null; },
+  mode:   function(){ toggleMode(); padState=null; },
+  full:   function(){ toggleFullscreen(); padState=null; },
+  rowUp:  function(){ garageKey('ArrowUp'); },
+  rowDn:  function(){ garageKey('ArrowDown'); },
+  prev:   function(){ garageKey('ArrowLeft'); },
+  next:   function(){ garageKey('ArrowRight'); }
+};
+/* Line art for the settings tiles. Stroked with currentColor so a tile lights
+   up whole — icon and caption together — the moment it is pressed. */
+var ICONS={
+  info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/>'+
+         '<path d="M12 11.2v5.6"/>'+
+         '<circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg>',
+  lang:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>'+
+         '<path d="M12 3c2.7 2.8 2.7 15.2 0 18-2.7-2.8-2.7-15.2 0-18z"/></svg>',
+  full:  '<svg viewBox="0 0 24 24"><path d="M4 9.5V4h5.5"/><path d="M20 9.5V4h-5.5"/>'+
+         '<path d="M4 14.5V20h5.5"/><path d="M20 14.5V20h-5.5"/></svg>',
+  unfull:'<svg viewBox="0 0 24 24"><path d="M9.5 4v5.5H4"/><path d="M14.5 4v5.5H20"/>'+
+         '<path d="M9.5 20v-5.5H4"/><path d="M14.5 20v-5.5H20"/></svg>',
+  snd0:  '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.6L12 5.6v12.8L7.6 14.5H4z"/>'+
+         '<path d="M15.4 9.2a4.1 4.1 0 0 1 0 5.6"/>'+
+         '<path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>',
+  snd1:  '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.6L12 5.6v12.8L7.6 14.5H4z"/>'+
+         '<path d="M15.4 9.2a4.1 4.1 0 0 1 0 5.6"/></svg>',
+  snd3:  '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.6L12 5.6v12.8L7.6 14.5H4z"/>'+
+         '<path d="M15.8 9.6l5 4.8"/><path d="M20.8 9.6l-5 4.8"/></svg>'
+};
+var TIL_SND=['TIL_SND0','TIL_SND1','TIL_SND2','TIL_SND3'];
+var SLAB_ST={title:1, paused:1, gameover:1};
+
+function padBtn(label,act,cls,icon){
+  var b=document.createElement('button');
+  b.className='tbtn'+(cls?' '+cls:'');
+  if (icon){
+    b.innerHTML=icon+'<span class="lab"></span>';
+    b.lastChild.textContent=label;     /* text, never markup */
+  } else b.textContent=label;
+  bindTap(b, PAD_ACTS[act]);
+  return b;
+}
+
+function syncPad(){
+  if (!TOUCH) return;
+  var fsNow=fsActive();
+  if (state===padState && audioMode===padAudio && lang===padLang &&
+      mode===padMode && fsNow===padFull) return;
+  padState=state; padAudio=audioMode; padLang=lang; padMode=mode; padFull=fsNow;
+  var driving = (state==='playing');
+  padDrive.style.display = driving ? 'flex' : 'none';
+  /* The garage lays its arrows out as a cross, which needs grid rather than
+     the wrapping row the remaining screens use. */
+  padMenu.style.display  = driving ? 'none' : (state==='garage' ? 'grid' : 'flex');
+  padMenu.classList.toggle('cross', state==='garage');
+  padMenu.classList.toggle('slabs', !!SLAB_ST[state]);
+  if (driving) return;
+  padMenu.innerHTML='';
+
+  /* Title, pause and game over all share one shape, so the buttons never
+     move between them: three slabs on the left, the same four tiles on the
+     right. Only the top slab changes label — DRIVE, RESUME, RACE AGAIN. */
+  if (SLAB_ST[state]){
+    var L = state==='title' ?
+              [[T('MOB_DRIVE'),'start'],
+               [mode==='cruise'?T('MODE_RUN'):T('MODE_CRUISE'),'mode'],
+               [T('MOB_GARAGE'),'garage']] :
+            state==='paused' ?
+              [[T('MOB_RESUME'),'resume'],
+               [T('MOB_MAIN_MENU'),'menu'],
+               [T('MOB_GARAGE'),'garage']] :
+              [[T('MOB_RACE_AGAIN'),'start'],
+               [T('MOB_MAIN_MENU'),'menu'],
+               [T('MOB_GARAGE'),'garage']];
+    var cl=document.createElement('div'); cl.className='col l';
+    L.forEach(function(d,i){ cl.appendChild(padBtn(d[0],d[1],'slab'+(i?'':' big'))); });
+
+    var cr=document.createElement('div'); cr.className='col r';
+    cr.appendChild(padBtn(T('MOB_INFO'),'info','tile',ICONS.info));
+    cr.appendChild(padBtn(T(TIL_SND[audioMode]),'sound','tile',
+                          ICONS[audioMode===0?'snd0':(audioMode===3?'snd3':'snd1')]));
+    cr.appendChild(padBtn(T('MOB_LANG'),'lang','tile',ICONS.lang));
+    if (FS_OK) cr.appendChild(padBtn(fsNow?T('TIL_EXIT'):T('TIL_FULL'),'full','tile',
+                                     fsNow?ICONS.unfull:ICONS.full));
+    padMenu.appendChild(cl); padMenu.appendChild(cr);
+    return;
+  }
+
+  var defs =
+    state==='garage'   ? [['\u25B2','rowUp','nav up'],['\u25C0','prev','nav left'],
+                          ['\u25B6','next','nav right'],['\u25BC','rowDn','nav down'],
+                          [T('MOB_BACK'),'back','backbtn']] :
+    state==='info'     ? [['\u25C0','infoPrev','nav'],['\u25B6','infoNext','nav'],
+                          [T('MOB_BACK'),'back','']] :
+                         [[T('MOB_BACK'),'back','']];
+  defs.forEach(function(dfn){
+    padMenu.appendChild(padBtn(dfn[0],dfn[1],dfn[2]));
+  });
+}
+
+cv.addEventListener('pointerdown', function(){
+  audioInit();
+  if (state==='title'||state==='gameover'){ reset(); state='playing'; }
+});
+
+/* ---------------------------------------------------------------
+   TRAFFIC
+--------------------------------------------------------------- */
+function trySpawn(){
+  var z=position + 50000 + Math.random()*4000;
+  var win=clusterWin(lap), near=0, blocked={}, i, d;
+  for (i=0;i<cars.length;i++){
+    d=Math.abs(cars[i].z - z);
+    if (d < win) near++;
+    if (d < 2800) blocked[cars[i].lane]=true;
+  }
+  if (near >= maxCluster(lap)) return;
+  var free=[];
+  for (i=0;i<LANES.length;i++) if (!blocked[i]) free.push(i);
+  if (free.length <= 1) return;              // always leave a way through
+  var lane=free[(Math.random()*free.length)|0];
+  var top=trafficTop(lap);
+  var weav=Math.random() < weaverOdds(lap);
+  cars.push({
+    z:z, lane:lane, x:LANES[lane],
+    speed: top*(0.55+Math.random()*0.45),
+    color: weav ? '#ffd23f' : PAL[(Math.random()*PAL.length)|0],
+    passed:false,
+    weaver:weav, phase:weav?'wait':null, sigT:0, moveT:0, sigDir:0,
+    fromX:0, toLane:0,
+    changeT: 0.8+Math.random()*1.6         // first move soon after it appears
+  });
+}
+
+function fire(){
+  if (spinT>0 || fireCd>0) return;
+  var col='#8ef4ff';
+  if (odT>0){
+    col=OD_COLS[odShotN%OD_COLS.length];   /* purple, green, orange, white */
+    odShotN++;
+  } else {
+    if (shots<=0) return;
+    shots--;
+  }
+  fireCd = (odT>0 ? OD_CD : FIRE_CD);
+  pshots.push({z:position+Z_CAR+240, x:playerX, prevZ:position+Z_CAR, isShot:true, col:col});
+  shake=Math.max(shake, odT>0?3:4.5);
+  blip(odT>0?1750:1500,0.05,'square',0.15);
+  setTimeout(function(){ blip(680,0.12,'sawtooth',0.12); },45);
+}
+
+/* One bolt, from wherever it came: a pickup, or a drift you banked. Kept in
+   one place so the drift award cannot drift out of step with the pickup. */
+function giveBolt(){
+  if (odT>0){                       /* already lit: top it back up */
+    odT=OD_TIME; score+=500;
+    say(T('T_OD_REFRESH'),'#ffd23f',true,'bolt');
+    overdriveSfx();
+    return;
+  }
+  shots++;
+  if (shots>=MAX_SHOTS){            /* the third one tips you over */
+    shots=0; odT=OD_TIME; odShotN=0; flash=1;
+    shake=Math.max(shake,7);
+    say(T('T_OD_ON')+OD_TIME+'s','#ffd23f',true,'bolt');
+    overdriveSfx();
+  } else {
+    say(T('T_SHOT_LOADED1')+shots+T('T_SHOT_LOADED2')+MAX_SHOTS,'#21e6ff',true,'bolt');
+    blip(520,0.07,'square',0.18);
+    setTimeout(function(){ blip(780,0.07,'square',0.18); },70);
+    setTimeout(function(){ blip(1170,0.18,'square',0.18); },140);
+  }
+}
+
+function crash(){
+  dPot=0;                         /* a drift you crash out of pays nothing */
+  chain=0; chainT=0;              /* any contact breaks the chain, always */
+  invT=2.3; hitFlash=1;
+  if (odT>0){
+    /* no invulnerability, but the aura carries you through: half your speed
+       and a jolt instead of a spin and a dead stop */
+    speed*=0.5; spinT=0; shake=12;
+  } else {
+    speed*=0.2; spinT=0.85; shake=15;
+  }
+  crashSfx();
+  /* In cruise the impact still costs you momentum and the chain — it should
+     sting — but health and the clock are not in play at all, so there is
+     nothing to lose and nothing to end. */
+  if (mode==='cruise') return;
+
+  health--;
+  timeLeft=Math.max(0, timeLeft-CRASH_TIME);
+  if (health<=0){
+    endReason='WRECKED'; state='gameover'; best=Math.max(best,score|0); saveGame();
+  } else if (timeLeft<=0){
+    endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
+  } else {
+    say(T('T_CRASH')+CRASH_TIME+T('T_CRASH_S'),'#ff5d5d',true);
+  }
+}
+
+/* ---------------------------------------------------------------
+   UPDATE
+--------------------------------------------------------------- */
+function update(dt){
+  var i,c,dz;
+
+  shake *= Math.pow(0.02,dt);
+  hitFlash=Math.max(0,hitFlash-dt*2.6);
+  flash   =Math.max(0,flash-dt*1.8);
+  for (i=msgs.length-1;i>=0;i--){ msgs[i].life-=dt; if (msgs[i].life<=0) msgs.splice(i,1); }
+
+  if (state!=='playing'){
+    if (state!=='garage' && state!=='info' && state!=='paused') position += 2400*dt;
+    ensure(position+MAXZ+Z_CAR+CH);
+    cAnchor=curveAt(position+Z_CAR);
+    curSlope=slopeAt(position+Z_CAR);
+    warnSlope=slopeAt(position+Z_CAR+17000);
+    bgX += (-curSlope*108000 - bgX)*Math.min(1,3*dt);
+    engine(ENG_IDLE, state==='title');
+    screech(0);
+    musMix();
+    return;
+  }
+
+  var maxS=maxSpeedFor(lap);
+  var spct=clamp(speed/maxS,0,1);
+
+  /* last frame's drift state, so the exit can be spotted. Set true again below
+     only while the drift is live; spinning out counts as not drifting. */
+  var wasDrift=drifting; drifting=false;
+
+  if (spinT>0){
+    spinT-=dt; spinAng+=dt*11;
+    speed-=maxS*0.9*dt;
+    steerVel*=Math.pow(0.05,dt);
+  } else {
+    spinAng*=Math.pow(0.001,dt);
+
+    // Calculate input first to check for drifting
+    var input = (keys.left?-1:0) + (keys.right?1:0);
+    
+    // Drift condition: braking + steering + moving at a decent speed
+    var isDrifting = keys.down && input !== 0 && speed > maxS * 0.35;
+
+    var both = keys.up && keys.down;
+
+    if (both){
+      /* holding both is a drift tool, not free speed — it bleeds off at the
+         same rate as a plain brake until you sit 20% below your top speed */
+      var floorS = maxS*DRIFT_HOLD;
+      if (speed > floorS){
+        speed -= (maxS/1.15)*dt;
+        if (speed < floorS) speed = floorS;
+      }
+      /* at or below the floor it simply holds: you can drift at a steady 80%
+         indefinitely, but holding both can never gain you speed */
+    } else if (keys.up) {
+      speed += (maxS/3.1)*dt;
+    } else if (keys.down) {
+      speed -= isDrifting ? (maxS/2.2)*dt : (maxS/1.15)*dt;
+    } else {
+      speed -= (maxS/6.5)*dt;
+    }
+
+    var grip = CH_().grip;
+    var agility = (1.60 - 0.70 * spct) * grip;
+    var resp = (9.5 - 5.4 * spct) * grip;
+
+    // Apply drift physics and screeching sound effect
+    if (isDrifting) {
+      agility *= 1.85; // Significantly sharper turning radius
+      resp *= 1.4;     // Faster response snapping into the turn
+      shake = Math.max(shake, 1.2); // Add a subtle rumble to the camera
+      
+
+      /* charge the pot — bend and speed gates, see the DR_ block */
+      drifting = true;
+      if (speed >= maxS*DR_MIN_SPD){
+        var bendF = Math.abs(curSlope)/S_PEAK;
+        if (bendF > DR_MIN_BEND) dPot += Math.min(1,bendF)*DR_RATE*dt;
+      }
+    }
+
+    steerVel += (input*agility-steerVel)*Math.min(1,resp*dt);
+  }
+
+  if (Math.abs(playerX)>1){
+    if (speed > maxS*0.45) speed -= (maxS/2.0)*dt;
+    shake=Math.max(shake, 2.4*spct);
+    scrapeCd-=dt;                /* was up to 24 onsets a second: same crackle */
+    if (scrapeCd<=0 && Math.random()<spct*0.6){
+      scrapeCd=0.11;
+      blip(90+Math.random()*60,0.05,'triangle',0.05, playerX>0?0.85:-0.85);
+    }
+    dPot=0;                      /* nothing earned off the road ever banks */
+  }
+
+  /* Came out of a drift still on the road: the pot becomes a bank, and a full
+     bank is a bolt. Sits after the shoulder test so an exit that puts a wheel
+     off the road has already been voided by it. */
+  screech(drifting ? 0.45+Math.min(1,Math.abs(steerVel)*0.9)*0.55 : 0);
+
+  if (wasDrift && !drifting && dPot>0){
+    dBank += dPot; dPot=0;
+    while (dBank>=1){ dBank-=1; giveBolt(); }
+  }
+
+  speed=clamp(speed,0,maxS);
+  spct =clamp(speed/maxS,0,1);
+
+  playerX += steerVel*dt*Math.min(1, spct*3.2);
+
+  /* the bend throws you wide — measured where the car actually is */
+  playerX -= curSlope*speed*dt*(0.007 + 0.024*Math.pow(spct,1.5));
+
+  if (playerX> 1.55){ playerX= 1.55; steerVel=0; }
+  if (playerX<-1.55){ playerX=-1.55; steerVel=0; }
+
+  position += speed*dt;
+  score    += speed*dt/220;
+  invT=Math.max(0,invT-dt);
+
+  /* the chain lapses on its own if you stop threading traffic */
+  if (chainT>0){
+    chainT-=dt;
+    if (chainT<=0) chain=0;
+  }
+  for (i=nmPops.length-1;i>=0;i--){
+    nmPops[i].t+=dt;
+    if (nmPops[i].t>NM_POP_LIFE) nmPops.splice(i,1);
+  }
+
+  ensure(position+MAXZ+Z_CAR+CH);
+  cAnchor =curveAt(position+Z_CAR);
+  curSlope=slopeAt(position+Z_CAR);
+  warnSlope=slopeAt(position+Z_CAR+17000);
+  bgX += (-curSlope*108000 - bgX)*Math.min(1,3*dt);
+
+  if (mode==='run'){
+    timeLeft-=dt;
+    if (timeLeft<=0){
+      timeLeft=0; endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
+    }
+  }
+
+  if (position+Z_CAR >= nextCP){
+    lap++;
+    cpStart=nextCP; cpLen=lapLength(lap); nextCP=cpStart+cpLen;
+    var award=cpBonus(lap);
+    timeLeft += award;
+    /* Capping banked time made the late laps unwinnable: legs get longer and
+       traffic thicker, but the reward for a clean early run was thrown away.
+       From lap 4 the clock is a resource you earn early and spend late. */
+    if (lap<=3) timeLeft=Math.min(timeLeft, CLOCK_CAP);
+    score+=2500; flash=1;
+    say(T('T_CP')+award+T('T_CP_S'),'#7cff4f',true,null,CP_MSG);
+    say(T('T_LAP')+lap+T('T_LAP_END'),'#21e6ff',false,null,CP_MSG);
+    /* heart early in the leg, bolt later, so they never land on top of
+       each other and you get a reason to keep pushing through the middle */
+    /* hull kits scale with the punishment: one, then two, then three */
+    var hearts = lap>=11 ? 3 : (lap>=8 ? 2 : ((lap>=7 || lap%2===0) ? 1 : 0));
+    if (hearts>0){
+      addPickup('heart',0.10,0.20);
+      if (hearts>1) addPickup('heart',0.40,0.48);
+      if (hearts>2) addPickup('heart',0.66,0.74);
+      say(hearts>1 ? (hearts+T('T_HULL_N')) : T('T_HULL_1'),
+          '#ff6ad5',false,'heart',CP_MSG);
+    }
+    if (lap>=3){
+      addPickup('bolt',0.26,0.36);
+      if (lap>=7) addPickup('bolt',0.80,0.90);      /* a second round per leg */
+      /* named once, on the lap it first appears, then never again */
+      if (lap===3) say(T('T_ENERGY'),'#21e6ff',false,'bolt',CP_MSG);
+    }
+    if (lap>=5){
+      addPickup('dino',0.52,0.62);
+      if (lap===5) say(T('T_RAMPAGE_LEG'),'#7cff4f',false,'dino',CP_MSG);
+    }
+    if (lap>=8 && !taughtWeavers){
+      taughtWeavers=true;
+      say(T('T_WEAVERS'),'#ffd23f',false,null,CP_MSG);
+    }
+    blip(660,0.10,'square',0.2);
+    setTimeout(function(){ blip(990,0.16,'square',0.2); },110);
+  }
+
+  for (i=cars.length-1;i>=0;i--){
+    c=cars[i];
+    c.z+=c.speed*dt;
+    dz=c.z-position-Z_CAR;               // distance from the car you can see
+    var dzPrev=dz+(speed-c.speed)*dt;    // where it was one step ago
+    if (!c.passed && dz<0){
+      c.passed=true; overtakes++;
+      score+=180*(1+0.2*(lap-1));
+      blip(1200,0.05,'sine',0.06);
+
+      /* NEAR MISS — the reason to shave past traffic instead of avoiding it.
+         This lives INSIDE the overtake block on purpose. It used to be a
+         separate test further down that also required !c.passed, which the
+         line above had already set in the same iteration — so the condition
+         was unsatisfiable and the whole mechanic was dead. The moment a car
+         draws level is exactly here; there is no second place to check it.
+
+         The band is under half a lane wide, so it cannot trigger from
+         ordinary lane discipline — you have to aim at the gap. */
+      var nmLat=Math.abs(c.x-playerX);
+      if (dinoT<=0 && spinT<=0 && nmLat<NM_BAND && nmLat>=CAR_W-0.01 &&
+          speed>maxSpeedFor(lap)*0.45){
+        chain++; chainT=NM_CHAIN_T;
+        if (chain>chainBest) chainBest=chain;
+        var close=1-(nmLat-(CAR_W-0.01))/(NM_BAND-(CAR_W-0.01));
+        var mult=Math.min(NM_MAX_MULT, chain);
+        /* runs 0.5 at the outer edge of the band to 1.5 for a paint-scraping
+           pass — the part of the score the player has no other way to see */
+        var closeMul=0.5+close;
+        score += Math.round(NM_BASE*closeMul*mult*(1+0.2*(lap-1)));
+        var nmSide=(c.x>playerX?1:-1);
+        nmPops.push({m:closeMul, t:0, side:nmSide});
+        if (nmPops.length>5) nmPops.shift();
+        /* the chirp comes from the side the car went by and slides down as it
+           passes: a Doppler read for the one thing you cannot see happening */
+        blip(760+Math.min(8,chain)*90, 0.05, 'sine', 0.07, nmSide*0.8, 0.78);
+        if (chain===5||chain===10||chain===20)
+          say(T('T_CHAIN')+chain,'#ffd23f',true,null,1.4);
+      }
+    }
+    if (dz<-2600){ cars.splice(i,1); continue; }
+    if (c.weaver){
+      c.changeT -= dt;                    /* the clock runs through every phase,
+                                             so changes land a true 5s apart */
+      if (c.phase==='wait'){
+        /* Gate on TIME to reach you, not distance. Barrel along and the vans
+           settle early; ease off and they keep weaving right in front of you,
+           which is the only way you ever get to watch one do it. */
+        var ttc = dz/Math.max(400, speed-c.speed);
+        if (c.changeT<=0 && ttc>WEAVE_TTC && dz>1500){
+          var opts=[], j, k, ok;
+          for (j=-1;j<=1;j+=2){
+            k=c.lane+j;
+            if (k<0||k>3) continue;
+            ok=true;
+            for (var q=0;q<cars.length;q++){
+              if (cars[q]!==c && cars[q].lane===k && Math.abs(cars[q].z-c.z)<4200){ ok=false; break; }
+            }
+            if (ok) opts.push(k);
+          }
+          if (opts.length){
+            c.toLane=opts[(Math.random()*opts.length)|0];
+            c.sigDir=c.toLane>c.lane?1:-1;
+            c.sigT=0.8;                       // blink before it commits
+            c.phase='signal';
+            c.changeT=WEAVE_EVERY;            // next one is due 5s from now
+          } else c.changeT=1.2;               // boxed in: try again shortly
+        }
+      } else if (c.phase==='signal'){
+        c.sigT-=dt;
+        if (c.sigT<=0){ c.phase='move'; c.moveT=0.8; c.fromX=c.x; }
+      } else if (c.phase==='move'){
+        c.moveT-=dt;
+        var tt=clamp(1-c.moveT/0.8,0,1);
+        c.x=c.fromX+(LANES[c.toLane]-c.fromX)*(tt*tt*(3-2*tt));
+        if (c.moveT<=0){
+          c.x=LANES[c.toLane]; c.lane=c.toLane;
+          c.phase='wait';
+        }
+      }
+    }
+
+    /* swept in z: a gap closing at 10,000 units/sec cannot skip the box */
+    var inBox = Math.min(dz,dzPrev)<HIT_FRONT && Math.max(dz,dzPrev)>-HIT_BACK;
+    var lat = Math.abs(c.x-playerX);
+
+    if (dinoT>0){
+      if (inBox && lat<DINO_HIT){
+        blasts.push({z:c.z, x:c.x, t:0, isBlast:true});
+        score += killScore();
+        cars.splice(i,1);
+        blip(150,0.20,'sawtooth',0.16);
+        shake=Math.max(shake,6);
+        continue;
+      }
+    } else if (invT<=0 && spinT<=0 && inBox && lat<CAR_W-0.01) crash();
+  }
+  if (fireHeld && odT>0) fire();      /* held trigger only runs in overdrive */
+
+  spawnT-=dt;
+  if (spawnT<=0){ spawnT=spawnGap(lap)*(0.7+Math.random()*0.7); trySpawn(); }
+
+  for (i=pickups.length-1;i>=0;i--){
+    var pk=pickups[i];
+    var pdz=pk.z-position-Z_CAR, pdzPrev=pdz+speed*dt;
+    if (pdz<-3000){ pickups.splice(i,1); continue; }
+    var reach = pk.kind==='dino' ? DINO_R : HEART_R;
+    if (Math.min(pdz,pdzPrev)<HIT_FRONT && Math.max(pdz,pdzPrev)>-HIT_BACK &&
+        Math.abs(pk.x-playerX)<reach){
+      pickups.splice(i,1); flash=1;
+      if (pk.kind==='heart'){
+        if (health<CH_().hp){ health++; say(T('T_HULL_UP'),'#ff6ad5',true,'heart'); }
+        else { score+=10000; say(T('T_HULL_FULL'),'#ff6ad5',true,'heart'); }
+        blip(740,0.09,'sine',0.2);
+        setTimeout(function(){ blip(988,0.09,'sine',0.2); },90);
+        setTimeout(function(){ blip(1319,0.20,'sine',0.2); },180);
+      } else if (pk.kind==='bolt'){
+        giveBolt();
+      } else {
+        dinoT=DINO_TIME; shake=Math.max(shake,8);
+        say(T('T_RAMPAGE_ON')+DINO_TIME+'s','#7cff4f',true,'dino');
+        roar();
+      }
+    }
+  }
+
+
+  /* the saucer: drifts along the road at half your speed, so you reel it in
+     slowly instead of blowing past it. Scenery only — nothing collides. */
+  if (ufo){
+    ufo.z    += speed*0.5*dt;
+    ufo.phase+= ufo.rate*dt;
+    ufo.x     = ufo.amp*Math.sin(ufo.phase);
+    ufo.spin += dt*2.4;
+    ufo.bob  += dt;
+    ufo.beamT-= dt;
+    if (ufo.beamT<=0){                       /* the beam blinks on and off */
+      ufo.beamOn=!ufo.beamOn;
+      ufo.beamT = ufo.beamOn ? (0.5+Math.random()*1.4) : (0.7+Math.random()*2.2);
+    }
+    ufo.life -= dt;
+    if (ufo.life<1.4) ufo.fade=Math.max(0,ufo.life/1.4);
+    if (ufo.life<=0 || ufo.z-position-Z_CAR < -3200) ufo=null;
+  } else {
+    ufoT -= dt;
+    if (ufoT<=0){
+      ufoT = 20+Math.random()*14;
+      ufo = { z: position+44000+Math.random()*6000, x:0,
+              amp: 1.5+Math.random()*1.0, rate: 0.45+Math.random()*0.60,
+              phase: Math.random()*Math.PI*2,
+              hover: 0.95+Math.random()*0.50, bob: Math.random()*6, spin:0,
+              color: PROP_COLS[(Math.random()*PROP_COLS.length)|0],
+              beamOn: Math.random()<0.5, beamT: 0.6+Math.random()*1.4,
+              life: 26, fade: 1, isUfo: true };
+      ufo.x = ufo.amp*Math.sin(ufo.phase);
+    }
+  }
+
+  /* Cruise has no fail state, so its score is unbounded — a long enough
+     session would beat any legitimate run. It never touches `best`. */
+  if (mode==='run' && (score|0)>best) best=score|0;
+  if (fireCd>0) fireCd=Math.max(0,fireCd-dt);
+  if (odT>0){
+    var wasO=odT;
+    odT=Math.max(0,odT-dt);
+    if (wasO>DINO_WARN && odT<=DINO_WARN){
+      rampageWarn();
+      say(T('T_OD_ENDING'),'#ffd23f',true,'bolt');
+    }
+    if (odT===0) say(T('T_OD_SPENT'),'#8a7ec4');
+  }
+
+  if (dinoT>0){
+    var wasT=dinoT;
+    dinoT=Math.max(0,dinoT-dt);
+    /* call it before it drops, not after — running out mid-traffic while
+       you still think you are invincible is how you lose a run */
+    if (wasT>DINO_WARN && dinoT<=DINO_WARN){
+      rampageWarn();
+      say(T('T_RAMPAGE_ENDING'),'#ffd23f',true,'dino');
+    }
+    if (dinoT===0) say(T('T_BACK_TO_CAR'),'#8a7ec4');
+  }
+
+  /* rounds in flight: they pierce, so one shot can clear a whole queue */
+  var shotV=maxSpeedFor(lap)*1.5;
+  for (i=pshots.length-1;i>=0;i--){
+    var sh=pshots[i];
+    sh.prevZ=sh.z;
+    sh.z += shotV*dt;
+    for (var j=cars.length-1;j>=0;j--){
+      var tc=cars[j];
+      if (Math.abs(tc.x-sh.x)<0.22 && tc.z>sh.prevZ-340 && tc.z<=sh.z+340){
+        blasts.push({z:tc.z, x:tc.x, t:0, isBlast:true});
+        score += killScore();
+        cars.splice(j,1);
+        blip(150,0.20,'sawtooth',0.16);
+      }
+    }
+    if (sh.z>position+MAXZ) pshots.splice(i,1);
+  }
+  for (i=blasts.length-1;i>=0;i--){
+    blasts[i].t += dt/0.7;
+    if (blasts[i].t>=1 || blasts[i].z<position-3000) blasts.splice(i,1);
+  }
+
+  engine(speed/SPD_REF,true);
+  musMix();
+}
+
+/* ---------------------------------------------------------------
+   DRAW HELPERS
+--------------------------------------------------------------- */
+function rr(x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+function glowText(txt,x,y,size,color,align,blur,weight){
+  ctx.font=(weight||'700')+' '+size+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
+  ctx.shadowColor=color; ctx.shadowBlur=(blur===undefined?14:blur);
+  ctx.fillStyle=color; ctx.fillText(txt,x,y);
+  ctx.shadowBlur=0;
+}
+function monoText(txt,x,y,size,color,align){
+  ctx.font='700 '+size+'px ui-monospace,Menlo,"Courier New",monospace';
+  ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle=color; ctx.fillText(txt,x,y);
+}
+/* Bottom-row HUD labels. The top row keeps its mono face; down here the
+   labels are the heavy display face at double the size, tracked out, and
+   knocked out of a dark outline so they survive being drawn over a bright
+   road. Reason: on a phone the whole 800x500 stage is squeezed into about
+   360px of glass, so an 11px label was landing at roughly 5 real pixels. */
+function hudTag(txt,x,y,size,color,align){
+  var ls = ('letterSpacing' in ctx);
+  ctx.font='900 '+size+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  if (ls) ctx.letterSpacing='1.5px';
+  ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
+  ctx.lineJoin='round'; ctx.lineWidth=4.5;
+  ctx.strokeStyle='rgba(4,2,12,.88)'; ctx.strokeText(txt,x,y);
+  ctx.shadowColor=color; ctx.shadowBlur=10;
+  ctx.fillStyle=color; ctx.fillText(txt,x,y);
+  ctx.shadowBlur=0; ctx.lineWidth=1; ctx.lineJoin='miter';
+  if (ls) ctx.letterSpacing='0px';
+}
+
+function drawSky(){
+  var g=ctx.createLinearGradient(0,0,0,horizonY);
+  g.addColorStop(0,'#0a0418'); g.addColorStop(0.55,'#2a0b4e'); g.addColorStop(1,'#6b1170');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,horizonY+1);
+
+  var now=performance.now();
+  for (var i=0;i<stars.length;i++){
+    var s=stars[i];
+    ctx.globalAlpha=s.a*(0.45+0.55*Math.abs(Math.sin(i+now/1400)));
+    ctx.fillStyle='#dcefff';
+    ctx.fillRect(s.x,s.y,s.r,s.r);
+  }
+  ctx.globalAlpha=1;
+
+  var cxs=W/2+bgX*0.6, cys=horizonY+18, R=88;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,W,horizonY); ctx.clip();
+  var sg=ctx.createLinearGradient(0,cys-R,0,cys+R);
+  sg.addColorStop(0,'#fff27a'); sg.addColorStop(0.45,'#ff9b3d'); sg.addColorStop(1,'#ff2fbe');
+  ctx.shadowColor='rgba(255,80,190,.85)'; ctx.shadowBlur=50;
+  ctx.beginPath(); ctx.arc(cxs,cys,R,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(12,4,26,0.85)';
+  for (var k=0;k<7;k++){
+    var yy=cys-R+26+k*10+k*k*1.4;
+    ctx.fillRect(cxs-R,yy,R*2,2+k*0.9);
+  }
+  ctx.restore();
+
+  var shift=((bgX%TILE)+TILE)%TILE;
+  for (var pass=0;pass<2;pass++){
+    var ox=shift-40-pass*TILE;
+    for (var b=0;b<skyline.length;b++){
+      var bd=skyline[b], bx=bd.x+ox;
+      if (bx>W||bx+bd.w<0) continue;
+      ctx.fillStyle='#14062b';
+      ctx.fillRect(bx,horizonY-bd.h,bd.w,bd.h);
+      ctx.strokeStyle=bd.lit?'rgba(33,230,255,.42)':'rgba(255,47,190,.36)';
+      ctx.lineWidth=1;
+      ctx.strokeRect(bx+0.5,horizonY-bd.h+0.5,bd.w-1,bd.h);
+      if (bd.lit){
+        ctx.fillStyle='rgba(33,230,255,.30)';
+        for (var wy=horizonY-bd.h+6; wy<horizonY-4; wy+=7)
+          for (var wx=bx+3; wx<bx+bd.w-3; wx+=6)
+            if ((((wx+wy)|0)%3)===0) ctx.fillRect(wx,wy,2,3);
+      }
+    }
+  }
+}
+
+function drawGround(){
+  var g=ctx.createLinearGradient(0,horizonY,0,H);
+  g.addColorStop(0,'#2c0e4c'); g.addColorStop(0.35,'#170830'); g.addColorStop(1,'#0a0418');
+  ctx.fillStyle=g; ctx.fillRect(0,horizonY,W,H-horizonY);
+
+  var grid=1200, i, zRel, p, a;
+  var bppu=proj(rowZ[H-1]).ppu;
+  var gu=grid/roadWidth, base=Math.floor(playerX/gu)*gu;
+  ctx.lineWidth=1;
+  for (i=-16;i<=16;i++){
+    var xr=base+i*gu;
+    var xb=W/2+bppu*(xr-playerX);
+    if (xb<-W||xb>W*2) continue;
+    ctx.strokeStyle=(Math.round(xr/gu)%4===0)?'rgba(255,47,190,.20)':'rgba(124,58,237,.13)';
+    ctx.beginPath(); ctx.moveTo(W/2,horizonY); ctx.lineTo(xb,H); ctx.stroke();
+  }
+  var start=Math.floor(position/grid)+1;
+  for (i=0;i<50;i++){
+    zRel=(start+i)*grid-position;
+    if (zRel<=0) continue;
+    if (zRel>MAXZ) break;
+    p=proj(zRel);
+    if (p.y<=horizonY+1||p.y>=H) continue;
+    a=(1-fogAt(zRel))*0.4;
+    ctx.fillStyle='rgba(33,230,255,'+a.toFixed(3)+')';
+    ctx.fillRect(0,p.y,W,Math.max(1,p.ppu*0.006));
+  }
+}
+
+function drawRoad(){
+  for (var y=topRow;y<H;y++){
+    var z=rowZ[y]; if (z>MAXZ) continue;
+    var ppu=rowPPU[y], col=rowCol[y];
+    var zw=z+position;
+    var cx=W/2+ppu*(bend(z)-playerX);
+    var seg=Math.floor(zw/segLength);
+    var even=(seg&1)===0;
+
+    ctx.fillStyle=even?col.a:col.b;
+    ctx.fillRect(cx-ppu,y,ppu*2,1);
+
+    var rw=Math.max(1.5,ppu*0.055);
+    ctx.fillStyle=even?col.ra:col.rb;
+    ctx.fillRect(cx-ppu-rw,y,rw+1,1);
+    ctx.fillRect(cx+ppu,   y,rw+1,1);
+
+    if (ppu>8 && Math.floor(zw/(segLength*2.5))%2===0){
+      var lw=Math.max(1,ppu*0.014);
+      ctx.fillStyle=col.ln;
+      ctx.fillRect(cx-0.5*ppu-lw/2,y,lw,1);
+      ctx.fillRect(cx        -lw/2,y,lw,1);
+      ctx.fillRect(cx+0.5*ppu-lw/2,y,lw,1);
+    }
+  }
+}
+
+function hashAt(n,salt){
+  n=(n*7349 + salt*1013)|0;
+  n=(n^61)^(n>>>16); n=n+(n<<3); n=n^(n>>>4);
+  n=Math.imul(n,0x27d4eb2d); n=n^(n>>>15);
+  return (n>>>0)/4294967296;
+}
+var DECO_SPACE=6000;
+
+/* ---------------------------------------------------------------
+   A LITTLE REAL 3D
+   Everything else on this road is a flat sprite pinned to one point of
+   ground. These props are built from actual vertices instead: each one is
+   pushed through the same camera the road uses, so they share its
+   perspective, its curve and its fog for free. Local coordinates are in
+   road units, y is up, z is deeper into the screen, and the shape is spun
+   about its vertical axis before projection.
+--------------------------------------------------------------- */
+function v3(lx,ly,lz,rot,lat,zRelBase){
+  var cs=Math.cos(rot), sn=Math.sin(rot);
+  var rx=lx*cs - lz*sn, rz=lx*sn + lz*cs;
+  var zr=zRelBase + rz*roadWidth;
+  if (zr<250) zr=250;
+  var sc=camDepth/zr, ppu=sc*roadWidth*W/2;
+  return { x: W/2 + ppu*(bend(zr) + lat + rx - playerX),
+           y: H/2 + sc*camH*(H/2) + yOff - ppu*ly,
+           zr: zr, ppu: ppu };
+}
+
+/* Obelisk: a tapered four-sided shaft under a pyramid cap, turning slowly.
+   Edges behind the centre of the shape are drawn faint, the ones in front
+   bright, which is all the depth cue a wireframe needs. */
+function decoObelisk(zRel,lat,u,idx){
+  var rot=performance.now()/2600 + hashAt(idx,6)*6.283;
+  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  var w0=0.30, w1=0.18, hgt=2.30, cap=0.60;
+  var corner=[[-1,-1],[1,-1],[1,1],[-1,1]];
+  var b=[], tp=[], i, e, az;
+  for (i=0;i<4;i++){
+    b.push (v3(corner[i][0]*w0, 0  , corner[i][1]*w0, rot, lat, zRel));
+    tp.push(v3(corner[i][0]*w1, hgt, corner[i][1]*w1, rot, lat, zRel));
+  }
+  var apex=v3(0,hgt+cap,0,rot,lat,zRel);
+  var edges=[];
+  for (i=0;i<4;i++){
+    edges.push([b[i], b[(i+1)%4]]);
+    edges.push([tp[i],tp[(i+1)%4]]);
+    edges.push([b[i], tp[i]]);
+    edges.push([tp[i],apex]);
+  }
+  ctx.lineCap='round';
+  ctx.lineWidth=Math.max(1,u*0.020);
+  ctx.strokeStyle=col;
+  for (i=0;i<edges.length;i++){
+    e=edges[i]; az=(e[0].zr+e[1].zr)/2;
+    if (az<=zRel) continue;                       /* far half first */
+    ctx.globalAlpha=0.30;
+    ctx.beginPath(); ctx.moveTo(e[0].x,e[0].y); ctx.lineTo(e[1].x,e[1].y); ctx.stroke();
+  }
+  ctx.shadowColor=col; ctx.shadowBlur=Math.min(16,u*0.30);
+  for (i=0;i<edges.length;i++){
+    e=edges[i]; az=(e[0].zr+e[1].zr)/2;
+    if (az>zRel) continue;                        /* then the near half */
+    ctx.globalAlpha=0.95;
+    ctx.beginPath(); ctx.moveTo(e[0].x,e[0].y); ctx.lineTo(e[1].x,e[1].y); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#ffffff';
+  ctx.beginPath(); ctx.arc(apex.x,apex.y,Math.max(1.2,u*0.035),0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalAlpha=0.18; ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(v3(0,0,0,rot,lat,zRel).x, v3(0,0,0,rot,lat,zRel).y,
+                               u*w0*1.8, Math.max(1,u*w0*0.5), 0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+}
+
+/* Alien: a jointed figure whose limbs are placed in 3D, so the wave sweeps
+   toward you rather than sliding flat across the screen. */
+function decoAlien(zRel,lat,u,idx,side){
+  var t=performance.now()/1000 + hashAt(idx,6)*11;
+  var col=['#7cff4f','#21e6ff','#b06cff'][(hashAt(idx,5)*3)|0];
+  var rot=(side>0?-0.55:0.55);                    /* turned toward the road */
+  var wave=Math.sin(t*4.4), yaw=Math.sin(t*0.85)*0.9;
+  var look=Math.max(0,Math.sin(t*0.41));          /* every so often, chin up */
+  var bob=Math.sin(t*1.7)*0.015;
+  var d=(side>0?-1:1);                            /* the arm nearest the road */
+  var P=function(x,y,z){ return v3(x,y+bob,z,rot,lat,zRel); };
+
+  var hipL=P(-0.06,0.30,0), hipR=P(0.06,0.30,0);
+  var footL=P(-0.09,0,0.02), footR=P(0.09,0,-0.02);
+  var shL=P(-0.11,0.56,0), shR=P(0.11,0.56,0);
+  var neck=P(0,0.62,0);
+  var headY=0.79+look*0.03;
+  var head=P(Math.sin(yaw)*0.04, headY, Math.cos(yaw)*0.02);
+
+  var swS=(d<0?shL:shR), swX=d*0.11;
+  var elbow=P(swX+d*0.10, 0.62, 0.05);
+  var hand =P(swX+d*(0.15+0.05*wave), 0.80+0.05*wave, 0.10);
+  var oS=(d<0?shR:shL), oX=-d*0.11;
+  var oElbow=P(oX-d*0.02, 0.42, 0);
+  var oHand =P(oX+d*0.01, 0.27, 0.01);
+
+  ctx.globalAlpha=0.20; ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(footL.x+(footR.x-footL.x)/2, footL.y,
+                               u*0.20, Math.max(1,u*0.05),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+
+  ctx.strokeStyle=col; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.lineWidth=Math.max(1,u*0.030);
+  ctx.shadowColor=col; ctx.shadowBlur=Math.min(14,u*0.25);
+  function seg(a,bb){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(bb.x,bb.y); ctx.stroke(); }
+  seg(hipL,footL); seg(hipR,footR); seg(hipL,hipR);
+  seg(oS,oElbow); seg(oElbow,oHand);
+  seg(swS,elbow); seg(elbow,hand);
+
+  ctx.beginPath();                                 /* torso */
+  ctx.moveTo(hipL.x,hipL.y); ctx.lineTo(shL.x,shL.y);
+  ctx.lineTo(shR.x,shR.y);   ctx.lineTo(hipR.x,hipR.y);
+  ctx.closePath();
+  ctx.fillStyle=hexA(col,0.35); ctx.fill(); ctx.stroke();
+  seg(neck,head);
+
+  var hr=u*0.135, hh=u*0.175;                      /* the big grey head */
+  ctx.beginPath(); ctx.ellipse(head.x,head.y-hh*0.25,hr,hh,0,0,Math.PI*2);
+  ctx.fillStyle=hexA(col,0.55); ctx.fill(); ctx.stroke();
+  ctx.beginPath();                                 /* pointed chin */
+  ctx.moveTo(head.x-hr*0.55,head.y+hh*0.35);
+  ctx.lineTo(head.x,head.y+hh*0.95);
+  ctx.lineTo(head.x+hr*0.55,head.y+hh*0.35);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur=0;
+
+  if (u>18){                                       /* eyes track the head */
+    ctx.fillStyle='#05030a';
+    var ox=Math.sin(yaw)*hr*0.30, oy=-look*hh*0.18;
+    for (var e2=-1;e2<=1;e2+=2){
+      ctx.save();
+      ctx.translate(head.x+ox+e2*hr*0.42, head.y-hh*0.20+oy);
+      ctx.rotate(e2*0.5);
+      ctx.beginPath(); ctx.ellipse(0,0,hr*0.34,hh*0.20,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+var PROP_COLS=['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'];
+
+var DINO=[
+  "..............######....",
+  ".............########...",
+  ".............##.######..",
+  ".............##########.",
+  ".............###########",
+  ".............##.#.#.#.#.",
+  ".............#########..",
+  "#...........########....",
+  "##.........#########....",
+  "###.......##########....",
+  ".####...############....",
+  "..###################...",
+  "..##################....",
+  "..#################....."
+];
+/* Builds the dinosaur into the current path, merging each row's runs of
+   blocks into single rects. Shared by the roadside prop, the pickup, the
+   transformed player car and the icon in the menus. */
+function dinoPath(x0,y0,bw,bh,frame){
+  var legs=DINO_LEGS[frame], r,c,c2,line;
+  ctx.beginPath();
+  for (r=0;r<17;r++){
+    line = r<14 ? DINO[r] : legs[r-14];
+    c=0;
+    while (c<24){
+      if (line.charCodeAt(c)===35){
+        c2=c; while (c2<24 && line.charCodeAt(c2)===35) c2++;
+        ctx.rect(x0+c*bw, y0+r*bh, (c2-c)*bw+0.7, bh+0.7);
+        c=c2;
+      } else c++;
+    }
+  }
+}
+function rainbowFill(x0,y0,x1,y1,div){
+  var hue=(performance.now()/(div||9))%360, g=ctx.createLinearGradient(x0,y0,x1,y1);
+  for (var i=0;i<=4;i++) g.addColorStop(i/4,'hsl('+((hue+i*72)%360)+',100%,63%)');
+  return g;
+}
+
+/* three sets of legs: standing, and the two halves of a stride */
+var DINO_LEGS=[
+  ["...####.....#####.......","...###.......####.......","..#####.....######......"],
+  ["...####.....#####.......","..###..........###......",".####...........####...."],
+  ["...####.....#####.......","....###.....###.........","...####.....####........"]
+];
+function decoDino(x,gy,u,idx,side,walk){
+  var cols=24, rows=17, wR=5.0, hR=3.6;   /* longer head needs a wider grid */
+  var bw=u*wR/cols, bh=u*hR/rows;
+  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  /* stride is driven by how far it has crossed, not by the clock, so the feet
+     move in step with the body instead of paddling on the spot */
+  var moving = walk>0.001 && walk<0.999;
+  var frame  = moving ? 1+(((walk*17)|0)&1) : 0;
+  var legs   = DINO_LEGS[frame];
+  ctx.save();
+  ctx.translate(x, gy + (frame===1 ? -bh*0.45 : 0));
+  if (side>0) ctx.scale(-1,1);            
+  var x0=-u*wR/2, y0=-u*hR;
+  ctx.fillStyle='rgba(10,5,22,.8)';
+  ctx.fillRect(-u*wR*0.30,-u*0.13,u*wR*0.60,u*0.15);
+  dinoPath(x0,y0,bw,bh,frame);
+  ctx.shadowColor=col; ctx.shadowBlur=Math.min(24,u*0.4);
+  ctx.fillStyle=col; ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+function decoBuilding(x,gy,u,idx){
+  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  var wR=1.5+hashAt(idx,6)*0.9, hR=3.2+hashAt(idx,7)*2.6;
+  var w=u*wR, h=u*hR, bx=x-w/2, by=gy-h;
+  var cn=Math.max(2,Math.round(wR*2.6)), rn=Math.max(3,Math.round(hR*2.1));
+  var cw=w/cn, ch=h/rn, pad=Math.max(0.4,Math.min(cw,ch)*0.26);
+  ctx.fillStyle='#0c0520';
+  ctx.fillRect(bx,by,w,h);
+  ctx.beginPath();
+  for (var r=0;r<rn;r++) for (var c=0;c<cn;c++){
+    if (hashAt(idx*131+r*17+c,8)<0.48) continue;      
+    ctx.rect(bx+c*cw+pad, by+r*ch+pad, Math.max(0.8,cw-pad*2), Math.max(0.8,ch-pad*2));
+  }
+  ctx.shadowColor=col; ctx.shadowBlur=Math.min(11,u*0.18);
+  ctx.fillStyle=col; ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,u*0.022);
+  ctx.globalAlpha*=0.75; ctx.strokeRect(bx+0.5,by+0.5,w-1,h-1); ctx.globalAlpha/=0.75;
+  ctx.fillStyle=col;
+  ctx.fillRect(x-Math.max(1,u*0.02)/2, by-u*0.30, Math.max(1,u*0.02), u*0.30);
+  if ((Math.floor(performance.now()/700+idx)%2)===0){
+    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=Math.min(14,u*0.3);
+    ctx.fillStyle='#ff5d78';
+    ctx.fillRect(x-Math.max(1,u*0.045)/2, by-u*0.36, Math.max(1,u*0.045), Math.max(1,u*0.06));
+    ctx.shadowBlur=0;
+  }
+}
+
+function decoMast(x,gy,u,idx){
+  var hgt=u*2.55, w=Math.max(1,u*0.05), i, f, yy, ww;
+  ctx.strokeStyle='rgba(138,104,206,.72)';
+  ctx.lineWidth=Math.max(1,u*0.022);
+  ctx.beginPath();
+  ctx.moveTo(x-w*1.7,gy); ctx.lineTo(x-w*0.28,gy-hgt);
+  ctx.moveTo(x+w*1.7,gy); ctx.lineTo(x+w*0.28,gy-hgt);
+  ctx.stroke();
+  ctx.beginPath();
+  for (i=1;i<=4;i++){
+    f=i/5; yy=gy-hgt*f; ww=w*1.7*(1-f*0.82);
+    ctx.moveTo(x-ww,yy); ctx.lineTo(x+ww,yy);
+  }
+  ctx.stroke();
+  ctx.fillStyle='rgba(33,230,255,.30)';
+  ctx.beginPath();
+  ctx.ellipse(x+w*2.4,gy-hgt*0.62,Math.max(1,u*0.15),Math.max(1,u*0.10),0.5,0,Math.PI*2);
+  ctx.fill();
+  if ((Math.floor(performance.now()/640+idx)%2)===0){
+    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=Math.min(20,u*0.5);
+    ctx.fillStyle='#ff5d78';
+    ctx.beginPath(); ctx.arc(x,gy-hgt-u*0.07,Math.max(1.2,u*0.055),0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+  }
+}
+
+function decoBillboard(x,gy,u,idx){
+  var legH=u*0.95, pw=u*1.3, ph=u*1.0, lw=Math.max(1,u*0.04), i, yy;
+  var py=gy-legH-ph;
+  ctx.fillStyle='rgba(28,17,48,.92)';
+  ctx.fillRect(x-pw*0.33,gy-legH,lw,legH);
+  ctx.fillRect(x+pw*0.33-lw,gy-legH,lw,legH);
+  var g=ctx.createLinearGradient(x-pw/2,py,x+pw/2,py+ph);
+  g.addColorStop(0,'#3a0f5e'); g.addColorStop(1,'#110827');
+  ctx.fillStyle=g; ctx.fillRect(x-pw/2,py,pw,ph);
+  var col=(idx%3===0)?'#21e6ff':((idx%3===1)?'#ff2fbe':'#b06cff');
+  ctx.save();
+  ctx.globalAlpha*=0.70+0.30*Math.abs(Math.sin(performance.now()/(240+(idx%7)*95)+idx));
+  ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=Math.min(15,u*0.34);
+  ctx.fillRect(x-pw*0.40,py+ph*0.17,pw*0.25,ph*0.52);
+  for (i=0;i<3;i++)
+    ctx.fillRect(x-pw*0.05,py+ph*0.20+i*ph*0.18,pw*(0.26+0.13*((idx+i)%3)),ph*0.085);
+  ctx.shadowBlur=0; ctx.restore();
+  ctx.fillStyle='rgba(0,0,0,.26)';
+  for (yy=py; yy<py+ph; yy+=Math.max(2,u*0.07)) ctx.fillRect(x-pw/2,yy,pw,Math.max(1,u*0.025));
+  ctx.strokeStyle='rgba(255,255,255,.26)'; ctx.lineWidth=Math.max(1,u*0.02);
+  ctx.strokeRect(x-pw/2,py,pw,ph);
+}
+
+function decoKiosk(x,gy,u,idx,side){
+  var w=u*1.0, h=u*0.5;
+  ctx.save();
+  ctx.globalAlpha*=0.5;
+  ctx.fillStyle='#ffb15a';
+  ctx.beginPath(); ctx.ellipse(x,gy,w*0.9,Math.max(1,u*0.15),0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle='#150d24';
+  ctx.fillRect(x-w/2,gy-h,w,h);
+  ctx.fillStyle='rgba(255,178,90,.5)';
+  ctx.fillRect(x-w*0.37,gy-h*0.80,w*0.74,h*0.46);
+  ctx.fillStyle='#ff2fbe';
+  ctx.fillRect(x-w*0.60,gy-h-Math.max(1,u*0.05),w*1.20,Math.max(1.2,u*0.05));
+  var col=(idx%2===0)?'#21e6ff':'#ffd23f';
+  var bx=x+side*w*0.66, bw=Math.max(1.2,u*0.05);
+  ctx.shadowColor=col; ctx.shadowBlur=Math.min(13,u*0.3);
+  ctx.fillStyle=col;
+  ctx.fillRect(bx-bw/2,gy-h*2.5,bw,h*2.0);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(255,255,255,.55)';
+  for (var i=0;i<3;i++) ctx.fillRect(bx-bw*0.9,gy-h*2.3+i*h*0.6,bw*1.8,Math.max(1,u*0.03));
+}
+
+function drawDecor(){
+  var first=Math.floor(position/DECO_SPACE)+1;
+  var last =Math.floor((position+MAXZ)/DECO_SPACE);
+  for (var idx=last; idx>=first; idx--){          
+    if (hashAt(idx,1)>0.5) continue;              
+    var zRel=idx*DECO_SPACE-position;
+    if (zRel<=350||zRel>MAXZ) continue;
+    var p=proj(zRel), a=1-fogAt(zRel);
+    if (a<0.06||p.y<=horizonY||p.y>H) continue;
+    var side=hashAt(idx,2)<0.5?-1:1;
+    var t=hashAt(idx,4);
+    /* mast .22 | billboard .20 | kiosk .17 | tower .17 | dino .09 |
+       obelisk .09 | alien .06 — the two new ones stay rare on purpose */
+    var type = t<0.22?0 : t<0.42?1 : t<0.59?2 : t<0.76?3 : t<0.85?4 : t<0.94?5 : 6;
+    var lat, walk=0;
+    if (type===4){
+      /* it crosses the road well ahead and is clear of it long before you
+         arrive — pure scenery, nothing in the game collides with it */
+      var base=4.3+hashAt(idx,3)*1.6;
+      walk=clamp((36000-zRel)/27000,0,1);
+      walk=walk*walk*(3-2*walk);
+      lat=side*base*(1-2*walk);
+    } else {
+      var latMin = type===3?3.2 : (type===5?3.0 : (type===6?2.00 : 2.05));
+      var latSpan= type===3?1.4 : (type===5?1.2 : (type===6?0.60 : 0.95));
+      lat=side*(latMin+hashAt(idx,3)*latSpan);
+    }
+    var x=W/2+p.ppu*(bend(zRel)+lat-playerX);
+    if (x<-p.ppu*7||x>W+p.ppu*7) continue;
+    ctx.globalAlpha=a;
+    if ((type<3||type===6) && p.ppu<5){                        
+      ctx.fillStyle=t<0.5?'#b06cff':'#21e6ff';
+      ctx.fillRect(x-1,p.y-Math.max(2,p.ppu*1.6),2,Math.max(2,p.ppu*1.6));
+    }
+    else if (type===0) decoMast(x,p.y,p.ppu,idx);
+    else if (type===1) decoBillboard(x,p.y,p.ppu,idx);
+    else if (type===2) decoKiosk(x,p.y,p.ppu,idx,side);
+    else if (type===3) decoBuilding(x,p.y,p.ppu,idx);
+    else if (type===4) decoDino(x,p.y,p.ppu,idx,side,walk);
+    else if (type===5) decoObelisk(zRel,lat,p.ppu,idx);
+    else               decoAlien(zRel,lat,p.ppu,idx,side);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawPosts(){
+  var space=1200, start=Math.floor(position/space)+1;
+  for (var i=47;i>=0;i--){
+    var zRel=(start+i)*space-position;
+    if (zRel<=200||zRel>MAXZ) continue;
+    var p=proj(zRel);
+    if (p.y<=horizonY||p.y>H) continue;
+    var a=1-fogAt(zRel);
+    var col=(((start+i)&1)===1)?'#21e6ff':'#ff2fbe';
+    var w=Math.max(1,p.ppu*0.03), h=p.ppu*0.46;
+    var cRoad=bend(zRel);
+    for (var s=-1;s<=1;s+=2){
+      var x=W/2+p.ppu*(cRoad+s*1.22-playerX);
+      if (x<-40||x>W+40) continue;
+      ctx.globalAlpha=a*0.18; ctx.fillStyle=col;
+      ctx.fillRect(x-w*2,p.y-h,w*4,h);
+      ctx.globalAlpha=a*0.95;
+      ctx.fillRect(x-w/2,p.y-h,w,h);
+      ctx.fillRect(x-w*1.6,p.y-h,w*3.2,Math.max(1,w));
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawGate(){
+  var zRel=nextCP-position;
+  if (zRel<=140||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var cRoad=bend(zRel);
+  var h=p.ppu*1.05, thick=Math.max(2,p.ppu*0.06);
+  var x0=W/2+p.ppu*(cRoad-1.3-playerX), x1=W/2+p.ppu*(cRoad+1.3-playerX);
+  ctx.globalAlpha=a;
+  ctx.shadowColor='#7cff4f'; ctx.shadowBlur=Math.min(26,p.ppu*0.3);
+  ctx.fillStyle='#7cff4f';
+  ctx.fillRect(x0-thick/2,p.y-h,thick,h);
+  ctx.fillRect(x1-thick/2,p.y-h,thick,h);
+  ctx.fillRect(x0,p.y-h-thick,x1-x0,thick*1.2);
+  ctx.shadowBlur=0;
+  if (p.ppu>50) glowText(T('CHECKPOINT'),(x0+x1)/2,p.y-h-thick*2.4,Math.min(30,p.ppu*0.16),'#eaffe0','center',12);
+  ctx.globalAlpha=1;
+}
+
+/* The closeness multiplier, thrown off the side of the car the traffic went
+   past on. Drawn in screen space rather than world space: it belongs to you,
+   not to the car you shaved, and anchoring it to the player means it stays
+   legible instead of shrinking away down the road. Called inside the shake
+   transform so it rides with the car.
+
+   The chain count is deliberately NOT repeated here — it already has a live
+   HUD meter, and two numbers popping at once for one event reads as noise. */
+function drawNearMissPops(){
+  if (!nmPops.length) return;
+  var lean=clamp(steerVel,-1.6,1.6);
+  var bx=W/2+lean*9, by=PLAYER_Y-PW*0.55, i;
+  for (i=0;i<nmPops.length;i++){
+    var np=nmPops[i], k=np.t/NM_POP_LIFE;
+    /* rises fast then settles, so the number is readable while it is still
+       bright and only drifts once it is on its way out */
+    var rise=1-(1-k)*(1-k);
+    var x=bx + np.side*(PW*0.58 + 14*k);
+    var y=by - 54*rise;
+    var a=k<0.55 ? 1 : 1-(k-0.55)/0.45;
+    /* cool -> hot as the pass gets closer, matching the game's own ramp */
+    var col = np.m>=1.25 ? '#ff2fbe' : (np.m>=0.95 ? '#ffd23f' : '#8ef4ff');
+    ctx.globalAlpha=Math.max(0,a);
+    glowText('x'+np.m.toFixed(1), x, y, 15+np.m*4, col, 'center', 12);
+    ctx.globalAlpha=1;
+  }
+}
+
+/* A weaver's lane change used to be announced by one small amber square on
+   its flank, which at any real distance was a couple of pixels you had to
+   already be looking for. The roof bar now becomes the signal instead: three
+   chevrons pointing the way it is about to go, lit in sequence so the block
+   reads as MOVEMENT rather than as a light that is merely on. Three frames of
+   chase plus one dark frame, so it still blinks. */
+function vanChevrons(x,yTop,w,dir){
+  var bw=w*0.78, x0=x-bw/2, cw=bw/3, h=Math.max(2.2,w*0.17), i, cx, lit;
+  var ph=(Math.floor(performance.now()/105))%4;   /* 0 dark, then 1..3 lit */
+  ctx.lineWidth=Math.max(1.4,w*0.062);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for (i=0;i<3;i++){
+    /* index from the leading edge out, so the chase runs the way it points */
+    lit = ph > (dir>0 ? i : (2-i));
+    ctx.strokeStyle = lit ? '#ffd24a' : 'rgba(120,92,26,.85)';
+    if (lit){ ctx.shadowColor='#ffb020'; ctx.shadowBlur=Math.min(22,w*0.55); }
+    cx = x0 + cw*(i+0.5);
+    ctx.beginPath();
+    ctx.moveTo(cx-dir*cw*0.24, yTop);
+    ctx.lineTo(cx+dir*cw*0.24, yTop+h/2);
+    ctx.lineTo(cx-dir*cw*0.24, yTop+h);
+    ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+  ctx.lineCap='butt'; ctx.lineJoin='miter'; ctx.lineWidth=1;
+}
+
+function drawTraffic(c){
+  var zRel=c.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=CAR_W*p.ppu, h=w*0.66;
+  var x=W/2+p.ppu*(bend(zRel)+c.x-playerX);
+  if (x<-w||x>W+w) return;
+
+  ctx.globalAlpha=a*0.25; ctx.fillStyle=c.color;
+  ctx.beginPath(); ctx.ellipse(x,p.y,Math.max(1,w*0.62),Math.max(1,h*0.14),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=a;
+
+  if (w<8){                       
+    var mw=Math.max(5,w), mh=Math.max(c.weaver?6:4,h);
+    ctx.fillStyle=c.color;
+    ctx.fillRect(x-mw/2,p.y-mh,mw,mh);
+    if (c.weaver){
+      /* Too few pixels for chevrons out here, so the strip itself leans:
+         half width, pushed to the side it is heading for, blinking fast. */
+      var fsg = (c.sigT>0||c.phase==='move') ? c.sigDir : 0;
+      var fon = (Math.floor(performance.now()/(fsg?105:230))%2)===0;
+      if (fon){
+        /* A weaver usually starts signalling around 13,000 units out, which
+           is exactly where it is too small for chevrons — so out here the
+           strip leans AND blooms. At five pixels wide the glow is doing more
+           work than the shape is. */
+        if (fsg){
+          ctx.shadowColor='#ffb020'; ctx.shadowBlur=9; ctx.fillStyle='#ffe07a';
+          ctx.fillRect(x+(fsg>0?mw*0.05:-mw*0.55), p.y-mh-3, mw*0.5, 3);
+          ctx.shadowBlur=0;
+        } else {
+          ctx.fillStyle='#fff3b0';
+          ctx.fillRect(x-mw/2, p.y-mh-2, mw, 2);
+        }
+      }
+    }
+    ctx.fillStyle='#ff5555';
+    ctx.fillRect(x-mw/2,p.y-mh*0.5,mw,Math.max(1,mh*0.28));
+    ctx.globalAlpha=1; return;
+  }
+
+  if (c.weaver){                  
+    var vh=w*0.94;
+    ctx.fillStyle='#171019';
+    rr(x-w/2,p.y-vh,w,vh,w*0.09); ctx.fill();
+    ctx.lineWidth=Math.max(1,w*0.055); ctx.strokeStyle='#ffd23f'; ctx.stroke();
+
+    ctx.fillStyle='rgba(160,205,255,.16)';
+    rr(x-w*0.36,p.y-vh*0.93,w*0.72,vh*0.24,w*0.05); ctx.fill();
+    ctx.fillStyle='rgba(255,210,63,.22)';
+    ctx.fillRect(x-w/2,p.y-vh*0.56,w,Math.max(1,vh*0.05));
+
+    /* The signal runs through the whole change, not just the wind-up: the
+       chevrons stay up while it is actually crossing, so a van caught
+       mid-slide still tells you which way it is committed. */
+    var sgn = (c.sigT>0 || c.phase==='move') ? c.sigDir : 0;
+    if (sgn){
+      vanChevrons(x, p.y-vh-w*0.20, w, sgn);
+    } else {
+      var on=(Math.floor(performance.now()/230)%2)===0;
+      if (on){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=Math.min(20,w*0.55); }
+      ctx.fillStyle=on?'#ffe98a':'#6b5a1e';
+      ctx.fillRect(x-w*0.32,p.y-vh-w*0.11,w*0.64,w*0.10);
+      ctx.shadowBlur=0;
+    }
+
+    ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=Math.min(14,w*0.3);
+    ctx.fillStyle='#ff4747';
+    ctx.fillRect(x-w*0.42,p.y-vh*0.28,w*0.18,vh*0.11);
+    ctx.fillRect(x+w*0.24,p.y-vh*0.28,w*0.18,vh*0.11);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#05030a';
+    ctx.fillRect(x-w*0.52,p.y-vh*0.15,w*0.10,vh*0.15);
+    ctx.fillRect(x+w*0.42,p.y-vh*0.15,w*0.10,vh*0.15);
+    ctx.globalAlpha=1; return;
+  }
+
+  ctx.fillStyle='#100a1c';
+  rr(x-w/2,p.y-h,w,h,w*0.14); ctx.fill();
+  ctx.lineWidth=Math.max(1,w*0.05); ctx.strokeStyle=c.color; ctx.stroke();
+
+  ctx.fillStyle='rgba(120,200,255,.14)';
+  rr(x-w*0.34,p.y-h*0.95,w*0.68,h*0.36,w*0.08); ctx.fill();
+
+  ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=Math.min(16,w*0.35);
+  ctx.fillStyle='#ff4747';
+  ctx.fillRect(x-w*0.44,p.y-h*0.44,w*0.20,h*0.16);
+  ctx.fillRect(x+w*0.24,p.y-h*0.44,w*0.20,h*0.16);
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle='#05030a';
+  ctx.fillRect(x-w*0.52,p.y-h*0.22,w*0.10,h*0.22);
+  ctx.fillRect(x+w*0.42,p.y-h*0.22,w*0.10,h*0.22);
+  ctx.globalAlpha=1;
+}
+
+function heartPath(x,y,s){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.bezierCurveTo(x-s*1.05, y-s*0.78, x-s*0.80, y-s*1.74, x, y-s*1.12);
+  ctx.bezierCurveTo(x+s*0.80, y-s*1.74, x+s*1.05, y-s*0.78, x, y);
+  ctx.closePath();
+}
+function drawHeart(hh){
+  var zRel=hh.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=Math.max(4, HEART_W*p.ppu), s=w/2;
+  var x=W/2+p.ppu*(bend(zRel)+hh.x-playerX);
+  if (x<-w*2||x>W+w*2) return;
+  var t=performance.now(), hue=(t/9)%360;
+  var y=p.y - (w*0.55 + Math.sin(t/380)*w*0.14);
+
+  ctx.globalAlpha=a*0.30;
+  ctx.fillStyle='hsl('+hue+',100%,62%)';
+  ctx.beginPath(); ctx.ellipse(x,p.y,w*0.85,Math.max(1,w*0.22),0,0,Math.PI*2); ctx.fill();
+
+  ctx.globalAlpha=a;
+  var g=ctx.createLinearGradient(x-s,y-s*1.6,x+s,y);
+  for (var i=0;i<=4;i++) g.addColorStop(i/4,'hsl('+((hue+i*72)%360)+',100%,63%)');
+  ctx.shadowColor='hsl('+((hue+180)%360)+',100%,60%)';
+  ctx.shadowBlur=Math.min(30,w*0.95);
+  heartPath(x,y,s); ctx.fillStyle=g; ctx.fill();
+  ctx.shadowBlur=0;
+  if (w>10){
+    ctx.lineWidth=Math.max(1,w*0.055); ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.stroke();
+    ctx.globalAlpha=a*0.55; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.ellipse(x-s*0.34,y-s*0.92,s*0.17,s*0.11,-0.5,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+var BOLT=[[-0.10,-1.00],[0.62,-1.00],[0.16,-0.18],[0.72,-0.18],
+          [-0.28,1.00],[0.02,0.10],[-0.50,0.10]];
+function drawShot(sh){
+  var zRel=sh.z-position;
+  if (zRel<=140||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=Math.max(3,0.13*p.ppu);
+  var x=W/2+p.ppu*(bend(zRel)+sh.x-playerX);
+  var y=p.y-w*1.5;
+  ctx.globalAlpha=a;
+  var tz=Math.max(150,zRel-2800), tp=proj(tz);
+  var tx=W/2+tp.ppu*(bend(tz)+sh.x-playerX), ty=tp.y-Math.max(3,0.13*tp.ppu)*1.5;
+  var g=ctx.createLinearGradient(x,y,tx,ty);
+  var sc=sh.col||'#8ef4ff';
+  g.addColorStop(0,'rgba(255,255,255,.85)'); g.addColorStop(1,hexA(sc,0));
+  ctx.strokeStyle=g; ctx.lineWidth=Math.max(1.5,w*0.6); ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tx,ty); ctx.stroke();
+  ctx.shadowColor=sc; ctx.shadowBlur=Math.min(26,w*2.4);
+  ctx.globalAlpha=a*0.45; ctx.fillStyle=sc;
+  ctx.beginPath(); ctx.ellipse(x,y,w*0.95,w*1.5,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=a; ctx.fillStyle='#ffffff';
+  ctx.beginPath(); ctx.ellipse(x,y,w*0.5,w*0.85,0,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+}
+
+/* a small mushroom cloud where a car used to be */
+function drawBlast(bl){
+  var zRel=bl.z-position;
+  if (zRel<=140||zRel>MAXZ) return;
+  var p=proj(zRel), t=bl.t;
+  var a=(1-fogAt(zRel))*(1-t*t);
+  var x=W/2+p.ppu*(bend(zRel)+bl.x-playerX);
+  var gy=p.y;
+  var R=p.ppu*(0.10+0.34*Math.pow(t,0.5));
+  var rise=p.ppu*(0.08+0.62*Math.pow(t,0.75));
+
+  ctx.globalAlpha=a*0.5;                       /* shockwave on the tarmac */
+  ctx.strokeStyle='#ffd23f'; ctx.lineWidth=Math.max(1,p.ppu*0.025);
+  ctx.beginPath(); ctx.ellipse(x,gy,R*(1.1+t*1.6),Math.max(1,R*(0.26+t*0.4)),0,0,Math.PI*2); ctx.stroke();
+
+  var sw=R*0.34;                               /* stem */
+  ctx.globalAlpha=a*0.7;
+  var g2=ctx.createLinearGradient(x,gy,x,gy-rise);
+  g2.addColorStop(0,'rgba(255,120,40,.12)'); g2.addColorStop(1,'rgba(255,205,90,.8)');
+  ctx.fillStyle=g2;
+  ctx.beginPath();
+  ctx.moveTo(x-sw*0.5,gy); ctx.lineTo(x+sw*0.5,gy);
+  ctx.lineTo(x+sw,gy-rise); ctx.lineTo(x-sw,gy-rise);
+  ctx.closePath(); ctx.fill();
+
+  ctx.globalAlpha=a;                           /* cap */
+  var g=ctx.createRadialGradient(x,gy-rise,R*0.08,x,gy-rise,R);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.30,'#ffe487');
+  g.addColorStop(0.68,'#ff7a2f'); g.addColorStop(1,'rgba(255,50,30,0)');
+  ctx.shadowColor='#ff9b3d'; ctx.shadowBlur=Math.min(26,R*0.9);
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(x,gy-rise,R,R*0.80,0,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+}
+
+var UFO_W=0.62;
+function drawUfo(uf){
+  var zRel=uf.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=(1-fogAt(zRel))*uf.fade;
+  if (a<=0.01) return;
+  var w=Math.max(5,UFO_W*p.ppu), dh=Math.max(1.5,w*0.19);
+  var x=W/2+p.ppu*(bend(zRel)+uf.x-playerX);
+  if (x<-w*3||x>W+w*3) return;
+  var gy=p.y;
+  var y=gy-(uf.hover*p.ppu)-Math.sin(uf.bob*1.3)*w*0.10;
+
+  if (uf.beamOn){                             /* cone of light down to the road */
+    var bw=w*0.72;
+    ctx.globalAlpha=a*0.14; ctx.fillStyle=uf.color;
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.20,y+dh*0.55); ctx.lineTo(x+w*0.20,y+dh*0.55);
+    ctx.lineTo(x+bw,gy); ctx.lineTo(x-bw,gy);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=a*0.30;
+    ctx.beginPath(); ctx.ellipse(x,gy,bw,Math.max(1,bw*0.24),0,0,Math.PI*2); ctx.fill();
+  }
+
+  ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(185,232,255,.32)';      /* dome */
+  ctx.beginPath(); ctx.ellipse(x,y-dh*0.55,w*0.24,w*0.20,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(x-w*0.09,y-dh*0.80,w*0.06,w*0.04,-0.5,0,Math.PI*2); ctx.fill();
+
+  var g=ctx.createLinearGradient(x,y-dh,x,y+dh);   /* hull */
+  g.addColorStop(0,'#3a3157'); g.addColorStop(0.5,'#1a1430'); g.addColorStop(1,'#0b0818');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.ellipse(x,y,w*0.5,dh,0,0,Math.PI*2); ctx.fill();
+  ctx.lineWidth=Math.max(1,w*0.032); ctx.strokeStyle=uf.color;
+  ctx.shadowColor=uf.color; ctx.shadowBlur=Math.min(20,w*0.36);
+  ctx.stroke(); ctx.shadowBlur=0;
+
+  if (w>12){                                  /* running lights round the rim */
+    for (var i=0;i<7;i++){
+      var ang=uf.spin+i*Math.PI*2/7;
+      var lx=x+Math.cos(ang)*w*0.41, ly=y+Math.sin(ang)*dh*0.62;
+      ctx.globalAlpha=a*(0.30+0.70*Math.max(0,Math.sin(ang)));
+      ctx.fillStyle=uf.color;
+      ctx.fillRect(lx-w*0.030,ly-w*0.020,Math.max(1.5,w*0.060),Math.max(1.5,w*0.040));
+    }
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawDinoPickup(pu){
+  var zRel=pu.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=Math.max(6,DINO_PU_W*p.ppu), h=w*0.72;
+  var x=W/2+p.ppu*(bend(zRel)+pu.x-playerX);
+  if (x<-w*2||x>W+w*2) return;
+  var t=performance.now();
+  var y=p.y-(h*0.22+Math.sin(t/380)*w*0.10);
+  ctx.globalAlpha=a*0.30;
+  ctx.fillStyle='hsl('+((t/9)%360)+',100%,62%)';
+  ctx.beginPath(); ctx.ellipse(x,p.y,w*0.58,Math.max(1,w*0.15),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=a;
+  dinoPath(x-w/2, y-h, w/24, h/17, 1+((Math.floor(t/190))&1));
+  ctx.shadowColor='hsl('+(((t/9)+180)%360)+',100%,60%)';
+  ctx.shadowBlur=Math.min(26,w*0.7);
+  ctx.fillStyle=rainbowFill(x-w/2,y-h,x+w/2,y);
+  ctx.fill(); ctx.shadowBlur=0;
+  ctx.globalAlpha=1;
+}
+
+function drawBoost(bb){
+  var zRel=bb.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=Math.max(4,HEART_W*p.ppu), s=w*0.62;
+  var x=W/2+p.ppu*(bend(zRel)+bb.x-playerX);
+  if (x<-w*2||x>W+w*2) return;
+  var t=performance.now();
+  var y=p.y-(w*0.75+Math.sin(t/340)*w*0.14);
+  var zap=0.72+0.28*Math.abs(Math.sin(t/70));
+
+  ctx.globalAlpha=a*0.30; ctx.fillStyle='#21e6ff';
+  ctx.beginPath(); ctx.ellipse(x,p.y,w*0.85,Math.max(1,w*0.22),0,0,Math.PI*2); ctx.fill();
+
+  ctx.globalAlpha=a;
+  var g=ctx.createLinearGradient(x,y-s,x,y+s);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,'#8ef4ff'); g.addColorStop(1,'#21e6ff');
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=Math.min(30,w*zap);
+  ctx.beginPath();
+  for (var i=0;i<BOLT.length;i++){
+    var px=x+BOLT[i][0]*s, py=y+BOLT[i][1]*s;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.fillStyle=g; ctx.fill();
+  ctx.shadowBlur=0;
+  if (w>10){
+    ctx.lineWidth=Math.max(1,w*0.05);
+    ctx.strokeStyle='rgba(255,255,255,'+zap.toFixed(2)+')';
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* The strip across the roof. Everything is drawn from the same anchor so a
+   shape can be swapped without touching the rest of the car. */
+function drawLightBar(pw,ph,col,shape){
+  var y=-ph-pw*0.076, w=pw*0.92, x0=-pw*0.46, th=pw*0.054, i, s, cx;
+  var t=performance.now();
+  ctx.fillStyle=col; ctx.strokeStyle=col;
+  ctx.shadowColor=col; ctx.shadowBlur=pw*0.14;
+
+  if (shape===1){                                   /* SAWTOOTH */
+    var n=7, tw=w/n, hg=pw*0.085;
+    ctx.beginPath(); ctx.moveTo(x0,y+th);
+    for (i=0;i<n;i++){
+      ctx.lineTo(x0+i*tw+tw/2, y+th-hg);
+      ctx.lineTo(x0+(i+1)*tw, y+th);
+    }
+    ctx.lineTo(x0+w,y+th*0.9); ctx.lineTo(x0,y+th*0.9);
+    ctx.closePath(); ctx.fill();
+  } else if (shape===2){                            /* SPIKES */
+    var m=5, sp=w/m, hs=pw*0.14;
+    for (i=0;i<m;i++){
+      cx=x0+sp*(i+0.5);
+      ctx.beginPath();
+      ctx.moveTo(cx-sp*0.20,y+th); ctx.lineTo(cx,y+th-hs); ctx.lineTo(cx+sp*0.20,y+th);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillRect(x0,y+th*0.35,w,th*0.7);
+  } else if (shape===3){                            /* CROWN */
+    ctx.beginPath();
+    ctx.moveTo(x0,y+th);
+    ctx.lineTo(x0,            y+th-pw*0.055);
+    ctx.lineTo(x0+w*0.20,     y+th-pw*0.012);
+    ctx.lineTo(x0+w*0.35,     y+th-pw*0.115);
+    ctx.lineTo(x0+w*0.50,     y+th-pw*0.020);
+    ctx.lineTo(x0+w*0.65,     y+th-pw*0.115);
+    ctx.lineTo(x0+w*0.80,     y+th-pw*0.012);
+    ctx.lineTo(x0+w,          y+th-pw*0.055);
+    ctx.lineTo(x0+w,y+th);
+    ctx.closePath(); ctx.fill();
+  } else if (shape===4){                            /* HORNS */
+    for (s=-1;s<=1;s+=2){
+      ctx.beginPath();
+      ctx.moveTo(s*w*0.30, y+th);
+      ctx.quadraticCurveTo(s*w*0.52, y+th-pw*0.05, s*w*0.50, y+th-pw*0.17);
+      ctx.quadraticCurveTo(s*w*0.40, y+th-pw*0.07, s*w*0.20, y+th);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillRect(-w*0.22,y+th*0.3,w*0.44,th*0.75);
+  } else if (shape===5){                            /* HALO */
+    ctx.lineWidth=Math.max(1.4,pw*0.030);
+    ctx.beginPath();
+    ctx.ellipse(0, y-pw*0.085, w*0.32, pw*0.042, 0, 0, Math.PI*2);
+    ctx.stroke();
+  } else if (shape===6){                            /* PULSE */
+    var k=8, seg=w/k;
+    for (i=0;i<k;i++){
+      ctx.globalAlpha = (((Math.floor(t/110)+i)%4)===0) ? 1 : 0.22;
+      ctx.fillRect(x0+i*seg+seg*0.14, y, seg*0.72, th);
+    }
+    ctx.globalAlpha=1;
+  } else {                                          /* BAR */
+    ctx.fillRect(x0,y,w,th);
+  }
+  ctx.shadowBlur=0;
+}
+
+/* A face in the rear window. Blinks now and then, and squints under braking. */
+function drawEyes(pw,ph,style,braking){
+  if (style===0) return;
+  var t=performance.now(), blink=(t%4300)<130;
+  var ex=pw*0.15, ey=-ph*0.76, r=pw*0.055, s, cx;
+  var col='#eaf6ff';
+  ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=pw*0.09;
+
+  if (style===6){                                   /* VISOR */
+    ctx.fillStyle='#ff3b5c'; ctx.shadowColor='#ff3b5c';
+    ctx.fillRect(-pw*0.25, ey-pw*0.021, pw*0.50, pw*0.042);
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(Math.sin(t/300)*pw*0.19-pw*0.035, ey-pw*0.021, pw*0.07, pw*0.042);
+    ctx.shadowBlur=0; return;
+  }
+  if (style===5){                                   /* CYCLOPS */
+    var R=pw*0.082;
+    ctx.fillStyle=col;
+    if (blink){ ctx.fillRect(-R,ey-pw*0.011,R*2,pw*0.022); }
+    else {
+      ctx.beginPath(); ctx.arc(0,ey,R*(braking?0.72:1),0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#0d0818';
+      ctx.beginPath(); ctx.arc(0,ey+R*0.06,R*0.40,0,Math.PI*2); ctx.fill();
+    }
+    ctx.shadowBlur=0; return;
+  }
+  for (s=-1;s<=1;s+=2){
+    cx=s*ex;
+    if (style===4){                                 /* DIZZY */
+      ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.3,pw*0.021); ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(cx-r,ey-r); ctx.lineTo(cx+r,ey+r);
+      ctx.moveTo(cx+r,ey-r); ctx.lineTo(cx-r,ey+r);
+      ctx.stroke();
+      continue;
+    }
+    if (blink){
+      ctx.fillStyle=col; ctx.fillRect(cx-r,ey-pw*0.010,r*2,pw*0.020);
+      continue;
+    }
+    if (style===3){                                 /* SLEEPY */
+      ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(cx,ey+r*0.10,r*0.92,0,Math.PI); ctx.fill();
+      ctx.fillRect(cx-r,ey-pw*0.008,r*2,pw*0.017);
+      continue;
+    }
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.arc(cx,ey,r*(braking?0.68:1),0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#0d0818';
+    ctx.beginPath(); ctx.arc(cx+s*r*0.12,ey+r*0.08,r*0.40,0,Math.PI*2); ctx.fill();
+    if (style===2){                                 /* ANGRY brows */
+      ctx.fillStyle=col;
+      ctx.save();
+      ctx.translate(cx,ey-r*1.30);
+      ctx.rotate(-s*0.45);
+      ctx.fillRect(-r*1.15,-pw*0.015,r*2.3,pw*0.030);
+      ctx.restore();
+    }
+  }
+  ctx.shadowBlur=0;
+}
+
+/* Super-saiyan flare: two flickering envelopes drawn additively so they
+   blow out where they overlap, taller than they are wide, with embers
+   climbing out of the top. Replaces the car's underglow while it burns. */
+function drawAura(pw,ph,fade){
+  var t=performance.now()/1000, i, k, layer;
+  var cx=0, cy=-ph*0.50, n=20;
+  var rx=pw*0.64, ry=ph*0.98;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  for (layer=0; layer<2; layer++){
+    var sc=layer?1.0:0.70, al=(layer?0.26:0.50)*fade;
+    ctx.beginPath();
+    for (i=0;i<=n;i++){
+      var a=(i/n)*Math.PI*2 - Math.PI/2;
+      var up=Math.max(0,-Math.sin(a));
+      var flick=0.80+0.36*Math.abs(Math.sin(i*2.3 + t*(11+layer*5)));
+      var r=flick*(1+up*0.80)*sc;
+      var px=cx+Math.cos(a)*rx*r, py=cy+Math.sin(a)*ry*r;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    var g=ctx.createRadialGradient(cx,cy,pw*0.05,cx,cy,rx*1.7);
+    g.addColorStop(0,'rgba(255,255,238,'+al.toFixed(3)+')');
+    g.addColorStop(0.48,'rgba(255,206,64,'+(al*0.72).toFixed(3)+')');
+    g.addColorStop(1,'rgba(255,120,10,0)');
+    ctx.fillStyle=g; ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,244,196,0.9)';
+  for (k=0;k<8;k++){
+    var pr=(t*1.9 + k*0.31)%1;
+    var sx=Math.sin(k*3.1+t*2.2)*pw*0.40;
+    var sy=cy - pr*ph*1.9 + ph*0.35;
+    var ss=Math.max(1,pw*0.022*(1-pr));
+    ctx.globalAlpha=(1-pr)*0.85*fade;
+    ctx.fillRect(sx-ss/2, sy, ss, ss*2.4);
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function paintCar(pw,o){
+  var ph=pw*0.62;
+  var trim=NEONS[trimI].c, light=NEONS[lightI].c, paint=PAINTS[paintI];
+  var glow=o.glow||0;
+
+  if (o.aura>0){
+    drawAura(pw,ph,o.aura);
+  } else {
+    ctx.fillStyle=hexA(trim, 0.10+glow*0.30);
+    ctx.beginPath(); ctx.ellipse(0,ph*0.10,pw*0.62,ph*0.16+glow*ph*0.16,0,0,Math.PI*2); ctx.fill();
+  }
+
+  ctx.fillStyle='#07040d';
+  rr(-pw*0.54,-ph*0.52,pw*0.14,ph*0.5,pw*0.03); ctx.fill();
+  rr( pw*0.40,-ph*0.52,pw*0.14,ph*0.5,pw*0.03); ctx.fill();
+
+  var bg=ctx.createLinearGradient(0,-ph,0,0);
+  bg.addColorStop(0,paint.a); bg.addColorStop(1,paint.b);
+  ctx.fillStyle=bg;
+  rr(-pw/2,-ph,pw,ph,pw*0.10); ctx.fill();
+  ctx.lineWidth=Math.max(1.4,pw*0.026); ctx.strokeStyle=trim;
+  ctx.shadowColor=trim; ctx.shadowBlur=pw*0.17; ctx.stroke(); ctx.shadowBlur=0;
+
+  ctx.fillStyle='rgba(140,215,255,.20)';
+  rr(-pw*0.31,-ph*0.94,pw*0.62,ph*0.34,pw*0.05); ctx.fill();
+
+  drawEyes(pw,ph,eyeI,o.brake);
+  drawLightBar(pw,ph,light,shapeI);
+
+  var braking=o.brake;
+  ctx.shadowColor=braking?'#ff2020':'#ff5a5a';
+  ctx.shadowBlur=braking?pw*0.24:pw*0.11;
+  ctx.fillStyle=braking?'#ff2626':'#c53a4a';
+  ctx.fillRect(-pw*0.42,-ph*0.42,pw*0.22,ph*0.17);
+  ctx.fillRect( pw*0.20,-ph*0.42,pw*0.22,ph*0.17);
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle='#e9e6ff';
+  ctx.fillRect(-pw*0.11,-ph*0.24,pw*0.22,ph*0.13);
+}
+
+function drawPlayerDino(lean){
+  var w=DINO_CAR_W*PPU_CAR, h=w*0.72;
+  var frame = speed>300 ? 1+((Math.floor(position/700))&1) : 0;
+  var t=performance.now();
+  var fade = (dinoT<=DINO_WARN && (Math.floor(dinoT*8)%2===0)) ? 0.40 : 1;
+  ctx.save();
+  ctx.translate(W/2+lean*9, PLAYER_Y+(frame===1?-h*0.03:0));
+  ctx.rotate(spinT>0?spinAng:(-lean*0.05-curSlope*92));
+  ctx.globalAlpha=fade*0.30;
+  ctx.fillStyle='hsl('+((t/6)%360)+',100%,60%)';
+  ctx.beginPath(); ctx.ellipse(0,4,w*0.48,h*0.10,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=fade;
+  dinoPath(-w/2,-h,w/24,h/17,frame);
+  ctx.shadowColor='hsl('+(((t/6)+180)%360)+',100%,60%)'; ctx.shadowBlur=28;
+  ctx.fillStyle=rainbowFill(-w/2,-h,w/2,0,6);
+  ctx.fill(); ctx.shadowBlur=0;
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+function drawPlayer(){
+  var lean=clamp(steerVel,-1.6,1.6);
+  if (dinoT>0){ drawPlayerDino(lean); return; }
+  var blink=invT>0&&(Math.floor(invT*12)%2===0);
+  var spct=clamp(speed/maxSpeedFor(lap),0,1);
+
+  ctx.save();
+  ctx.translate(W/2 + lean*9, PLAYER_Y);
+  ctx.rotate(spinT>0 ? spinAng : (-lean*0.07 - curSlope*92));
+  ctx.globalAlpha=blink?0.42:1;
+  var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
+  paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn});
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* ---------------------------------------------------------------
+   HUD
+--------------------------------------------------------------- */
+function drawBendWarning(){
+  var mag=Math.min(1, Math.abs(warnSlope)/S_PEAK);
+  if (mag<0.16) return;
+  var dir=warnSlope>0?1:-1;
+  var n  =mag>0.66?3:(mag>0.38?2:1);
+  var col=mag>0.66?'#ff4d6d':(mag>0.38?'#ffd23f':'#21e6ff');
+  var y=94;
+  ctx.save();
+  ctx.globalAlpha=0.45+0.55*mag;
+  ctx.strokeStyle=col; ctx.lineWidth=3;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.shadowColor=col; ctx.shadowBlur=10;
+  for (var i=0;i<n;i++){
+    var cx=W/2 + dir*(i*14) - dir*((n-1)*14)/2;
+    ctx.beginPath();
+    ctx.moveTo(cx-dir*5,y-7);
+    ctx.lineTo(cx+dir*5,y);
+    ctx.lineTo(cx-dir*5,y+7);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function panel(x,y,w,h){
+  ctx.fillStyle='rgba(8,4,18,.62)';
+  rr(x,y,w,h,6); ctx.fill();
+  ctx.strokeStyle='rgba(124,58,237,.55)'; ctx.lineWidth=1; ctx.stroke();
+}
+function drawHUD(){
+  var maxS=maxSpeedFor(lap), spct=clamp(speed/maxS,0,1);
+  var kmh=Math.round(speed/40);
+
+  /* The whole top row is the old layout scaled up by 1.2 — panels, labels,
+     readouts and bars alike — so the proportions that were tuned on a
+     desktop survive intact and only the density changes. The two mini
+     panels underneath keep a 12px label instead of 13: at 13 the Spanish
+     SOBRECARGA ran straight into its own countdown. */
+  panel(12,12,224,62);
+  monoText(T('SCORE'),24,34,13,'#8a7ec4');
+  glowText(pad(score|0,7),24,63,26,'#ffffff','left',10);
+
+  var beating = bestAtStart>0 && (score|0)>bestAtStart;
+  panel(12,80,224,34);
+  monoText(T('BEST'),24,103,13,beating?'#7cff4f':'#8a7ec4');
+  if (beating){
+    monoText(T('NEW'),84,103,12,'#7cff4f');
+    ctx.globalAlpha=0.74+0.26*Math.abs(Math.sin(performance.now()/300));
+    glowText(pad(best,7),226,103,18,'#7cff4f','right',15);
+    ctx.globalAlpha=1;
+  } else {
+    glowText(pad(best,7),226,103,18,'#a99fdc','right',7);
+  }
+
+  panel(W/2-94,12,188,62);
+  if (mode==='cruise'){
+    monoText(T('LAP'),W/2,34,13,'#8a7ec4','center');
+    glowText(String(lap),W/2,63,26,'#21e6ff','center',12);
+  } else {
+    monoText(T('LAP'),W/2-55,34,13,'#8a7ec4','center');
+    monoText(T('TIME'),W/2+34,34,13,'#8a7ec4','center');
+    glowText(String(lap),W/2-55,63,26,'#21e6ff','center',12);
+    var low=timeLeft<10;
+    var tTxt = timeLeft>=100 ? String(Math.round(timeLeft)) : timeLeft.toFixed(1);
+    glowText(tTxt,W/2+34,63,26,low?'#ff4d6d':(timeLeft>60?'#21e6ff':'#7cff4f'),'center',low?24:10);
+    ctx.fillStyle='rgba(124,58,237,.5)'; ctx.fillRect(W/2-12,26,1,41);
+  }
+
+  var slot=80;
+  if (dinoT>0){
+    var ending = dinoT<=DINO_WARN, beat = (Math.floor(dinoT*6)%2===0);
+    panel(W-236,slot,224,34);
+    monoText(T('RAMPAGE'),W-226,slot+23,12,ending?(beat?'#ffd23f':'#ff4d6d'):'#7cff4f');
+    ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-108,slot+12,84,11);
+    ctx.fillStyle = ending ? (beat?'#ffd23f':'#ff4d6d') : rainbowFill(W-108,slot+12,W-24,slot+23,6);
+    if (ending){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=12; }
+    ctx.fillRect(W-108,slot+12,84*(dinoT/DINO_TIME),11);
+    ctx.shadowBlur=0;
+    monoText(dinoT.toFixed(1)+'s',W-118,slot+23,12,ending?'#ffd23f':'#eaf6ff','right');
+    slot+=38;
+  }
+  if (odT>0){
+    var oEnd = odT<=DINO_WARN, oBeat = (Math.floor(odT*6)%2===0);
+    panel(W-236,slot,224,34);
+    monoText(T('OVERDRIVE'),W-226,slot+23,12,oEnd?(oBeat?'#ffd23f':'#ff4d6d'):'#ffd23f');
+    ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-98,slot+12,74,11);
+    ctx.fillStyle = oEnd&&!oBeat ? '#ff4d6d' : OD_COLS[(Math.floor(performance.now()/110))%OD_COLS.length];
+    ctx.shadowColor='#ffd23f'; ctx.shadowBlur=oEnd?14:8;
+    ctx.fillRect(W-98,slot+12,74*(odT/OD_TIME),11);
+    ctx.shadowBlur=0;
+    monoText(odT.toFixed(1)+'s',W-108,slot+23,12,oEnd?'#ffd23f':'#eaf6ff','right');
+  }
+
+  panel(W-236,12,224,62);
+  monoText(T('SPEED'),W-24,34,13,'#8a7ec4','right');
+  glowText(kmh+' km/h',W-24,63,26,spct>0.86?'#ff2fbe':'#ffffff','right',12);
+  ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-224,68,200,5);
+  var sg=ctx.createLinearGradient(W-224,0,W-24,0);
+  sg.addColorStop(0,'#21e6ff'); sg.addColorStop(0.7,'#ff2fbe'); sg.addColorStop(1,'#ffd23f');
+  ctx.fillStyle=sg; ctx.fillRect(W-224,68,200*spct,5);
+
+  /* CHAIN — only on screen while one is alive, and it drains visibly so you
+     can see exactly how long you have to find the next gap. */
+  if (chain>0){
+    var cf=clamp(chainT/NM_CHAIN_T,0,1);
+    var ccol = chain>=10 ? '#ff2fbe' : (chain>=5 ? '#ffd23f' : '#7cff4f');
+    panel(16,120,206,41);
+    monoText(T('NEARMISS'),26,137,12,'#8a7ec4');
+    glowText('x'+chain,212,147,24,ccol,'right',12);
+    ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(26,150,120,5);
+    ctx.fillStyle=ccol; ctx.shadowColor=ccol; ctx.shadowBlur=8;
+    ctx.fillRect(26,150,120*cf,5); ctx.shadowBlur=0;
+  }
+
+  /* -----------------------------------------------------------------
+     BOTTOM ROW — two stacked pairs instead of one crowded strip.
+     Left:  DRIFT over SHOTS.   Right: HULL over NEXT CHECKPOINT.
+     Every column stays inside 220px so nothing lands on the player
+     sprite, which spans roughly x=300..500 once you are the dinosaur.
+     ----------------------------------------------------------------- */
+  var BTAG=22;
+
+  /* Drift charge. Cyan is banked and safe; amber is still at risk in the drift
+     you are in, so the cost of crashing out of it is on screen. */
+  hudTag(T('DRIFTM'),16,394,BTAG,dPot>0?'#ffd23f':'#b9aef0');
+  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(16,400,200,13);
+  var wB=200*clamp(dBank,0,1), wP=200*clamp(dPot,0,1-dBank);
+  if (wB>0){
+    ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
+    ctx.fillRect(16,400,wB,13); ctx.shadowBlur=0;
+  }
+  if (wP>0){ ctx.fillStyle='#ffd23f'; ctx.fillRect(16+wB,400,wP,13); }
+  ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1;
+  ctx.strokeRect(16.5,400.5,199,12);
+
+  hudTag(odT>0?T('UNLIMITED'):T('SHOTS'),16,444,BTAG,
+         odT>0?'#ffd23f':(shots>0?'#21e6ff':'#b9aef0'));
+  var BS=1.5, ky=450;
+  for (var k=0;k<MAX_SHOTS;k++){
+    var kx=16+k*30;
+    if (odT>0 || k<shots){
+      var gc = odT>0 ? OD_COLS[(k+Math.floor(performance.now()/110))%OD_COLS.length] : '#21e6ff';
+      ctx.shadowColor=gc; ctx.shadowBlur=12; ctx.fillStyle=gc;
+      ctx.beginPath();
+      ctx.moveTo(kx+9*BS,ky);        ctx.lineTo(kx+15*BS,ky);
+      ctx.lineTo(kx+10*BS,ky+7*BS);  ctx.lineTo(kx+14*BS,ky+7*BS);
+      ctx.lineTo(kx+4*BS,ky+17*BS);  ctx.lineTo(kx+8*BS,ky+8*BS);
+      ctx.lineTo(kx+4*BS,ky+8*BS);
+      ctx.closePath(); ctx.fill(); ctx.shadowBlur=0;
+    } else {
+      ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
+      ctx.strokeRect(kx+4*BS+0.5,ky+0.5,11*BS,17*BS);
+    }
+  }
+  ctx.lineWidth=1;
+
+  /* Hull moves over to the right column so drift can sit above shots on the
+     left. The cruise tag takes the same slot at a smaller size — it is a
+     standing label, not a live readout, and at 22px it ran half the screen. */
+  if (mode==='cruise'){
+    hudTag(T('CRUISE_TAG'),W-16,398,15,'#7cff4f','right');
+  } else {
+    hudTag(T('HULL'),W-16,394,BTAG,'#b9aef0','right');
+    var hpMax=CH_().hp, hx0=W-16-(hpMax*34-6);
+    for (var i=0;i<hpMax;i++){
+      var bx=hx0+i*34;
+      if (i<health){
+        var col=health===1?'#ff4d6d':(health===2?'#ffd23f':'#7cff4f');
+        ctx.shadowColor=col; ctx.shadowBlur=14; ctx.fillStyle=col;
+        ctx.fillRect(bx,400,28,15); ctx.shadowBlur=0;
+      } else {
+        ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
+        ctx.strokeRect(bx+0.5,400.5,27,14);
+      }
+    }
+    ctx.lineWidth=1;
+  }
+
+  var barW=200, bx2=W-barW-16, by=452;
+  hudTag(T('NEXT_CP'),W-16,444,BTAG,'#b9aef0','right');
+  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(bx2,by,barW,13);
+  ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
+  ctx.fillRect(bx2,by,barW*clamp((position+Z_CAR-cpStart)/cpLen,0,1),13);
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(124,255,79,.65)'; ctx.lineWidth=1;
+  ctx.strokeRect(bx2+0.5,by+0.5,barW-1,12);
+
+  if (state==='playing') drawBendWarning();
+
+  if (Math.abs(playerX)>1 && state==='playing' && Math.floor(performance.now()/220)%2===0)
+    glowText(T('OFF_ROAD'),W/2,H-72,24,'#ffd23f','center',18);
+
+  drawMessages();
+}
+
+function iconHeart(cx,cy,sz){
+  var t=performance.now(), hue=(t/9)%360, i;
+  var g=ctx.createLinearGradient(cx-sz,cy-sz,cx+sz,cy+sz);
+  for (i=0;i<=4;i++) g.addColorStop(i/4,'hsl('+((hue+i*72)%360)+',100%,64%)');
+  ctx.shadowColor='hsl('+((hue+180)%360)+',100%,60%)'; ctx.shadowBlur=10;
+  heartPath(cx, cy+sz*0.45, sz*0.60);
+  ctx.fillStyle=g; ctx.fill();
+  ctx.shadowBlur=0;
+}
+function iconDino(cx,cy,sz){
+  var w=sz*2.0, h=w*0.72;
+  dinoPath(cx-w/2, cy-h/2, w/24, h/17, 0);
+  ctx.shadowColor='hsl('+(((performance.now()/9)+180)%360)+',100%,60%)'; ctx.shadowBlur=8;
+  ctx.fillStyle=rainbowFill(cx-w/2,cy-h/2,cx+w/2,cy+h/2);
+  ctx.fill(); ctx.shadowBlur=0;
+}
+function iconBolt(cx,cy,sz){
+  var g=ctx.createLinearGradient(cx,cy-sz,cx,cy+sz);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.5,'#8ef4ff'); g.addColorStop(1,'#21e6ff');
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
+  ctx.beginPath();
+  for (var i=0;i<BOLT.length;i++){
+    var px=cx+BOLT[i][0]*sz*0.78, py=cy+BOLT[i][1]*sz*0.62;
+    if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.fillStyle=g; ctx.fill();
+  ctx.shadowBlur=0;
+}
+
+/* Lap banners used to be loose glowing text that washed out against the
+   road. They now sit in one bordered box, sized to their contents. */
+function drawMessages(){
+  if (!msgs.length) return;
+  var i, L=[], maxW=0, totH=0, alpha=0;
+  for (i=0;i<msgs.length;i++){
+    var m=msgs[i], fs=m.big?22:14;
+    ctx.font='700 '+fs+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+    var w=ctx.measureText(m.t).width + (m.icon?fs*1.6:0);
+    L.push({m:m, fs:fs, w:w});
+    if (w>maxW) maxW=w;
+    totH += fs*1.42;
+    alpha=Math.max(alpha, clamp(m.life/0.55,0,1));
+  }
+  var bw=Math.min(W-70, maxW+52), bh=totH+26;
+  var bx=(W-bw)/2, by=120;
+
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.fillStyle='rgba(8,4,18,.86)';
+  rr(bx,by,bw,bh,10); ctx.fill();
+  ctx.lineWidth=3.5; ctx.strokeStyle=msgs[0].c;
+  ctx.shadowColor=msgs[0].c; ctx.shadowBlur=18;
+  rr(bx,by,bw,bh,10); ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,.16)';
+  rr(bx+5,by+5,bw-10,bh-10,7); ctx.stroke();
+
+  var y=by+13;
+  for (i=0;i<L.length;i++){
+    var ln=L[i], mm=ln.m, cy=y+ln.fs*0.78, tx=W/2;
+    ctx.globalAlpha=alpha*clamp(mm.life/0.55,0,1);
+    if (mm.icon){
+      var ix=W/2-ln.w/2+ln.fs*0.8;
+      if (mm.icon==='heart')     iconHeart(ix,cy-ln.fs*0.32,ln.fs*0.95);
+      else if (mm.icon==='bolt') iconBolt(ix,cy-ln.fs*0.32,ln.fs*0.95);
+      else                       iconDino(ix,cy-ln.fs*0.32,ln.fs*0.95);
+      tx=W/2+ln.fs*0.8;
+    }
+    glowText(mm.t,tx,cy,ln.fs,mm.c,'center',14);
+    y += ln.fs*1.42;
+  }
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* ---------------------------------------------------------------
+   SCREENS
+--------------------------------------------------------------- */
+function overlay(a){ ctx.fillStyle='rgba(6,2,14,'+a+')'; ctx.fillRect(0,0,W,H); }
+
+function drawTitle(){
+  overlay(0.62);
+  glowText(T('LOGO_A'),W/2,164,74,'#21e6ff','center',34);
+  glowText(T('LOGO_B'),W/2,232,74,'#ff2fbe','center',34);
+  ctx.fillStyle='rgba(124,58,237,.8)'; ctx.fillRect(W/2-150,250,300,2);
+  /* No tagline under the rule any more. The badge moves up into its slot and
+     the screen reads as logo, mode, two lines, prompt — four beats instead
+     of six. The badge is the one thing here that changes what ENTER is about
+     to do, so it gets the display face and a lit border rather than being one
+     more 12px caption among several. */
+  var cru=(mode==='cruise');
+  var mTxt=(cru?T('MODE_CRUISE'):T('MODE_RUN'));
+  var mCol=cru?'#7cff4f':'#21e6ff';
+  ctx.font='900 20px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  var mw=ctx.measureText(mTxt).width+44;
+  ctx.fillStyle=cru?'rgba(124,255,79,.14)':'rgba(33,230,255,.14)';
+  rr(W/2-mw/2,268,mw,36,8); ctx.fill();
+  ctx.strokeStyle=mCol; ctx.lineWidth=2.5;
+  ctx.shadowColor=mCol; ctx.shadowBlur=14;
+  rr(W/2-mw/2,268,mw,36,8); ctx.stroke();
+  ctx.shadowBlur=0; ctx.lineWidth=1;
+  glowText(mTxt,W/2,294,20,mCol,'center',12,'900');
+
+  /* 13px was fine on a desktop and about six real pixels on a phone, where
+     this canvas lands 800 logical px in roughly 374 physical ones. */
+  monoText(T('HINT2'),W/2,336,18,'#cfd6ff','center');
+  monoText(T('HINT3'),W/2,360,18,'#cfd6ff','center');
+  if (Math.floor(performance.now()/420)%2===0)
+    glowText(TOUCH?T('PRESS_DRIVE_TOUCH'):T('PRESS_DRIVE_KEY'),W/2,404,22,'#7cff4f','center',18);
+  if (!TOUCH) titleKeys(cru);
+  if (best>0) monoText(T('BEST_LINE')+best,W/2,464,12,'#8a7ec4','center');
+  /* Portrait phones only, and only until you have tried it sideways once.
+     Sized for a phone, not a desktop: the canvas is 800 logical px wide but
+     lands on ~374 physical ones, so anything under ~20px here arrives
+     unreadable. It takes the footer's slot rather than stacking under it. */
+  var nudge = TOUCH && !isLandscape() && !sawLandscape;
+  if (nudge){
+    ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/620);
+    glowText(T('ROTATE_HINT'),W/2,492,24,'#ffd23f','center',16);
+    ctx.globalAlpha=1;
+  } else {
+    monoText(saveOK ? T('SAVED_ON') : T('SAVED_OFF'),
+             W/2,478,10,saveOK?'#4e4677':'#6b5a1e','center');
+  }
+}
+
+/* The four keyboard shortcuts, as caps rather than as one 12px run-on line.
+   Laid out by measurement rather than by fixed columns: the labels differ in
+   length between English and Spanish, and hard-coded x positions drifted
+   apart the moment either string changed. */
+function titleKeys(cru){
+  var sz=26, fs=13, gap=30, pad=sz*0.32, i, x;
+  var items=[['G',T('TF_GARAGE')],['I',T('TF_INFO')],['L',T('TF_LANG')],
+             ['C',cru?T('MODE_RUN'):T('MODE_CRUISE')]];
+  ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
+  var total=0, ws=[];
+  for (i=0;i<items.length;i++){
+    ws[i]=sz+pad+ctx.measureText(items[i][1]).width;
+    total+=ws[i];
+  }
+  total+=gap*(items.length-1);
+  x=W/2-total/2;
+  for (i=0;i<items.length;i++){
+    keyCap(x,422,sz,items[i][0],items[i][1],fs);
+    x+=ws[i]+gap;
+  }
+}
+
+function drawPause(){
+  overlay(0.6);
+  glowText(T('PAUSED'),W/2,H/2-26,46,'#21e6ff','center',26);
+  if (TOUCH){
+    monoText(T('PAUSE_TOUCH'),W/2,H/2+16,12,'#a99fdc','center');
+  } else {
+    monoText(T('PAUSE_RESUME'),W/2,H/2+12,12,'#a99fdc','center');
+    monoText(T('PAUSE_GARAGE'),W/2,H/2+36,12,'#21e6ff','center');
+    monoText(T('PAUSE_INFO'),W/2,H/2+60,12,'#7cff4f','center');
+    monoText(T('PAUSE_LANG'),W/2,H/2+84,12,'#ff2fbe','center');
+  }
+}
+
+/* Reference sheet, opened on demand — the title screen stays sparse so the
+   rest is still yours to find out on the road.
+
+   Two columns on a desktop. On a phone the canvas is still 800 logical px
+   wide but lands on ~380 physical ones, so 11px type arrived at about five
+   real pixels. Touch therefore gets one full-width column at nearly double
+   the size, split across three pages rather than shrunk to fit. */
+
+/* An amber van, as seen from behind on the road, with its blinker
+   alternating sides so the icon reads as "this one changes lane". */
+function iconVan(cx,cy,w){
+  var vh=w*0.94, x=cx-w/2, yb=cy+vh/2;
+  ctx.fillStyle='#171019';
+  rr(x,yb-vh,w,vh,w*0.09); ctx.fill();
+  ctx.lineWidth=Math.max(1,w*0.055); ctx.strokeStyle='#ffd23f'; ctx.stroke();
+  ctx.fillStyle='rgba(160,205,255,.16)';
+  rr(cx-w*0.36,yb-vh*0.93,w*0.72,vh*0.24,w*0.05); ctx.fill();
+  var on=(Math.floor(performance.now()/230)%2)===0;
+  if (on){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=w*0.5; }
+  ctx.fillStyle=on?'#ffe98a':'#6b5a1e';
+  ctx.fillRect(cx-w*0.32,yb-vh-w*0.11,w*0.64,w*0.10);
+  ctx.shadowBlur=0;
+  var side=(Math.floor(performance.now()/1500)%2)===0?1:-1;
+  if ((Math.floor(performance.now()/105)%2)===0){
+    ctx.fillStyle='#ff9b1a'; ctx.shadowColor='#ff9b1a'; ctx.shadowBlur=w*0.5;
+    ctx.fillRect(side>0?cx+w*0.34:cx-w*0.50, yb-vh*0.50, w*0.16, vh*0.16);
+    ctx.shadowBlur=0;
+  }
+  ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=w*0.3;
+  ctx.fillStyle='#ff4747';
+  ctx.fillRect(cx-w*0.42,yb-vh*0.28,w*0.18,vh*0.11);
+  ctx.fillRect(cx+w*0.24,yb-vh*0.28,w*0.18,vh*0.11);
+  ctx.shadowBlur=0;
+}
+
+/* The three shot lights exactly as the HUD cycles them under overdrive.
+   Returns the width it used so text can sit after it. */
+function odPips(x,y,s){
+  for (var k=0;k<MAX_SHOTS;k++){
+    var kx=x+k*20*s;
+    var gc=OD_COLS[(k+Math.floor(performance.now()/110))%OD_COLS.length];
+    ctx.shadowColor=gc; ctx.shadowBlur=10*s; ctx.fillStyle=gc;
+    ctx.beginPath();
+    ctx.moveTo(kx+9*s,y);      ctx.lineTo(kx+15*s,y);
+    ctx.lineTo(kx+10*s,y+7*s); ctx.lineTo(kx+14*s,y+7*s);
+    ctx.lineTo(kx+4*s,y+17*s); ctx.lineTo(kx+8*s,y+8*s);
+    ctx.lineTo(kx+4*s,y+8*s);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+  return MAX_SHOTS*20*s;
+}
+
+/* A keyboard cap: rounded square, letter inside, caption to the right. */
+function keyCap(x,y,sz,letter,label,fs){
+  ctx.fillStyle='rgba(33,230,255,.10)';
+  rr(x,y,sz,sz,sz*0.22); ctx.fill();
+  ctx.lineWidth=Math.max(1.5,sz*0.07); ctx.strokeStyle='#21e6ff';
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=8;
+  rr(x,y,sz,sz,sz*0.22); ctx.stroke();
+  ctx.shadowBlur=0;
+  glowText(letter,x+sz/2,y+sz*0.72,sz*0.54,'#eaf6ff','center',6);
+  monoText(label,x+sz+sz*0.32,y+sz*0.68,fs,'#cfd6ff');
+}
+
+function infoHead(x,y,head,col,fs){
+  glowText(head,x,y,fs,col,'left',12);
+  var w=ctx.measureText(head).width||60;
+  ctx.fillStyle=col; ctx.globalAlpha=0.5;
+  ctx.fillRect(x,y+fs*0.26,w,Math.max(2,fs*0.08));
+  ctx.globalAlpha=1;
+}
+
+var infoPage=0;
+var INFO_PAGES=4;          /* touch only; the desktop shows everything at once */
+
+function drawInfo(){
+  overlay(0.92);
+  var big=TOUCH;
+  glowText(T('HOW_IT_WORKS'),W/2,big?56:52,big?34:30,'#21e6ff','center',20);
+  ctx.fillStyle='rgba(124,58,237,.8)';
+  ctx.fillRect(W/2-160,big?68:62,320,2);
+
+  if (big){
+    drawInfoTouch();
+    var dx=W/2-(INFO_PAGES-1)*9, i;
+    for (i=0;i<INFO_PAGES;i++){
+      ctx.fillStyle = i===infoPage ? '#7cff4f' : 'rgba(207,214,255,.28)';
+      ctx.beginPath(); ctx.arc(dx+i*18,468,5,0,Math.PI*2); ctx.fill();
+    }
+  } else {
+    drawInfoDesk();
+    glowText(T('INFO_BACK'),W/2,478,15,'#7cff4f','center',14);
+  }
+}
+
+function drawInfoDesk(){
+  var SFS=22, BFS=14, LH=20, LX=52, RX=428, i;
+
+  infoHead(LX,104,T('H_CONTROLS'),'#21e6ff',SFS);
+  monoText(T('CTRL1'),LX,132,BFS,'#cfd6ff');
+  monoText(T('CTRL2'),LX,152,BFS,'#cfd6ff');
+  keyCap(LX,     170,30,'P',T('K_PAUSE'), BFS);
+  keyCap(LX+168, 170,30,'M',T('K_SOUND'), BFS);
+  keyCap(LX,     212,30,'G',T('K_GARAGE'),BFS);
+  keyCap(LX+168, 212,30,'L',T('K_LANG'),  BFS);
+
+  infoHead(LX,268,T('H_DRIVING'),'#7cff4f',SFS);
+  monoText(T('DRV3'),LX,294,BFS,'#cfd6ff');
+  monoText(T('DRV4'),LX,312,BFS,'#cfd6ff');
+  monoText(T('DRV5'),LX,330,BFS,'#7cff4f');
+
+  infoHead(LX,362,T('H_SAVED'),'#7cff4f',SFS);
+  var sv = saveOK ? [T('SAVED_YES1'),T('SAVED_YES2')]
+                  : [T('SAVED_NO1'),T('SAVED_NO2'),T('SAVED_NO3')];
+  for (i=0;i<sv.length;i++) monoText(sv[i],LX,388+i*LH,BFS,'#8a7ec4');
+
+  infoHead(RX,104,T('H_RUN'),'#ff2fbe',SFS);
+  monoText(T('RUN1'),RX,130,BFS,'#cfd6ff');
+  monoText(T('RUN2'),RX,148,BFS,'#cfd6ff');
+  monoText(T('RUN3'),RX,166,BFS,'#cfd6ff');
+
+  infoHead(RX,196,T('H_HAZARDS'),'#ff6a3d',SFS);
+  iconVan(RX+16,220,30);
+  monoText(T('HAZ1'),RX+40,225,BFS,'#cfd6ff');
+
+  infoHead(RX,256,T('H_PICKUPS'),'#b06cff',SFS);
+  var gx=RX+30;
+  iconHeart(RX+12,272,15);
+  monoText(T('PU_HEART'),gx,280,BFS,'#cfd6ff');
+
+  iconBolt(RX+12,298,15);
+  monoText(T('PU_BOLT1'),gx,306,BFS,'#cfd6ff');
+  monoText(T('PU_BOLT2'),gx,324,BFS,'#cfd6ff');
+  var pw=odPips(gx,332,0.62);
+  monoText(T('PU_BOLT3')+OD_TIME+T('PU_BOLT3B'),gx+pw+8,345,BFS,'#ffd23f');
+  monoText(T('PU_BOLT4'),gx,363,BFS,'#ffd23f');
+  monoText(T('PU_BOLT5'),gx,381,BFS,'#ffd23f');
+
+  iconDino(RX+14,402,15);
+  monoText(T('PU_DINO1')+DINO_TIME+T('PU_DINO1B'),gx,408,BFS,'#cfd6ff');
+  monoText(T('PU_DINO2'),gx,426,BFS,'#cfd6ff');
+}
+
+function drawInfoTouch(){
+  var SFS=30, BFS=20, LH=30, X=70, i;
+
+  if (infoPage===0){
+    infoHead(X,116,T('H_CONTROLS'),'#21e6ff',SFS);
+    monoText(T('CTRL1'),X,156,BFS,'#cfd6ff');
+    monoText(T('CTRL2'),X,186,BFS,'#cfd6ff');
+    keyCap(X,     206,44,'P',T('K_PAUSE'), BFS);
+    keyCap(X+360, 206,44,'M',T('K_SOUND'), BFS);
+    keyCap(X,     256,44,'G',T('K_GARAGE'),BFS);
+    keyCap(X+360, 256,44,'L',T('K_LANG'),  BFS);
+
+    infoHead(X,346,T('H_DRIVING'),'#7cff4f',SFS);
+    monoText(T('DRV3'),X,384,BFS,'#cfd6ff');
+    monoText(T('DRV4'),X,412,BFS,'#cfd6ff');
+    monoText(T('DRV5'),X,440,BFS,'#7cff4f');
+
+  } else if (infoPage===1){
+    infoHead(X,116,T('H_RUN'),'#ff2fbe',SFS);
+    monoText(T('RUN1'),X,158,BFS,'#cfd6ff');
+    monoText(T('RUN2'),X,190,BFS,'#cfd6ff');
+    monoText(T('RUN3'),X,222,BFS,'#cfd6ff');
+
+    infoHead(X,276,T('H_HAZARDS'),'#ff6a3d',SFS);
+    iconVan(X+24,320,46);
+    monoText(T('HAZ1'),X+62,328,BFS,'#cfd6ff');
+
+  } else if (infoPage===2){
+    infoHead(X,116,T('H_PICKUPS'),'#b06cff',SFS);
+    var gx=X+48;
+    iconHeart(X+16,150,20);
+    monoText(T('PU_HEART'),gx,160,BFS,'#cfd6ff');
+
+    iconBolt(X+16,204,20);
+    monoText(T('PU_BOLT1'),gx,206,BFS,'#cfd6ff');
+    monoText(T('PU_BOLT2'),gx,236,BFS,'#cfd6ff');
+    var pw=odPips(gx,252,0.95);
+    monoText(T('PU_BOLT3')+OD_TIME+T('PU_BOLT3B'),gx+pw+12,270,BFS,'#ffd23f');
+    monoText(T('PU_BOLT4'),gx,302,BFS,'#ffd23f');
+    monoText(T('PU_BOLT5'),gx,332,BFS,'#ffd23f');
+
+    iconDino(X+18,372,20);
+    monoText(T('PU_DINO1')+DINO_TIME+T('PU_DINO1B'),gx,378,BFS,'#cfd6ff');
+    monoText(T('PU_DINO2'),gx,410,BFS,'#cfd6ff');
+
+  } else {
+    infoHead(X,116,T('H_CRUISE'),'#7cff4f',SFS);
+    monoText(T('CRU1'),X,158,BFS,'#cfd6ff');
+    monoText(T('CRU2'),X,190,BFS,'#cfd6ff');
+
+    infoHead(X,250,T('H_SAVED'),'#7cff4f',SFS);
+    var sv = saveOK ? [T('SAVED_YES1'),T('SAVED_YES2')]
+                    : [T('SAVED_NO1'),T('SAVED_NO2'),T('SAVED_NO3')];
+    for (i=0;i<sv.length;i++) monoText(sv[i],X,292+i*LH,BFS,'#8a7ec4');
+  }
+}
+
+function drawOver(){
+  overlay(0.7);
+  glowText(endReason==='WRECKED'?T('OVER_WRECKED'):T('OVER_TIMEUP'),W/2,164,56,'#ff2fbe','center',28);
+  monoText(T('OVER_FINAL'),W/2,210,12,'#8a7ec4','center');
+  glowText(String(score|0),W/2,252,44,'#ffffff','center',16);
+  monoText(T('OVER_LAPS')+lap+T('OVER_OVERTAKES')+overtakes+T('OVER_BEST')+best,W/2,292,13,'#a99fdc','center');
+  if (Math.floor(performance.now()/420)%2===0)
+    glowText(T('OVER_AGAIN'),W/2,362,20,'#7cff4f','center',18);
+  monoText(T('OVER_GARAGE'),W/2,394,12,'#21e6ff','center');
+}
+
+function swatchRow(label,yy,list,sel,active,paintSw){
+  monoText(label,116,yy+13,11,active?'#ffffff':'#8a7ec4');
+  if (active){
+    ctx.fillStyle='#7cff4f';
+    ctx.beginPath(); ctx.moveTo(99,yy+4); ctx.lineTo(108,yy+9); ctx.lineTo(99,yy+14); ctx.closePath(); ctx.fill();
+  }
+  var x0=248, sw=30, gap=7, i, x;
+  for (i=0;i<list.length;i++){
+    x=x0+i*(sw+gap);
+    ctx.fillStyle='rgba(10,5,22,.75)';
+    ctx.fillRect(x,yy,sw,18);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x,yy,sw,18); ctx.clip();
+    paintSw(x,yy,sw,18,list[i],i);
+    ctx.restore();
+    if (i===sel){
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+      ctx.strokeRect(x-2.5,yy-2.5,sw+5,23);
+    } else {
+      ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=1;
+      ctx.strokeRect(x+0.5,yy+0.5,sw-1,17);
+    }
+  }
+  monoText(list[sel].n, x0+list.length*(sw+gap)+8, yy+13, 10, active?'#ffffff':'#a99fdc');
+}
+
+function swColour(x,y,w,h,item,i){
+  ctx.fillStyle=item.c; ctx.shadowColor=item.c; ctx.shadowBlur=10;
+  ctx.fillRect(x+2,y+2,w-4,h-4); ctx.shadowBlur=0;
+}
+function swPaint(x,y,w,h,item){
+  var g=ctx.createLinearGradient(0,y,0,y+h);
+  g.addColorStop(0,item.a); g.addColorStop(1,item.b);
+  ctx.fillStyle=g; ctx.fillRect(x+1,y+1,w-2,h-2);
+}
+function swShape(x,y,w,h,item,i){
+  ctx.save();
+  ctx.translate(x+w/2, y+h*0.84);
+  drawLightBar(w*0.96, 0, NEONS[lightI].c, i);
+  ctx.restore();
+}
+function swEye(x,y,w,h,item,i){
+  if (i===0){
+    ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1;
+    ctx.strokeRect(x+7.5,y+5.5,w-15,h-11);
+    return;
+  }
+  ctx.save();
+  ctx.translate(x+w/2, y+h/2);
+  drawEyes(w*1.95, 0, i, false);
+  ctx.restore();
+}
+
+/* The chassis swatch is a three-bar readout — speed, grip, health — so the
+   trade-off is legible from the swatch alone before you read the numbers. */
+function swChassis(x,y,w,h,item){
+  ctx.fillStyle='rgba(10,5,22,.9)'; ctx.fillRect(x,y,w,h);
+  var bars=[item.spd/1.20, item.grip/1.20, item.hp/5], i, bw=(w-8)/3;
+  for (i=0;i<3;i++){
+    var bh=Math.max(2,(h-6)*clamp(bars[i],0,1));
+    ctx.fillStyle=item.c; ctx.globalAlpha=0.35+0.22*i;
+    ctx.fillRect(x+3+i*bw, y+h-3-bh, bw-2, bh);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawGarage(){
+  overlay(0.88);
+  glowText(T('GARAGE'),W/2,48,32,'#21e6ff','center',20);
+  monoText(T('GAR_HINT'),W/2,66,11,'#a99fdc','center');
+
+  ctx.save();
+  ctx.translate(W/2,180+Math.sin(performance.now()/700)*3);
+  paintCar(140,{brake:false, glow:0.55+0.2*Math.sin(performance.now()/500)});
+  ctx.restore();
+
+  /* Live stats for whatever chassis is selected, so the numbers move while
+     you cycle the row rather than being buried in a submenu. */
+  var ch=CH_(), sx=W/2;
+  monoText(ch.n, sx-150, 212, 12, ch.c);
+  monoText(T('GAR_SPD') +' '+Math.round(ch.spd*100) +'%', sx-46, 212, 12, '#cfd6ff');
+  monoText(T('GAR_GRIP')+' '+Math.round(ch.grip*100)+'%', sx+50, 212, 12, '#cfd6ff');
+  monoText(T('GAR_HP')  +' '+ch.hp,                       sx+156, 212, 12, '#cfd6ff');
+
+  swatchRow(T('GAR_TRIM'),     236, NEONS,   trimI,    garRow===0, swColour);
+  swatchRow(T('GAR_BARCOL'),   272, NEONS,   lightI,   garRow===1, swColour);
+  swatchRow(T('GAR_BARSHAPE'), 308, BARS,    shapeI,   garRow===2, swShape);
+  swatchRow(T('GAR_EYES'),     344, EYES,    eyeI,     garRow===3, swEye);
+  swatchRow(T('GAR_PAINT'),    380, PAINTS,  paintI,   garRow===4, swPaint);
+  swatchRow(T('GAR_CHASSIS'),  416, CHASSIS, chassisI, garRow===5, swChassis);
+
+  glowText(T('GAR_BACK'), W/2, 466, 15, '#7cff4f','center',14);
+}
+
+/* ---------------------------------------------------------------
+   FRAME
+--------------------------------------------------------------- */
+function render(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,W*dpr,H*dpr); // Clear taking scaling into account
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  var sx=0, sy=0;
+  if (shake>0.3){ sx=(Math.random()*2-1)*shake; sy=(Math.random()*2-1)*shake*0.6; }
+  ctx.save();
+  ctx.translate(sx,sy);
+
+  drawSky();
+  drawGround();
+  drawRoad();
+  drawDecor();
+  drawPosts();
+  drawGate();
+
+  var sorted=cars.slice();
+  for (var q3=0;q3<pickups.length;q3++) sorted.push(pickups[q3]);
+  if (ufo)   sorted.push(ufo);
+  for (var q=0;q<pshots.length;q++) sorted.push(pshots[q]);
+  for (var q2=0;q2<blasts.length;q2++) sorted.push(blasts[q2]);
+  sorted.sort(function(a,b){ return b.z-a.z; });
+  for (var i=0;i<sorted.length;i++){
+    if (sorted[i].kind==='heart')     drawHeart(sorted[i]);
+    else if (sorted[i].kind==='bolt') drawBoost(sorted[i]);
+    else if (sorted[i].kind==='dino') drawDinoPickup(sorted[i]);
+    else if (sorted[i].isUfo)   drawUfo(sorted[i]);
+    else if (sorted[i].isShot)  drawShot(sorted[i]);
+    else if (sorted[i].isBlast) drawBlast(sorted[i]);
+    else                        drawTraffic(sorted[i]);
+  }
+
+  drawPlayer();
+  drawNearMissPops();
+  ctx.restore();
+
+  if (flash>0){ ctx.fillStyle='rgba(124,255,79,'+(flash*0.28).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
+  if (hitFlash>0){ ctx.fillStyle='rgba(255,60,90,'+(hitFlash*0.34).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
+
+  if (state!=='garage' && state!=='info') drawHUD();
+  if (state==='title')    drawTitle();
+  if (state==='paused')   drawPause();
+  if (state==='gameover') drawOver();
+  if (state==='garage')   drawGarage();
+  if (state==='info')     drawInfo();
+}
+
+var last=performance.now();
+function loop(now){
+  var dt=Math.min(0.05,(now-last)/1000); last=now;
+  update(dt);
+  syncPad();
+  render();
+  requestAnimationFrame(loop);
+}
+loadGame();
+applyStaticText();
+scheduleCircuit();
+noteLandscape();   /* must follow loadGame(): it can write, and writing
+                      before the read would clobber the saved record */
+reset();
+state='title';
+requestAnimationFrame(loop);
+
+})();
+</script>
+<!-- Separate from the game's script on purpose: that one runs inside a
+     closure, and the registration has to sit outside it. -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){ /* offline play just won't be available */ });
+  });
+}
+</script>
+</body>
+</html>
