@@ -573,7 +573,7 @@ var DR_MIN_SPD  = 0.78;   // share of maxS below which a drift pays nothing
 var DR_MIN_BEND = 0.18;   // share of S_PEAK below which the road reads straight
 var PW    = CAR_W * PPU_CAR;      // drawn width == hitbox width
 var CP_BONUS   = 32;   // (legacy) the real award now scales with the leg
-var CLOCK_CAP  = 48;   // ...but only through lap 3; after that time banks freely
+                       // CLOCK_CAP removed 2026-08-18 — see the checkpoint block
 var CRASH_TIME = 2;
 
 var FOG = [44,14,74];
@@ -676,17 +676,37 @@ function bend(zRel){ return curveAt(position+zRel)-cAnchor; }
 /* ---------------------------------------------------------------
    DIFFICULTY
 --------------------------------------------------------------- */
-function maxSpeedFor(l){ return Math.min(14400, 10300 + (l-1)*780) * CH_().spd; }
+/* The whole block below was re-derived on 2026-08-18 against a driving
+   simulation rather than arithmetic. The old numbers assumed a leg takes
+   lapLength/maxSpeedFor(l) seconds — flat out, start to finish. Measured, that
+   is true on lap 1 and nowhere near true after lap 6: from there you are
+   threading traffic and lifting off, and the only genuinely flat-out seconds
+   are inside the rampage and overdrive windows. At lap 12 the leg takes ~44s
+   against a 35s flat-out time. Every constant here is set from the measured
+   time, not the divided one. */
+function maxSpeedFor(l){ return Math.min(14800, 11500 + (l-1)*640) * CH_().spd; }
 /* What one wrecked car is worth. Doubled while you are the dinosaur: rampage
    is short, it ends whether you used it well or not, and paying flat made it
    a survival break rather than a scoring window. Both kill sites read this,
    so ramming and shooting can never drift apart. */
 function killScore(){ return 300*(1+0.2*(lap-1))*(dinoT>0?2:1); }
-function lapLength(l){   return Math.min(460000, 220000 + (l-1)*45000); }
-/* Legs get longer every checkpoint, so a flat award slowly starved you: by
-   lap 7 a PERFECT run cleared the leg with 0.1s to spare. The award now pays
-   for the leg you are about to drive, plus 28% for traffic and mistakes. */
-function cpBonus(l){     return Math.round(lapLength(l)/maxSpeedFor(l)*1.28); }
+/* Shorter than before at the start — the first checkpoint now lands at ~17s
+   instead of 21s — and longer than before at the end. 520k rather than 620k:
+   a 620k leg runs ~57s, and dying 50 seconds from the nearest checkpoint
+   reads as unfair rather than tense. */
+function lapLength(l){   return Math.min(520000, 190000 + (l-1)*41000); }
+/* THE CLOCK. The award used to be a flat 1.28 x the flat-out leg time, which
+   means it was DEFINED as 28% more time than the leg costs — so a clean lap
+   banked ~+9s at every lap, forever, and by lap 12 you were carrying 140s and
+   the timer was decoration. Two things fix that. One: from the mid laps the
+   leg takes far longer than flat-out, so a fixed multiple of flat-out time
+   quietly tightens on its own. Two: this taper, which stops the early laps
+   compounding. Measured result — margin runs +9s on lap 1, crosses zero at
+   lap 9, and sits near -4s a lap after that, so the clock peaks around 116s
+   and then drains. The run has an ending again.
+   Too harsh? Raise the 1.16 floor: 1.20 gives -2.6s/lap late, 1.24 ~breaks even. */
+function cpMult(l){      return Math.max(1.16, 1.60 - (l-1)*0.055); }
+function cpBonus(l){     return Math.round(lapLength(l)/maxSpeedFor(l)*cpMult(l)); }
 /* Two slopes, not one. Every curve in this block used to flatten at lap 7,
    which is why laps 9 and 10 played identically to 7 — measured at 2.14 cars
    passed per second and 11.3 cars on the road ahead, flat forever. The second
@@ -696,13 +716,27 @@ function cpBonus(l){     return Math.round(lapLength(l)/maxSpeedFor(l)*1.28); }
    Note that the spawn gate is what actually sets density here — clusterWin
    and maxCluster measured a 0% rejection rate at every lap, so they are not
    the lever and are left alone. */
-function trafficTop(l){  return l<=7 ? Math.min(6600, 3300 + (l-1)*550)
-                                     : Math.min(7300, 6600 + (l-7)*140); }
-function spawnGap(l){    return l<=7 ? Math.max(0.42, 1.15 - (l-1)*0.122)
-                                     : Math.max(0.28, 0.42 - (l-7)*0.028); }
-function clusterWin(l){  return Math.max(3000, 5600 - (l-1)*435); }
-function maxCluster(l){  return l<3 ? 2 : 3; }
-function weaverOdds(l){  return l<8 ? 0 : Math.min(0.42, 0.18 + (l-8)*0.06); }
+function trafficTop(l){  return l<=6 ? Math.min(6600, 3800 + (l-1)*560)
+                                     : Math.min(7400, 6600 + (l-6)*115); }
+/* Density. Lap 1 was 0.83 cars a second — one car every 1.2 seconds spread
+   across four lanes — which is why nobody who tried the game for ninety
+   seconds ever saw it get interesting. It now opens at 1.15 and keeps
+   climbing past where the old curve flattened.
+   Simulated against this spawner including its own refusals: it declines a
+   spawn when three cars already sit inside clusterWin, or when placing one
+   would leave fewer than two lanes open. Below ~0.20 those refusals start to
+   bite (3-4% at lap 16) — that is the practical ceiling of a four-lane road,
+   and going past it means raising maxCluster to 4, which throws away the
+   guarantee that a gap exists at all. Do not. */
+function spawnGap(l){    return l<=7 ? Math.max(0.36, 0.83 - (l-1)*0.078)
+                                     : Math.max(0.20, 0.36 - (l-7)*0.020); }
+function clusterWin(l){  return Math.max(2600, 4600 - (l-1)*260); }
+function maxCluster(l){  return l<2 ? 2 : 3; }
+/* Vans from lap 5 instead of lap 8 — three and a half minutes of waiting for
+   the signature hazard was most of why the early game felt empty. Capped at
+   38%: maxCluster only guarantees a gap at the moment a car is CREATED, and
+   weavers move afterwards, so a high share turns "hard" into "random". */
+function weaverOdds(l){  return l<5 ? 0 : Math.min(0.38, 0.14 + (l-5)*0.045); }
 
 /* ---------------------------------------------------------------
    THE CAR YOU BUILT
@@ -832,7 +866,12 @@ var STR={
     T_LAP:'LAP ', T_LAP_END:'  \u00b7  TOP SPEED UP',
     T_HULL_N:' HEALTH PICKUPS THIS LEG', T_HULL_1:'HEALTH PICKUP THIS LEG',
     T_ENERGY:'ENERGY SHOT THIS LEG', T_RAMPAGE_LEG:'RAMPAGE THIS LEG',
-    T_WEAVERS:'AMBER VANS CHANGE LANE \u2014 WATCH THE ROOF ARROWS',
+    /* Two words and a triangle. The old string was 45 characters, which drew a
+       480px-wide banner across the middle of an 800px stage \u2014 on a phone that
+       is most of the road, arriving at the exact moment the road gets harder.
+       The full explanation still lives on the HOW IT WORKS page (HAZ1). */
+    T_WEAVERS:'VANS AHEAD',
+    T_SPD:'SPD',
     T_HULL_UP:'+1 HEALTH', T_HULL_FULL:'HEALTH FULL  +10000',
     T_OD_REFRESH:'OVERDRIVE REFRESHED', T_OD_ON:'OVERDRIVE  ',
     T_SHOT_LOADED1:'SHOT LOADED  ', T_SHOT_LOADED2:'/',
@@ -917,7 +956,8 @@ var STR={
     T_LAP:'VUELTA ', T_LAP_END:'  \u00b7  M\u00c1S VELOCIDAD M\u00c1XIMA',
     T_HULL_N:' CURACIONES ESTE TRAMO', T_HULL_1:'CURACI\u00d3N ESTE TRAMO',
     T_ENERGY:'DISPARO DE ENERG\u00cdA ESTE TRAMO', T_RAMPAGE_LEG:'ARRASE ESTE TRAMO',
-    T_WEAVERS:'LAS FURGONETAS \u00c1MBAR CAMBIAN DE CARRIL \u2014 MIRA LAS FLECHAS',
+    T_WEAVERS:'FURGONETAS',
+    T_SPD:'VEL',
     T_HULL_UP:'+1 SALUD', T_HULL_FULL:'SALUD AL M\u00c1XIMO  +10000',
     T_OD_REFRESH:'SOBRECARGA RENOVADA', T_OD_ON:'SOBRECARGA  ',
     T_SHOT_LOADED1:'DISPARO CARGADO  ', T_SHOT_LOADED2:'/',
@@ -1093,6 +1133,15 @@ function say(text,color,big,icon,life){
   msgs.push({t:text, c:color||'#ffffff', life:(life||1.9), big:!!big, icon:icon||null});
   if (msgs.length>5) msgs.shift();
 }
+/* A chip row instead of a sentence. What a leg carries — hearts, bolts, a
+   rampage, a top-speed bump — used to be one full-width line of English per
+   item, stacked. Four of them made a banner taller than the sky and wider than
+   the road. The same information is an icon and a count. */
+function sayChips(chips,color,life){
+  msgs.push({t:'', c:color||'#ffffff', life:(life||1.9), big:false,
+             icon:null, chips:chips});
+  if (msgs.length>5) msgs.shift();
+}
 
 /* ---------------------------------------------------------------
    AUDIO
@@ -1107,6 +1156,10 @@ var AUD_MSG=['T_SOUND_ON','T_MUSIC_OFF','T_SFX_OFF','T_SOUND_OFF'];
    strings are still in the tables for the desktop legend. */
 var audioMode=AUD_ALL;
 var A=null, muted=false, musicOn=true;
+/* Overall loudness. 1.0 is the level the game shipped at; this is +30%, asked
+   for because the mix read as quiet on a phone speaker and merely quiet-ish on
+   a laptop. Applied after the limiter — see audioInit. */
+var AUD_MAKEUP = 1.30;
 
 function applyAudioMode(){
   muted   = (audioMode===AUD_NOSFX || audioMode===AUD_NONE);
@@ -1119,8 +1172,23 @@ function cycleAudio(){
   padState=null;                  /* the pad label changed: force a repaint */
   saveGame();
 }
+/* Suspending the context is the only thing that actually silences WebAudio —
+   turning gains down leaves the graph running and, on a phone, audible after
+   you have left the game. Both live here so every caller does the same thing. */
+function audioSuspend(){
+  if (!A) return;
+  try{ if (A.ctx.suspend && A.ctx.state==='running') A.ctx.suspend(); }catch(_){}
+}
+function audioResume(){
+  if (!A) return;
+  try{ if (A.ctx.state==='suspended') A.ctx.resume(); }catch(_){}
+}
 function audioInit(){
-  if (A) return;
+  /* Already built: the job is no longer to construct the graph but to make sure
+     it is running, because we suspend it whenever the app goes to the
+     background. Every pad press and key press routes through here, so coming
+     back and touching anything wakes the sound up. */
+  if (A){ audioResume(); return; }
   try{
     var C=window.AudioContext||window.webkitAudioContext; if(!C) return;
     var actx=new C();
@@ -1130,7 +1198,14 @@ function audioInit(){
     var comp=actx.createDynamicsCompressor();
     comp.threshold.value=-8; comp.knee.value=6; comp.ratio.value=8;
     comp.attack.value=0.003; comp.release.value=0.15;
-    master.connect(comp); comp.connect(actx.destination);
+    /* Make-up gain, AFTER the limiter on purpose. Raising `master` instead
+       would just push more signal into the compressor and get most of the
+       increase squashed back out — the quiet parts would lift and the loud
+       parts would not. Post-limiter, everything rises by the same 30%, and the
+       limiter still owns the peaks: its output tops out near 0.55, so 0.55 x
+       1.30 = 0.72 stays clear of the 1.0 clipping ceiling. */
+    var makeup=actx.createGain(); makeup.gain.value=AUD_MAKEUP;
+    master.connect(comp); comp.connect(makeup); makeup.connect(actx.destination);
     var lp=actx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=760; lp.connect(master);
     var g=actx.createGain(); g.gain.value=0; g.connect(lp);
     var o1=actx.createOscillator(); o1.type='sawtooth'; o1.frequency.value=52; o1.connect(g);
@@ -1155,7 +1230,8 @@ function audioInit(){
     var sg=actx.createGain(); sg.gain.value=0;
     ns.connect(sf); sf.connect(sg); sg.connect(master);
     o1.start(); o2.start(); o3.start(); ns.start();
-    A={ctx:actx, master:master, g:g, o1:o1, o2:o2, o3:o3, lp:lp, wg:wg, wf:wf, sg:sg, sf:sf};
+    A={ctx:actx, master:master, makeup:makeup, g:g, o1:o1, o2:o2, o3:o3,
+       lp:lp, wg:wg, wf:wf, sg:sg, sf:sf};
     if (actx.state==='suspended') actx.resume();
     musInit();
   }catch(e){ A=null; }
@@ -1167,7 +1243,7 @@ function audioInit(){
    over lap-1 top speed, so it reads 1.0 early and past 1.6 on GLASS late.
    rev 1.0 reproduces the old top-speed tone exactly — everything above it is
    new range that did not exist before. */
-var SPD_REF    = 10300;  // lap-1 top speed, BALANCED: the 1.0 mark
+var SPD_REF    = 11500;  // lap-1 top speed, BALANCED: the 1.0 mark
 var ENG_IDLE   = 0.12;   // title screen and any not-driving state
 var ENG_DETUNE = 7;      // cents between o1 and o3; raise for more throb
 var ENG_VOL    = 0.33;   // engine trim: 1.0 is the original level, this is -67%
@@ -1348,7 +1424,10 @@ var MUS_TPBAR = 32;
 var MUS_BARS  = 16;
 var MUS_TICK  = 60/MUS_BPM/4;      /* seconds per tick */
 var MUS_KEY   = 15;                  /* BeepBox base pitch for the key */
-var MUS_VOL   = 1.9;                 /* whole-track trim, 0 silences music */
+/* Whole-track trim, 0 silences music. 1.9 -> 2.19 is the music alone up a
+   further 15% on top of the +30% AUD_MAKEUP gave everything: after that change
+   the effects sat right and the tune was still under them. */
+var MUS_VOL   = 2.19;
 
 /* note = [startTick, lengthTicks, pitch] inside one bar */
 var MUS_PAT=[
@@ -1557,14 +1636,36 @@ window.addEventListener('keydown', function(e){
 window.addEventListener('keyup', function(e){
   if (MAP[e.code]){ kbd[MAP[e.code]]=false; applyKeys(); e.preventDefault(); }
 });
-window.addEventListener('blur', function(){
-  kbd={}; held={up:0,down:0,left:0,right:0}; fireHeld=false; padDir=null; applyKeys();
+/* LEAVING THE GAME.
+   Everything that has to happen when the app stops being in front of you:
+   drop every held control, pause the run, save, and silence the audio.
+
+   The audio half is the part that was missing. `blur` alone is not enough on a
+   phone — an installed PWA often does not fire it when you swipe home or take
+   a call, so the context kept running and the music played on over the home
+   screen. `visibilitychange` fires in every one of those cases, and
+   `pagehide` covers the tab actually going away. All three land here. */
+function leaveGame(){
+  /* `padDir=null` used to sit here. Nothing has declared padDir since the pad
+     was rebuilt as fans, and this file is "use strict", so that line threw a
+     ReferenceError every single time the window blurred — taking the pause,
+     the save and (once it was added) the audio suspend down with it. The
+     handler had been dead for a while and nothing said so. fansRelease() is
+     what actually clears the pedals now. */
+  kbd={}; held={up:0,down:0,left:0,right:0}; fireHeld=false; applyKeys();
+  fansRelease();
   var lit=document.querySelectorAll('.tbtn.on');
   for (var li=0;li<lit.length;li++) lit[li].classList.remove('on');
   if (state==='playing') state='paused';
   saveGame();                       /* a record set mid-run isn't lost on a tab switch */
+  audioSuspend();
+}
+window.addEventListener('blur', leaveGame);
+window.addEventListener('pagehide', leaveGame);
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden) leaveGame();
+  else audioResume();               /* back in front: wake the graph up again */
 });
-window.addEventListener('pagehide', saveGame);
 function el(id){ return document.getElementById(id); }
 function bindHold(node,on,off){
   if (!node) return;
@@ -1622,13 +1723,32 @@ var FANS=[
     axis:true, ang:45, neut:38,
     ids:['wRight','wUp','wLeft'],
     keys:[['right'],[],['left']] },
+  /* Sector 3 is the trigger. It is not a wedge on the arc — it is the bar that
+     sits just under the pad — but it belongs to this fan because that is the
+     only way the right thumb can reach it. Before this, firing meant lifting
+     off the gas and tapping a separate button, which is why nobody used it.
+     Note keys[3] is ['up']: sliding onto the trigger must not cost you the
+     throttle, exactly as DRIFT keeps 'up' held while it adds 'down'. */
   { id:'fanR', vbw:210, vbh:210, pvx:205, pvy:205, dir:null,
     ring:true,  a0:90, span:90, rGas:132,
-    ids:['wGas','wDrift','wBrake'],
-    keys:[['up'],['up','down'],['down']] }
+    fireId:'bFire', fireIdx:3,
+    ids:['wGas','wDrift','wBrake','bFire'],
+    keys:[['up'],['up','down'],['down'],['up']] }
 ];
 function fanSector(f,e){
   var n=el(f.id); if (!n || !n.getBoundingClientRect) return f.axis?1:0;
+  /* The trigger bar is tested before any of the arc maths, and it has to be:
+     it sits below the pad but well inside the gas disc's radius, so the
+     distance check further down would read it as GAS. That is precisely why
+     sliding the thumb down off the gas never reached it. */
+  if (f.fireId){
+    var fn=el(f.fireId);
+    if (fn && fn.getBoundingClientRect){
+      var fr=fn.getBoundingClientRect();
+      if (fr.width>0 && e.clientX>=fr.left && e.clientX<=fr.right &&
+                        e.clientY>=fr.top  && e.clientY<=fr.bottom) return f.fireIdx;
+    }
+  }
   var r=n.getBoundingClientRect();
   var px=r.left+r.width*(f.pvx/f.vbw), py=r.top+r.height*(f.pvy/f.vbh);
   var dx=e.clientX-px, dy=e.clientY-py;      /* screen space, y downwards */
@@ -1661,7 +1781,7 @@ function fanSector(f,e){
 }
 function fanSet(f,idx){
   if (idx===f.dir) return;
-  var i,ks,n;
+  var i,ks,n, was=f.dir;
   if (f.dir!==null){ ks=f.keys[f.dir];
     for (i=0;i<ks.length;i++) held[ks[i]]=Math.max(0,held[ks[i]]-1); }
   f.dir=idx;
@@ -1669,6 +1789,19 @@ function fanSet(f,idx){
   applyKeys();
   for (i=0;i<f.ids.length;i++){ n=el(f.ids[i]); if (n) n.classList.remove('on'); }
   if (idx!==null){ n=el(f.ids[idx]); if (n) n.classList.add('on'); }
+  /* The trigger is not a key, so it cannot ride the held[] bookkeeping above.
+     Entering the sector fires one round; staying in it only keeps firing while
+     OVERDRIVE is lit, which is the fireHeld rule the main loop already owns. */
+  if (f.fireIdx!==undefined){
+    if (idx===f.fireIdx){
+      fireHeld=true; if (state==='playing') fire();
+      /* Light GAS too. Sliding onto the trigger keeps 'up' held, so letting the
+         gas wedge go dark would have the pad reporting a lift-off that never
+         happened — at 370 km/h that is the kind of thing you react to. */
+      n=el(f.ids[0]); if (n) n.classList.add('on');
+    }
+    else if (was===f.fireIdx) fireHeld=false;
+  }
 }
 function bindFan(f){
   var n=el(f.id); if (!n) return;
@@ -2377,37 +2510,66 @@ function update(dt){
     cpStart=nextCP; cpLen=lapLength(lap); nextCP=cpStart+cpLen;
     var award=cpBonus(lap);
     timeLeft += award;
-    /* Capping banked time made the late laps unwinnable: legs get longer and
-       traffic thicker, but the reward for a clean early run was thrown away.
-       From lap 4 the clock is a resource you earn early and spend late. */
-    if (lap<=3) timeLeft=Math.min(timeLeft, CLOCK_CAP);
+    /* The lap<=3 clamp to CLOCK_CAP is gone. It only ever bit a player who was
+       ALREADY doing well — someone struggling never reached 48s in the first
+       place — so all it did was confiscate the early margin from good play and
+       hand nothing to anyone. The generous early awards are the beginner
+       assist now, and the tapering multiplier plus the traffic curve take that
+       cushion back over the following ten laps. */
     score+=2500; flash=1;
-    say(T('T_CP')+award+T('T_CP_S'),'#7cff4f',true,null,CP_MSG);
-    say(T('T_LAP')+lap+T('T_LAP_END'),'#21e6ff',false,null,CP_MSG);
-    /* heart early in the leg, bolt later, so they never land on top of
-       each other and you get a reason to keep pushing through the middle */
-    /* hull kits scale with the punishment: one, then two, then three */
-    var hearts = lap>=11 ? 3 : (lap>=8 ? 2 : ((lap>=7 || lap%2===0) ? 1 : 0));
+    /* ONE CARD, NOT FIVE SENTENCES.
+       This block used to fire up to five separate say() lines at the same
+       instant. On lap 8 that was a 480x117 slab parked at y=120 — across the
+       horizon (y=212) and over the traffic you were closing on at 14,400
+       units a second. The card is now:
+         line 1  LAP n  +award        (the two numbers that matter)
+         line 2  chip row             (what this leg carries, as icons)
+         line 3  hazard alert         (only on the lap one is introduced)
+       heart early in the leg, bolt later, so they never land on top of each
+       other and you get a reason to keep pushing through the middle. Hull
+       kits scale with the punishment: one, then two, then three. */
+    /* The unlock schedule, moved forward. Everything interesting used to sit
+       behind minutes of driving: the first shot at 46s, the rampage at 103s,
+       the first lane-changing van at 201s. Someone trying the game out of
+       curiosity quit before any of it. Note also that the old heart rule was
+       `lap>=7 || lap%2===0`, which gave laps 2, 4 and 6 a heart and laps 1, 3
+       and 5 none — an accident of the modulo, not a decision. */
+    /* Three from lap 7, not from lap 10. The simulation had flagged that health
+       and not the clock was probably the meter that runs out after lap 10 —
+       1 to 2 crashes a leg against a 4-bar cap — and playtesting confirmed it.
+       The extra bar is the cheap fix; the clock multiplier stays as tuned. */
+    var hearts = lap>=7 ? 3 : 1;
+    var bolts  = lap>=6 ? 2 : 1;                   /* shooting from lap 1     */
+    var dinos  = lap>=3 ? 1 : 0;                   /* rampage at ~37s in      */
+    /* Only claim a speed bump when there is one. Top speed caps at lap 7, so
+       the old unconditional "TOP SPEED UP" was false on every lap after it. */
+    var spdUp  = maxSpeedFor(lap) > maxSpeedFor(lap-1);
+
+    say(T('T_LAP')+lap+'   +'+award+T('T_CP_S'),'#7cff4f',true,null,CP_MSG);
+    var chips=[];
+    if (hearts>0) chips.push({icon:'heart', n:hearts});
+    if (bolts >0) chips.push({icon:'bolt',  n:bolts});
+    if (dinos >0) chips.push({icon:'dino',  n:dinos});
+    if (spdUp)    chips.push({icon:'spd',   n:1, label:T('T_SPD')});
+    if (chips.length) sayChips(chips,'#21e6ff',CP_MSG);
+
     if (hearts>0){
       addPickup('heart',0.10,0.20);
       if (hearts>1) addPickup('heart',0.40,0.48);
       if (hearts>2) addPickup('heart',0.66,0.74);
-      say(hearts>1 ? (hearts+T('T_HULL_N')) : T('T_HULL_1'),
-          '#ff6ad5',false,'heart',CP_MSG);
     }
-    if (lap>=3){
+    if (bolts>0){
       addPickup('bolt',0.26,0.36);
-      if (lap>=7) addPickup('bolt',0.80,0.90);      /* a second round per leg */
-      /* named once, on the lap it first appears, then never again */
-      if (lap===3) say(T('T_ENERGY'),'#21e6ff',false,'bolt',CP_MSG);
+      if (bolts>1) addPickup('bolt',0.80,0.90);     /* a second round per leg */
     }
-    if (lap>=5){
-      addPickup('dino',0.52,0.62);
-      if (lap===5) say(T('T_RAMPAGE_LEG'),'#7cff4f',false,'dino',CP_MSG);
-    }
-    if (lap>=8 && !taughtWeavers){
+    if (dinos>0) addPickup('dino',0.52,0.62);
+    /* Must match weaverOdds() — this warning fired on lap 8 while the vans
+       themselves moved to lap 5, so for three laps you met the hazard with no
+       warning at all and then got told about it long after you had worked it
+       out. If weaverOdds moves again, move this with it. */
+    if (weaverOdds(lap)>0 && !taughtWeavers){
       taughtWeavers=true;
-      say(T('T_WEAVERS'),'#ffd23f',false,null,CP_MSG);
+      say(T('T_WEAVERS'),'#ffd23f',false,'warn',CP_MSG);
     }
     blip(660,0.10,'square',0.2);
     setTimeout(function(){ blip(990,0.16,'square',0.2); },110);
@@ -3990,23 +4152,132 @@ function iconBolt(cx,cy,sz){
   ctx.closePath(); ctx.fillStyle=g; ctx.fill();
   ctx.shadowBlur=0;
 }
+/* The hazard triangle. It carries the whole "something new is on the road"
+   message on its own, which is the point — the words next to it never need to
+   be longer than two. */
+function iconWarn(cx,cy,sz){
+  var r=sz*0.66;
+  ctx.shadowColor='#ffd23f'; ctx.shadowBlur=10;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-r);
+  ctx.lineTo(cx+r*0.98, cy+r*0.74);
+  ctx.lineTo(cx-r*0.98, cy+r*0.74);
+  ctx.closePath();
+  ctx.fillStyle='#ffd23f'; ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#1a0f00';                     /* the bang, knocked out */
+  ctx.fillRect(cx-r*0.12, cy-r*0.30, r*0.24, r*0.62);
+  ctx.beginPath(); ctx.arc(cx, cy+r*0.53, r*0.14, 0, Math.PI*2); ctx.fill();
+}
+/* Top speed went up. An arrow, because "TOP SPEED UP" was a whole line of
+   banner for one bit of information. */
+function iconSpd(cx,cy,sz){
+  var r=sz*0.62;
+  ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy-r);
+  ctx.lineTo(cx+r*0.86, cy+r*0.26);
+  ctx.lineTo(cx+r*0.33, cy+r*0.26);
+  ctx.lineTo(cx+r*0.33, cy+r*0.80);
+  ctx.lineTo(cx-r*0.33, cy+r*0.80);
+  ctx.lineTo(cx-r*0.33, cy+r*0.26);
+  ctx.lineTo(cx-r*0.86, cy+r*0.26);
+  ctx.closePath();
+  ctx.fillStyle='#7cff4f'; ctx.fill();
+  ctx.shadowBlur=0;
+}
+/* Every icon function takes a different `sz` to mean a different thing: the
+   dinosaur draws 2.00 units wide for sz=1, the bolt only 0.95 and 1.24 tall.
+   Passing them all the same number put the dinosaur at double everyone else's
+   size, overflowing its slot and landing on the row below. This table is each
+   icon's largest drawn dimension per unit of sz, so drawIcon can take a BOX —
+   the square the icon must fit inside — and every kind ends up the same
+   visual weight. Measure a new icon and add it here; do not eyeball it. */
+var ICON_UNIT = { heart:1.26, bolt:1.24, warn:1.29, spd:1.12, dino:1.85 };
+function drawIcon(kind,x,y,box){
+  var sz = box / (ICON_UNIT[kind] || 1.30);
+  if      (kind==='heart') iconHeart(x,y,sz);
+  else if (kind==='bolt')  iconBolt(x,y,sz);
+  else if (kind==='warn')  iconWarn(x,y,sz);
+  else if (kind==='spd')   iconSpd(x,y,sz);
+  else                     iconDino(x,y,sz);
+}
 
-/* Lap banners used to be loose glowing text that washed out against the
-   road. They now sit in one bordered box, sized to their contents. */
+/* Lap banners used to be loose glowing text that washed out against the road.
+   They now sit in one bordered box — and the box is fitted to the stage rather
+   than trusting the strings inside it to stay short. Two hard limits, because
+   this 800x500 canvas is squeezed into ~360px of phone glass and the horizon
+   sits at y=212:
+     WIDTH  — never more than half the road (MSG_MAXW).
+     HEIGHT — the bottom edge never passes MSG_FLOOR, which is above the
+              horizon. A banner cannot hide traffic you are closing on.
+   Both are enforced by scaling the whole card, so a long translation shrinks
+   rather than spills. One measure pass, one correction pass: every dimension
+   is linear in the scale, so the correction is exact and needs no search.
+
+   The chip icons are deliberately oversized — CHIP_ICON below is close to
+   double the label's own size — because they are read peripherally at 300 km/h,
+   not looked at. The row therefore carries its own line height (CHIP_LH) rather
+   than sharing the text lines'; the count next to each icon stays small, so
+   growing the picture costs almost no width. */
+var MSG_TOP   = 104;    /* clears the bend-warning chevrons, which sit at y=94 */
+var MSG_FLOOR = 207;    /* ...and stays above the horizon at y=212 */
+var CHIP_BOX  = 2.30;   /* icon box as a share of the chip row's unit    */
+var CHIP_SLOT = 1.16;   /* ...the horizontal slot it gets, box-relative  */
+var CHIP_LH   = 1.32;   /* ...and the row height it sits in, box-relative */
+var CHIP_NUM  = 1.60;   /* count text ("x3") as a share of the row unit      */
 function drawMessages(){
   if (!msgs.length) return;
-  var i, L=[], maxW=0, totH=0, alpha=0;
-  for (i=0;i<msgs.length;i++){
-    var m=msgs[i], fs=m.big?22:14;
-    ctx.font='700 '+fs+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
-    var w=ctx.measureText(m.t).width + (m.icon?fs*1.6:0);
-    L.push({m:m, fs:fs, w:w});
-    if (w>maxW) maxW=w;
-    totH += fs*1.42;
-    alpha=Math.max(alpha, clamp(m.life/0.55,0,1));
+  var i, j, alpha=0, MSG_MAXW=W*0.52;
+
+  function layout(sc){
+    var a, b, lines=[], wmax=0, tot=0, pad=Math.round(18*sc);
+    for (a=0;a<msgs.length;a++){
+      var m=msgs[a], fs, w=0, parts=null, lh, box=0;
+      if (m.chips){
+        fs=Math.max(9,Math.round(16*sc));
+        box=fs*CHIP_BOX; lh=box*CHIP_LH;
+        /* Two label sizes, on purpose. A COUNT is a number you read at a glance
+           next to its icon — "three hearts this leg" — so it is set at roughly
+           twice the old size and now carries about the same weight as the icon
+           beside it. A WORD label (only SPD/VEL) stays small: doubling that one
+           would make a caption shout louder than the pickups it sits among. */
+        var lf=Math.max(12,Math.round(fs*CHIP_NUM));
+        var lw=Math.max(8, Math.round(fs*0.80));
+        parts=[];
+        for (b=0;b<m.chips.length;b++){
+          var ch=m.chips[b];
+          var txt = ch.label ? ch.label : (ch.n>1 ? 'x'+ch.n : '');
+          var pf  = ch.label ? lw : lf;
+          ctx.font='800 '+pf+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+          var tw  = txt ? ctx.measureText(txt).width+fs*0.18 : 0;
+          parts.push({icon:ch.icon, txt:txt, iw:box*CHIP_SLOT, tw:tw, lf:pf});
+          w += box*CHIP_SLOT + tw + (b<m.chips.length-1 ? fs*0.42 : 0);
+        }
+      } else {
+        fs=Math.max(9,Math.round((m.big?20:13)*sc));
+        lh=fs*1.32; box=fs*1.90;
+        ctx.font='700 '+fs+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+        w=ctx.measureText(m.t).width + (m.icon?box*1.16:0);
+      }
+      lines.push({m:m, fs:fs, w:w, parts:parts, lh:lh, box:box});
+      if (w>wmax) wmax=w;
+      tot += lh;
+    }
+    return {lines:lines, bw:wmax+pad*2, bh:tot+pad, pad:pad};
   }
-  var bw=Math.min(W-70, maxW+52), bh=totH+26;
-  var bx=(W-bw)/2, by=120;
+
+  /* Same size on phone and desktop now. The icons exist to be caught in
+     peripheral vision, which is exactly where the small screen needs them
+     most; the width cap and the floor are what keep the card honest. */
+  var base = 1;
+  var lay  = layout(base);
+  var k    = Math.min(1, MSG_MAXW/lay.bw, (MSG_FLOOR-MSG_TOP)/lay.bh);
+  if (k < 0.995) lay = layout(base*k);
+
+  for (i=0;i<msgs.length;i++) alpha=Math.max(alpha, clamp(msgs[i].life/0.55,0,1));
+
+  var bw=lay.bw, bh=lay.bh, bx=(W-bw)/2, by=MSG_TOP;
 
   ctx.save();
   ctx.globalAlpha=alpha;
@@ -4019,19 +4290,34 @@ function drawMessages(){
   ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,.16)';
   rr(bx+5,by+5,bw-10,bh-10,7); ctx.stroke();
 
-  var y=by+13;
-  for (i=0;i<L.length;i++){
-    var ln=L[i], mm=ln.m, cy=y+ln.fs*0.78, tx=W/2;
+  /* Rows are laid out from their own centre line, not from a shared baseline —
+     the chip row is twice the height of a text row, so a common baseline would
+     hang the icons off the top of it. */
+  var y=by+lay.pad*0.5;
+  for (i=0;i<lay.lines.length;i++){
+    var ln=lay.lines[i], mm=ln.m, mid=y+ln.lh*0.5;
     ctx.globalAlpha=alpha*clamp(mm.life/0.55,0,1);
-    if (mm.icon){
-      var ix=W/2-ln.w/2+ln.fs*0.8;
-      if (mm.icon==='heart')     iconHeart(ix,cy-ln.fs*0.32,ln.fs*0.95);
-      else if (mm.icon==='bolt') iconBolt(ix,cy-ln.fs*0.32,ln.fs*0.95);
-      else                       iconDino(ix,cy-ln.fs*0.32,ln.fs*0.95);
-      tx=W/2+ln.fs*0.8;
+    if (ln.parts){
+      var px=W/2-ln.w/2;
+      for (j=0;j<ln.parts.length;j++){
+        var p=ln.parts[j];
+        drawIcon(p.icon, px+p.iw/2, mid, ln.box);
+        px += p.iw;
+        if (p.txt){
+          glowText(p.txt, px, mid+p.lf*0.36, p.lf, mm.c, 'left', 10, '800');
+          px += p.tw;
+        }
+        px += ln.fs*0.42;
+      }
+    } else {
+      var tx=W/2, cy=mid+ln.fs*0.36;
+      if (mm.icon){
+        drawIcon(mm.icon, W/2-ln.w/2+ln.box*0.58, mid, ln.box);
+        tx=W/2+ln.box*0.58;
+      }
+      glowText(mm.t,tx,cy,ln.fs,mm.c,'center',14);
     }
-    glowText(mm.t,tx,cy,ln.fs,mm.c,'center',14);
-    y += ln.fs*1.42;
+    y += ln.lh;
   }
   ctx.restore();
   ctx.globalAlpha=1;
