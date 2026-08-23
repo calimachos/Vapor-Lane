@@ -45,7 +45,14 @@
   #circuit{ position:fixed; inset:0; width:100%; height:100%;
             z-index:0; pointer-events:none }
   #stage{
-    position:relative; z-index:1;width:100%;max-width:940px;aspect-ratio:8/5;
+    /* Desktop/laptop gameplay window, widened 2026-08-23. +1.5cm top and
+       +1.5cm bottom = 3cm more height. aspect-ratio:8/5 is fixed, so width
+       has to grow by the same factor to keep that ratio: 3cm * 8/5 = 4.8cm,
+       i.e. 2.4cm added to each side. Only max-width is touched — height
+       still comes from aspect-ratio, so it grows automatically and stays
+       exactly proportional. Touch/mobile layouts are untouched: they carry
+       their own #stage max-width/max-height under (pointer:coarse) below. */
+    position:relative; z-index:1;width:100%;max-width:calc(940px + 4.8cm);aspect-ratio:8/5;
     border-radius:10px;background:#05020c;
     box-shadow:
       0 0 0 2px #2b1050,
@@ -65,11 +72,31 @@
   
   .keys{
     position:relative; z-index:1;
-    display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;
-    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8a7ec4;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;justify-content:center;
+    /* 2026-08-23: x2.5 at Carlos's request (11px -> 27.5px). This element is
+       desktop-only already — body.touch .keys{display:none} below hides it
+       on every touch layout — so no extra gating is needed here. Wraps to
+       two lines on a laptop-width window, which is expected and fine. */
+    font-size:27.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a7ec4;
   }
   .keys b{color:var(--cyan);font-weight:700}
-  @media (max-width:560px){ .keys{font-size:10px} }
+  @media (max-width:560px){ .keys{font-size:25px} }
+  /* 2026-08-23: trimmed to throttle/brake-drift/steer + info, at Carlos's
+     request — everything dropped (fire/start/garage/pause/sound/language)
+     is already on the title screen footer or the HOW IT WORKS page, so this
+     bar no longer needs to repeat it. The "I" is now a key-cap badge that
+     mirrors keyCap() in the canvas (title footer, info page): same ratios,
+     just in CSS since this row is DOM, not canvas — 2em box, 0.44em corner
+     radius (22% of size, matching sz*0.22), 0.07em cyan border+glow, near-
+     white glyph. Sized in em off .keys' own font-size, so it stays in ratio
+     if that 27.5px ever changes again. */
+  .keys b.kcap{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:2em;height:2em;margin-right:.22em;border-radius:.44em;
+    background:rgba(33,230,255,.10);border:.07em solid #21e6ff;
+    box-shadow:0 0 .3em rgba(33,230,255,.7);
+    color:#eaf6ff;letter-spacing:normal;text-shadow:0 0 .2em rgba(33,230,255,.8);
+  }
 
   /* ------------------------------------------------------------------
      TOUCH LAYOUT
@@ -464,13 +491,7 @@
   <span><b>&uarr;</b> <span id="kThrottle">throttle</span></span>
   <span><b>&darr;</b> <span id="kBrakeDrift">brake/drift</span></span>
   <span><b>&larr; &rarr;</b> <span id="kSteer">steer</span></span>
-  <span><b>Space</b> <span id="kFire">fire</span></span>
-  <span><b>Enter</b> <span id="kStart">start</span></span>
-  <span><b>G</b> <span id="kGarage">garage</span></span>
-  <span><b>I</b> <span id="kInfo">info</span></span>
-  <span><b>P</b> <span id="kPause">pause</span></span>
-  <span><b>M</b> <span id="kSound">sound</span></span>
-  <span><b>L</b> <span id="kLang">language</span></span>
+  <span><b class="kcap">I</b> <span id="kInfo">info</span></span>
 </div>
 
 <script>
@@ -891,7 +912,13 @@ var STR={
     PAD_BRAKE:'Brake', PAD_DRIFT:'Drift', PAD_GAS:'Gas',
     ROTATE_HINT:'\u21BB  TURN YOUR PHONE SIDEWAYS FOR A WIDER ROAD',
     K_THROTTLE:'throttle', K_BRAKEDRIFT:'brake/drift', K_STEER:'steer',
-    K_FIRE:'fire', K_START:'start', K_GARAGE:'garage', K_INFO:'info',
+    /* K_FIRE/K_START retired 2026-08-23 with the trimmed key legend (below-
+       stage bar now only repeats what isn't already on the title footer or
+       the HOW IT WORKS page). K_GARAGE/K_PAUSE/K_SOUND/K_LANG stay — the
+       info page's own keyCap() controls block still uses them. K_INFO's
+       text changed to match: the legend now says "how it works", matching
+       HOW_IT_WORKS, instead of the old bare "info". */
+    K_GARAGE:'garage', K_INFO:'how it works',
     K_PAUSE:'pause', K_SOUND:'audio', K_LANG:'language'
   },
   es:{
@@ -975,7 +1002,7 @@ var STR={
     PAD_BRAKE:'Freno', PAD_DRIFT:'Derrape', PAD_GAS:'Gas',
     ROTATE_HINT:'\u21BB  GIRA EL TEL\u00c9FONO PARA VER M\u00c1S CARRETERA',
     K_THROTTLE:'acelerar', K_BRAKEDRIFT:'frenar/derrape', K_STEER:'girar',
-    K_FIRE:'disparar', K_START:'iniciar', K_GARAGE:'garaje', K_INFO:'info',
+    K_GARAGE:'garaje', K_INFO:'cómo funciona',
     K_PAUSE:'pausa', K_SOUND:'audio', K_LANG:'idioma'
   }
 };
@@ -989,8 +1016,7 @@ function applyStaticText(){
   var ids={
     lblGas:'PAD_GAS', lblDrift:'PAD_DRIFT', lblBrake:'PAD_BRAKE',
     kThrottle:'K_THROTTLE', kBrakeDrift:'K_BRAKEDRIFT', kSteer:'K_STEER',
-    kFire:'K_FIRE', kStart:'K_START', kGarage:'K_GARAGE', kInfo:'K_INFO',
-    kPause:'K_PAUSE', kSound:'K_SOUND', kLang:'K_LANG'
+    kInfo:'K_INFO'
   };
   for (var id in ids){
     var node=el(id);
