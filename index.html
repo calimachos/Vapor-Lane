@@ -154,7 +154,7 @@
   .wheelicon circle{ fill:none; stroke:rgba(167,140,255,.75); stroke-width:2.2 }
   .wheelicon circle.hub{ fill:rgba(167,140,255,.75); stroke:none }
   .wheelicon path{ stroke:rgba(167,140,255,.75); stroke-width:2.2; fill:none }
-  .wlab.sm{ font-size:15px; font-weight:700; letter-spacing:.02em;
+  .wlab.sm{ font-size:14px; font-weight:700; letter-spacing:.02em;
             font-family:ui-monospace,Menlo,"Courier New",monospace }
   #bPause{ width:184px; height:34px; font-size:13px; letter-spacing:.3em }
   #bFire{ width:184px; height:54px }
@@ -500,6 +500,38 @@
 
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var W = 800, H = 500; // Base logical resolution
+
+/* ------------------------------------------------------------------
+   TYPE SCALE  (2026-09-04)
+
+   Seven steps, in this 800x500 logical space. Every piece of type in
+   the game picks a step from here; no call site invents its own size.
+   Hierarchy comes from SIZE + COLOUR + TREATMENT, never from a size
+   nudged a pixel or two away from its neighbour -- that was what made
+   the old screens read as noise. The two face stacks are unchanged.
+
+   SIZE and FACE are independent axes. BODY is usually mono prose, but
+   the secondary record readout is BODY in the display face; that is
+   deliberate, not a slip.
+   ------------------------------------------------------------------ */
+var TS = {
+  DISPLAY: 72,   /* the logo, and nothing else                         */
+  TITLE:   48,   /* moment headings over live play: PAUSA, GAME OVER   */
+  SUB:     32,   /* screen headings: COMO FUNCIONA, GARAJE, final score*/
+  HERO:    24,   /* live numbers, the one CTA per screen, section heads*/
+  BODY:    18,   /* prose meant to be read; secondary numbers          */
+  LABEL:   14,   /* every HUD label and menu key label                 */
+  MICRO:   11    /* footnotes and dense stat strips                    */
+};
+
+/* Touch multiplier. The stage is 800 logical px landing in roughly 374
+   physical ones on a phone, so the two smallest steps arrive at about
+   half their intended size. They grow TOGETHER, by one factor, instead
+   of one corner being hand-tuned larger than the rest -- that is what
+   left DERRAPE at 22px while PUNTOS sat at 13px. Only LABEL and MICRO
+   are multiplied: HERO and up are already large enough to survive the
+   squeeze, and growing them would burst the HUD panel geometry. */
+var UI = 1;
 var dpr = window.devicePixelRatio || 1;
 cv.width = W * dpr;
 cv.height = H * dpr;
@@ -522,6 +554,9 @@ var TOUCH = (function(){
     return (navigator.maxTouchPoints||0) > 0 && !window.matchMedia('(pointer: fine)').matches;
   }catch(e){ return false; }
 })();
+
+if (TOUCH) UI = 1.45;
+
 /* Shorter sight line on a phone: ~25% fewer sprites, props and grid lines to
    push each frame. Still leaves about 2.5s of warning on approaching traffic. */
 var MAXZ      = TOUCH ? 42000 : 56000;
@@ -837,10 +872,12 @@ var STR={
     /* Title footer: one key cap each, so these are labels only now. */
     TF_GARAGE:'GARAGE', TF_INFO:'HOW IT WORKS', TF_LANG:'IDIOMA',
     BEST_LINE:'BEST  ', SAVED_ON:'PROGRESS SAVED ON THIS DEVICE',
+    SAVE_TAG_ON:'SAVED', SAVE_TAG_OFF:'NOT SAVED',
     SAVED_OFF:'PROGRESS NOT SAVED HERE \u2014 DOWNLOAD THE FILE TO KEEP IT',
     PAUSED:'PAUSED', PAUSE_TOUCH:'USE THE BUTTONS BELOW',
     PAUSE_RESUME:'P OR ENTER \u2014 BACK TO THE ROAD', PAUSE_GARAGE:'G \u2014 GARAGE',
     PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
+    MENU_LINE:'ESC \u2014 MAIN MENU',
     HOW_IT_WORKS:'HOW IT WORKS', INFO_BACK:'I OR ENTER \u2014 BACK',
     H_CONTROLS:'CONTROLS', H_DRIVING:'DRIVING', H_SAVED:'SAVED',
     H_RUN:'THE RUN', H_HAZARDS:'HAZARDS', H_PICKUPS:'PICKUPS',
@@ -875,7 +912,7 @@ var STR={
     GAR_TRIM:'TRIM', GAR_BARCOL:'BAR COLOUR', GAR_BARSHAPE:'BAR SHAPE',
     GAR_EYES:'EYES', GAR_PAINT:'PAINT', GAR_BACK:'ENTER \u2014 BACK',
     GAR_CHASSIS:'CHASSIS', GAR_SPD:'SPD', GAR_GRIP:'GRIP', GAR_HP:'HP',
-    MODE_RUN:'TIMED RUN', MODE_CRUISE:'CRUISE', CRUISE_TAG:'CRUISE \u2014 NO CLOCK, NO WRECK',
+    MODE_RUN:'TIMED RUN', MODE_CRUISE:'CRUISE',
     T_CHAIN:'CHAIN x', NEARMISS:'NEAR MISS',
     OVER_WRECKED:'WRECKED', OVER_TIMEUP:'TIME UP', OVER_FINAL:'FINAL SCORE',
     OVER_LAPS:'LAPS ', OVER_OVERTAKES:'     OVERTAKES ', OVER_BEST:'     BEST ',
@@ -933,10 +970,12 @@ var STR={
     PRESS_DRIVE_TOUCH:'TOCA CONDUCIR ABAJO', PRESS_DRIVE_KEY:'PULSA ENTER PARA CONDUCIR',
     TF_GARAGE:'GARAJE', TF_INFO:'C\u00d3MO FUNCIONA', TF_LANG:'LANGUAGE',
     BEST_LINE:'R\u00c9CORD  ', SAVED_ON:'PROGRESO GUARDADO EN ESTE DISPOSITIVO',
+    SAVE_TAG_ON:'GUARDADO', SAVE_TAG_OFF:'SIN GUARDAR',
     SAVED_OFF:'PROGRESO NO GUARDADO \u2014 DESCARGA EL ARCHIVO PARA CONSERVARLO',
     PAUSED:'PAUSA', PAUSE_TOUCH:'USA LOS BOTONES DE ABAJO',
     PAUSE_RESUME:'P O ENTER \u2014 VOLVER A LA PISTA', PAUSE_GARAGE:'G \u2014 GARAJE',
     PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
+    MENU_LINE:'ESC \u2014 MEN\u00da PRINCIPAL',
     HOW_IT_WORKS:'C\u00d3MO FUNCIONA', INFO_BACK:'I O ENTER \u2014 VOLVER',
     H_CONTROLS:'CONTROLES', H_DRIVING:'CONDUCCI\u00d3N', H_SAVED:'GUARDADO',
     H_RUN:'LA CARRERA', H_HAZARDS:'PELIGROS', H_PICKUPS:'OBJETOS',
@@ -971,7 +1010,7 @@ var STR={
     GAR_TRIM:'ACABADO', GAR_BARCOL:'COLOR DE BARRA', GAR_BARSHAPE:'FORMA DE BARRA',
     GAR_EYES:'OJOS', GAR_PAINT:'PINTURA', GAR_BACK:'ENTER \u2014 VOLVER',
     GAR_CHASSIS:'CHASIS', GAR_SPD:'VEL', GAR_GRIP:'AGARRE', GAR_HP:'SAL',
-    MODE_RUN:'CONTRARRELOJ', MODE_CRUISE:'PASEO', CRUISE_TAG:'PASEO \u2014 SIN RELOJ NI CHOQUES',
+    MODE_RUN:'CONTRARRELOJ', MODE_CRUISE:'PASEO',
     T_CHAIN:'CADENA x', NEARMISS:'ROCE',
     OVER_WRECKED:'DESTRUIDO', OVER_TIMEUP:'TIEMPO AGOTADO', OVER_FINAL:'PUNTUACI\u00d3N FINAL',
     OVER_LAPS:'VUELTAS ', OVER_OVERTAKES:'     ADELANTOS ', OVER_BEST:'     R\u00c9CORD ',
@@ -1654,6 +1693,12 @@ window.addEventListener('keydown', function(e){
     else if (state==='paused') state='playing';
   }
   if (c==='KeyM'){ cycleAudio(); }
+  /* ESC — back to the main menu: the desktop twin of the mobile MAIN MENU
+     slab, and offered on exactly the same two screens it is. Not while
+     playing, where one stray keypress would bin a live run, and not on the
+     title screen, where there is nowhere to go. Garage and info intercept
+     Escape earlier as their own "back", so they never reach this. */
+  if (c==='Escape' && (state==='paused'||state==='gameover')){ saveGame(); state='title'; }
   if (c==='KeyL' && (state==='title'||state==='paused')){ toggleLang(); }
   /* Title only: switching mode mid-run would mean deciding what happens to a
      clock and a health bar that the other mode doesn't have. */
@@ -2836,11 +2881,10 @@ function monoText(txt,x,y,size,color,align){
   ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
   ctx.fillStyle=color; ctx.fillText(txt,x,y);
 }
-/* Bottom-row HUD labels. The top row keeps its mono face; down here the
-   labels are the heavy display face at double the size, tracked out, and
-   knocked out of a dark outline so they survive being drawn over a bright
-   road. Reason: on a phone the whole 800x500 stage is squeezed into about
-   360px of glass, so an 11px label was landing at roughly 5 real pixels. */
+/* Bottom-row HUD labels: heavy display face, tracked out, knocked out of a
+   dark outline. The outline is what makes them readable over a bright road --
+   that job belongs to contrast, never to size. Their SIZE is set by BTAG at
+   the top of the bottom row: HERO on desktop, LABEL * UI on touch. */
 function hudTag(txt,x,y,size,color,align){
   var ls = ('letterSpacing' in ctx);
   ctx.font='900 '+size+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
@@ -3991,35 +4035,37 @@ function drawHUD(){
   /* The whole top row is the old layout scaled up by 1.2 — panels, labels,
      readouts and bars alike — so the proportions that were tuned on a
      desktop survive intact and only the density changes. The two mini
-     panels underneath keep a 12px label instead of 13: at 13 the Spanish
-     SOBRECARGA ran straight into its own countdown. */
+     panels underneath sit at MICRO rather than LABEL: they are the only
+     place in the HUD where a label shares its row with a live countdown,
+     and at LABEL the Spanish SOBRECARGA runs straight into its own
+     seconds. Widening those two panels would let them join the rest. */
   panel(12,12,224,62);
-  monoText(T('SCORE'),24,34,13,'#8a7ec4');
-  glowText(pad(score|0,7),24,63,26,'#ffffff','left',10);
+  monoText(T('SCORE'),24,34,TS.LABEL*UI,'#8a7ec4');
+  glowText(pad(score|0,7),24,63,TS.HERO,'#ffffff','left',10);
 
   var beating = bestAtStart>0 && (score|0)>bestAtStart;
   panel(12,80,224,34);
-  monoText(T('BEST'),24,103,13,beating?'#7cff4f':'#8a7ec4');
+  monoText(T('BEST'),24,103,TS.LABEL*UI,beating?'#7cff4f':'#8a7ec4');
   if (beating){
-    monoText(T('NEW'),84,103,12,'#7cff4f');
+    monoText(T('NEW'),84,103,TS.LABEL*UI,'#7cff4f');
     ctx.globalAlpha=0.74+0.26*Math.abs(Math.sin(performance.now()/300));
-    glowText(pad(best,7),226,103,18,'#7cff4f','right',15);
+    glowText(pad(best,7),226,103,TS.BODY,'#7cff4f','right',15);
     ctx.globalAlpha=1;
   } else {
-    glowText(pad(best,7),226,103,18,'#a99fdc','right',7);
+    glowText(pad(best,7),226,103,TS.BODY,'#a99fdc','right',7);
   }
 
   panel(W/2-94,12,188,62);
   if (mode==='cruise'){
-    monoText(T('LAP'),W/2,34,13,'#8a7ec4','center');
-    glowText(String(lap),W/2,63,26,'#21e6ff','center',12);
+    monoText(T('LAP'),W/2,34,TS.LABEL*UI,'#8a7ec4','center');
+    glowText(String(lap),W/2,63,TS.HERO,'#21e6ff','center',12);
   } else {
-    monoText(T('LAP'),W/2-55,34,13,'#8a7ec4','center');
-    monoText(T('TIME'),W/2+34,34,13,'#8a7ec4','center');
-    glowText(String(lap),W/2-55,63,26,'#21e6ff','center',12);
+    monoText(T('LAP'),W/2-55,34,TS.LABEL*UI,'#8a7ec4','center');
+    monoText(T('TIME'),W/2+34,34,TS.LABEL*UI,'#8a7ec4','center');
+    glowText(String(lap),W/2-55,63,TS.HERO,'#21e6ff','center',12);
     var low=timeLeft<10;
     var tTxt = timeLeft>=100 ? String(Math.round(timeLeft)) : timeLeft.toFixed(1);
-    glowText(tTxt,W/2+34,63,26,low?'#ff4d6d':(timeLeft>60?'#21e6ff':'#7cff4f'),'center',low?24:10);
+    glowText(tTxt,W/2+34,63,TS.HERO,low?'#ff4d6d':(timeLeft>60?'#21e6ff':'#7cff4f'),'center',low?24:10);
     ctx.fillStyle='rgba(124,58,237,.5)'; ctx.fillRect(W/2-12,26,1,41);
   }
 
@@ -4027,30 +4073,30 @@ function drawHUD(){
   if (dinoT>0){
     var ending = dinoT<=DINO_WARN, beat = (Math.floor(dinoT*6)%2===0);
     panel(W-236,slot,224,34);
-    monoText(T('RAMPAGE'),W-226,slot+23,12,ending?(beat?'#ffd23f':'#ff4d6d'):'#7cff4f');
+    monoText(T('RAMPAGE'),W-226,slot+23,TS.MICRO*UI,ending?(beat?'#ffd23f':'#ff4d6d'):'#7cff4f');
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-108,slot+12,84,11);
     ctx.fillStyle = ending ? (beat?'#ffd23f':'#ff4d6d') : rainbowFill(W-108,slot+12,W-24,slot+23,6);
     if (ending){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=12; }
     ctx.fillRect(W-108,slot+12,84*(dinoT/DINO_TIME),11);
     ctx.shadowBlur=0;
-    monoText(dinoT.toFixed(1)+'s',W-118,slot+23,12,ending?'#ffd23f':'#eaf6ff','right');
+    monoText(dinoT.toFixed(1)+'s',W-118,slot+23,TS.MICRO*UI,ending?'#ffd23f':'#eaf6ff','right');
     slot+=38;
   }
   if (odT>0){
     var oEnd = odT<=DINO_WARN, oBeat = (Math.floor(odT*6)%2===0);
     panel(W-236,slot,224,34);
-    monoText(T('OVERDRIVE'),W-226,slot+23,12,oEnd?(oBeat?'#ffd23f':'#ff4d6d'):'#ffd23f');
+    monoText(T('OVERDRIVE'),W-226,slot+23,TS.MICRO*UI,oEnd?(oBeat?'#ffd23f':'#ff4d6d'):'#ffd23f');
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-98,slot+12,74,11);
     ctx.fillStyle = oEnd&&!oBeat ? '#ff4d6d' : OD_COLS[(Math.floor(performance.now()/110))%OD_COLS.length];
     ctx.shadowColor='#ffd23f'; ctx.shadowBlur=oEnd?14:8;
     ctx.fillRect(W-98,slot+12,74*(odT/OD_TIME),11);
     ctx.shadowBlur=0;
-    monoText(odT.toFixed(1)+'s',W-108,slot+23,12,oEnd?'#ffd23f':'#eaf6ff','right');
+    monoText(odT.toFixed(1)+'s',W-108,slot+23,TS.MICRO*UI,oEnd?'#ffd23f':'#eaf6ff','right');
   }
 
   panel(W-236,12,224,62);
-  monoText(T('SPEED'),W-24,34,13,'#8a7ec4','right');
-  glowText(kmh+' km/h',W-24,63,26,spct>0.86?'#ff2fbe':'#ffffff','right',12);
+  monoText(T('SPEED'),W-24,34,TS.LABEL*UI,'#8a7ec4','right');
+  glowText(kmh+' km/h',W-24,63,TS.HERO,spct>0.86?'#ff2fbe':'#ffffff','right',12);
   ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-224,68,200,5);
   var sg=ctx.createLinearGradient(W-224,0,W-24,0);
   sg.addColorStop(0,'#21e6ff'); sg.addColorStop(0.7,'#ff2fbe'); sg.addColorStop(1,'#ffd23f');
@@ -4062,8 +4108,8 @@ function drawHUD(){
     var cf=clamp(chainT/NM_CHAIN_T,0,1);
     var ccol = chain>=10 ? '#ff2fbe' : (chain>=5 ? '#ffd23f' : '#7cff4f');
     panel(16,120,206,41);
-    monoText(T('NEARMISS'),26,137,12,'#8a7ec4');
-    glowText('x'+chain,212,147,24,ccol,'right',12);
+    monoText(T('NEARMISS'),26,137,TS.LABEL*UI,'#8a7ec4');
+    glowText('x'+chain,212,147,TS.HERO,ccol,'right',12);
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(26,150,120,5);
     ctx.fillStyle=ccol; ctx.shadowColor=ccol; ctx.shadowBlur=8;
     ctx.fillRect(26,150,120*cf,5); ctx.shadowBlur=0;
@@ -4075,77 +4121,91 @@ function drawHUD(){
      Every column stays inside 220px so nothing lands on the player
      sprite, which spans roughly x=300..500 once you are the dinosaur.
      ----------------------------------------------------------------- */
-  var BTAG=22;
+  /* The four bottom tags are the mechanic readouts you steer by -- drift,
+     shots, hull, checkpoint -- not stats like PUNTOS and VELOCIDAD, so on a
+     desktop they take HERO, one step above the label row. That is deliberate
+     hierarchy, not the old mismatch: the old 22 was a hand-tuned number, this
+     is a step off the scale. On touch they stay exactly where the scale put
+     them (LABEL * UI), which is the size that reads correctly on a phone. */
+  /* The bottom row is live telemetry -- drift charge, ammo, hull, distance to
+     the next checkpoint. On the title screen every one of them is a placeholder
+     for a run that has not started, and they sat behind the menu as four big
+     words competing with it (DISPAROS and PROX. VUELTA landed straight on the
+     key legend). Nothing here is readable-but-idle; it is simply not yet true,
+     so it is not drawn. The top row stays: the record on it is real. */
+  if (state!=='title'){
+    var BTAG = TOUCH ? TS.LABEL*UI : TS.HERO;
 
-  /* Drift charge. Cyan is banked and safe; amber is still at risk in the drift
-     you are in, so the cost of crashing out of it is on screen. */
-  hudTag(T('DRIFTM'),16,394,BTAG,dPot>0?'#ffd23f':'#b9aef0');
-  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(16,400,200,13);
-  var wB=200*clamp(dBank,0,1), wP=200*clamp(dPot,0,1-dBank);
-  if (wB>0){
-    ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
-    ctx.fillRect(16,400,wB,13); ctx.shadowBlur=0;
-  }
-  if (wP>0){ ctx.fillStyle='#ffd23f'; ctx.fillRect(16+wB,400,wP,13); }
-  ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1;
-  ctx.strokeRect(16.5,400.5,199,12);
-
-  hudTag(odT>0?T('UNLIMITED'):T('SHOTS'),16,444,BTAG,
-         odT>0?'#ffd23f':(shots>0?'#21e6ff':'#b9aef0'));
-  var BS=1.5, ky=450;
-  for (var k=0;k<MAX_SHOTS;k++){
-    var kx=16+k*30;
-    if (odT>0 || k<shots){
-      var gc = odT>0 ? OD_COLS[(k+Math.floor(performance.now()/110))%OD_COLS.length] : '#21e6ff';
-      ctx.shadowColor=gc; ctx.shadowBlur=12; ctx.fillStyle=gc;
-      ctx.beginPath();
-      ctx.moveTo(kx+9*BS,ky);        ctx.lineTo(kx+15*BS,ky);
-      ctx.lineTo(kx+10*BS,ky+7*BS);  ctx.lineTo(kx+14*BS,ky+7*BS);
-      ctx.lineTo(kx+4*BS,ky+17*BS);  ctx.lineTo(kx+8*BS,ky+8*BS);
-      ctx.lineTo(kx+4*BS,ky+8*BS);
-      ctx.closePath(); ctx.fill(); ctx.shadowBlur=0;
-    } else {
-      ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
-      ctx.strokeRect(kx+4*BS+0.5,ky+0.5,11*BS,17*BS);
+    /* Drift charge. Cyan is banked and safe; amber is still at risk in the drift
+       you are in, so the cost of crashing out of it is on screen. */
+    hudTag(T('DRIFTM'),16,394,BTAG,dPot>0?'#ffd23f':'#b9aef0');
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(16,400,200,13);
+    var wB=200*clamp(dBank,0,1), wP=200*clamp(dPot,0,1-dBank);
+    if (wB>0){
+      ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
+      ctx.fillRect(16,400,wB,13); ctx.shadowBlur=0;
     }
-  }
-  ctx.lineWidth=1;
+    if (wP>0){ ctx.fillStyle='#ffd23f'; ctx.fillRect(16+wB,400,wP,13); }
+    ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1;
+    ctx.strokeRect(16.5,400.5,199,12);
 
-  /* Hull moves over to the right column so drift can sit above shots on the
-     left. The cruise tag takes the same slot at a smaller size — it is a
-     standing label, not a live readout, and at 22px it ran half the screen. */
-  if (mode==='cruise'){
-    hudTag(T('CRUISE_TAG'),W-16,398,15,'#7cff4f','right');
-  } else {
-    hudTag(T('HULL'),W-16,394,BTAG,'#b9aef0','right');
-    var hpMax=CH_().hp, hx0=W-16-(hpMax*34-6);
-    for (var i=0;i<hpMax;i++){
-      var bx=hx0+i*34;
-      if (i<health){
-        var col=health===1?'#ff4d6d':(health===2?'#ffd23f':'#7cff4f');
-        ctx.shadowColor=col; ctx.shadowBlur=14; ctx.fillStyle=col;
-        ctx.fillRect(bx,400,28,15); ctx.shadowBlur=0;
+    hudTag(odT>0?T('UNLIMITED'):T('SHOTS'),16,444,BTAG,
+           odT>0?'#ffd23f':(shots>0?'#21e6ff':'#b9aef0'));
+    var BS=1.5, ky=450;
+    for (var k=0;k<MAX_SHOTS;k++){
+      var kx=16+k*30;
+      if (odT>0 || k<shots){
+        var gc = odT>0 ? OD_COLS[(k+Math.floor(performance.now()/110))%OD_COLS.length] : '#21e6ff';
+        ctx.shadowColor=gc; ctx.shadowBlur=12; ctx.fillStyle=gc;
+        ctx.beginPath();
+        ctx.moveTo(kx+9*BS,ky);        ctx.lineTo(kx+15*BS,ky);
+        ctx.lineTo(kx+10*BS,ky+7*BS);  ctx.lineTo(kx+14*BS,ky+7*BS);
+        ctx.lineTo(kx+4*BS,ky+17*BS);  ctx.lineTo(kx+8*BS,ky+8*BS);
+        ctx.lineTo(kx+4*BS,ky+8*BS);
+        ctx.closePath(); ctx.fill(); ctx.shadowBlur=0;
       } else {
         ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
-        ctx.strokeRect(bx+0.5,400.5,27,14);
+        ctx.strokeRect(kx+4*BS+0.5,ky+0.5,11*BS,17*BS);
       }
     }
     ctx.lineWidth=1;
+
+    /* Hull moves over to the right column so drift can sit above shots on the
+       left. In cruise there is no hull, and nothing takes its place: what
+       cruise means is explained on the title screen, and repeating it as a
+       standing caption over live gameplay was noise, not information. */
+    if (mode!=='cruise'){
+      hudTag(T('HULL'),W-16,394,BTAG,'#b9aef0','right');
+      var hpMax=CH_().hp, hx0=W-16-(hpMax*34-6);
+      for (var i=0;i<hpMax;i++){
+        var bx=hx0+i*34;
+        if (i<health){
+          var col=health===1?'#ff4d6d':(health===2?'#ffd23f':'#7cff4f');
+          ctx.shadowColor=col; ctx.shadowBlur=14; ctx.fillStyle=col;
+          ctx.fillRect(bx,400,28,15); ctx.shadowBlur=0;
+        } else {
+          ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
+          ctx.strokeRect(bx+0.5,400.5,27,14);
+        }
+      }
+      ctx.lineWidth=1;
+    }
+
+    var barW=200, bx2=W-barW-16, by=452;
+    hudTag(T('NEXT_CP'),W-16,444,BTAG,'#b9aef0','right');
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(bx2,by,barW,13);
+    ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
+    ctx.fillRect(bx2,by,barW*clamp((position+Z_CAR-cpStart)/cpLen,0,1),13);
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(124,255,79,.65)'; ctx.lineWidth=1;
   }
 
-  var barW=200, bx2=W-barW-16, by=452;
-  hudTag(T('NEXT_CP'),W-16,444,BTAG,'#b9aef0','right');
-  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(bx2,by,barW,13);
-  ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
-  ctx.fillRect(bx2,by,barW*clamp((position+Z_CAR-cpStart)/cpLen,0,1),13);
-  ctx.shadowBlur=0;
-  ctx.strokeStyle='rgba(124,255,79,.65)'; ctx.lineWidth=1;
   ctx.strokeRect(bx2+0.5,by+0.5,barW-1,12);
 
   if (state==='playing') drawBendWarning();
 
   if (Math.abs(playerX)>1 && state==='playing' && Math.floor(performance.now()/220)%2===0)
-    glowText(T('OFF_ROAD'),W/2,H-72,24,'#ffd23f','center',18);
+    glowText(T('OFF_ROAD'),W/2,H-72,TS.HERO,'#ffd23f','center',18);
 
   drawMessages();
 }
@@ -4281,7 +4341,7 @@ function drawMessages(){
           w += box*CHIP_SLOT + tw + (b<m.chips.length-1 ? fs*0.42 : 0);
         }
       } else {
-        fs=Math.max(9,Math.round((m.big?20:13)*sc));
+        fs=Math.max(9,Math.round((m.big?TS.BODY:TS.LABEL)*sc));
         lh=fs*1.32; box=fs*1.90;
         ctx.font='700 '+fs+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
         w=ctx.measureText(m.t).width + (m.icon?box*1.16:0);
@@ -4356,35 +4416,35 @@ function overlay(a){ ctx.fillStyle='rgba(6,2,14,'+a+')'; ctx.fillRect(0,0,W,H); 
 
 function drawTitle(){
   overlay(0.62);
-  glowText(T('LOGO_A'),W/2,164,74,'#21e6ff','center',34);
-  glowText(T('LOGO_B'),W/2,232,74,'#ff2fbe','center',34);
+  glowText(T('LOGO_A'),W/2,164,TS.DISPLAY,'#21e6ff','center',34);
+  glowText(T('LOGO_B'),W/2,232,TS.DISPLAY,'#ff2fbe','center',34);
   ctx.fillStyle='rgba(124,58,237,.8)'; ctx.fillRect(W/2-150,250,300,2);
   /* No tagline under the rule any more. The badge moves up into its slot and
      the screen reads as logo, mode, two lines, prompt — four beats instead
      of six. The badge is the one thing here that changes what ENTER is about
-     to do, so it gets the display face and a lit border rather than being one
-     more 12px caption among several. */
+     to do, so it gets the display face at HERO and a lit border rather than
+     being one more caption among several. The pill grew from 36 to 42 high
+     to seat HERO comfortably. */
   var cru=(mode==='cruise');
   var mTxt=(cru?T('MODE_CRUISE'):T('MODE_RUN'));
   var mCol=cru?'#7cff4f':'#21e6ff';
-  ctx.font='900 20px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.font='900 '+TS.HERO+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
   var mw=ctx.measureText(mTxt).width+44;
   ctx.fillStyle=cru?'rgba(124,255,79,.14)':'rgba(33,230,255,.14)';
-  rr(W/2-mw/2,268,mw,36,8); ctx.fill();
+  rr(W/2-mw/2,264,mw,42,9); ctx.fill();
   ctx.strokeStyle=mCol; ctx.lineWidth=2.5;
   ctx.shadowColor=mCol; ctx.shadowBlur=14;
-  rr(W/2-mw/2,268,mw,36,8); ctx.stroke();
+  rr(W/2-mw/2,264,mw,42,9); ctx.stroke();
   ctx.shadowBlur=0; ctx.lineWidth=1;
-  glowText(mTxt,W/2,294,20,mCol,'center',12,'900');
+  glowText(mTxt,W/2,294,TS.HERO,mCol,'center',12,'900');
 
-  /* 13px was fine on a desktop and about six real pixels on a phone, where
-     this canvas lands 800 logical px in roughly 374 physical ones. */
-  monoText(T('HINT2'),W/2,336,18,'#cfd6ff','center');
-  monoText(T('HINT3'),W/2,360,18,'#cfd6ff','center');
+  /* The two lines you actually read on this screen, so they sit at BODY --
+     the step above every label -- rather than at caption size. */
+  monoText(T('HINT2'),W/2,336,TS.BODY,'#cfd6ff','center');
+  monoText(T('HINT3'),W/2,360,TS.BODY,'#cfd6ff','center');
   if (Math.floor(performance.now()/420)%2===0)
-    glowText(TOUCH?T('PRESS_DRIVE_TOUCH'):T('PRESS_DRIVE_KEY'),W/2,404,22,'#7cff4f','center',18);
+    glowText(TOUCH?T('PRESS_DRIVE_TOUCH'):T('PRESS_DRIVE_KEY'),W/2,404,TS.HERO,'#7cff4f','center',18);
   if (!TOUCH) titleKeys(cru);
-  if (best>0) monoText(T('BEST_LINE')+best,W/2,464,12,'#8a7ec4','center');
   /* Portrait phones only, and only until you have tried it sideways once.
      Sized for a phone, not a desktop: the canvas is 800 logical px wide but
      lands on ~374 physical ones, so anything under ~20px here arrives
@@ -4392,20 +4452,76 @@ function drawTitle(){
   var nudge = TOUCH && !isLandscape() && !sawLandscape;
   if (nudge){
     ctx.globalAlpha=0.6+0.4*Math.sin(performance.now()/620);
-    glowText(T('ROTATE_HINT'),W/2,492,24,'#ffd23f','center',16);
+    glowText(T('ROTATE_HINT'),W/2,492,TS.HERO,'#ffd23f','center',16);
     ctx.globalAlpha=1;
   } else {
-    monoText(saveOK ? T('SAVED_ON') : T('SAVED_OFF'),
-             W/2,478,10,saveOK?'#4e4677':'#6b5a1e','center');
+    titleFooter();
   }
 }
 
-/* The four keyboard shortcuts, as caps rather than as one 12px run-on line.
+/* TITLE FOOTER PLATE.
+   Two facts used to whisper down here as separate 11px captions -- your record
+   and whether progress is being kept -- the second of them at #4e4677, which
+   over this background is very close to invisible. They are one object now,
+   not two strays: a panel in the same style as the HUD readouts, so it reads
+   as part of the game rather than as a disclaimer.
+
+   Inside it, the hierarchy does the work the old colour could not. The word
+   RECORD stays small and quiet because it is a caption; the NUMBER is the
+   thing you came to see, so it takes the display face, the LABEL step and the
+   amber this game already uses for "you earned something". The save state
+   stops being a sentence and becomes what it actually is -- a status light:
+   a green dot when storage works, amber when it does not.
+
+   Width is measured, never fixed. RECORD/RÉCORD and SAVED/GUARDADO differ in
+   length, and a hard-coded box would clip one language or float in the other. */
+function titleFooter(){
+  var LF = TS.MICRO*UI, NF = TS.LABEL*UI;
+  var rLab = T('BEST_LINE').replace(/\s+$/,'');
+  var rNum = best>0 ? String(best) : null;
+  var tag  = saveOK ? T('SAVE_TAG_ON') : T('SAVE_TAG_OFF');
+  var dot  = saveOK ? '#7cff4f' : '#ffd23f';
+
+  ctx.font='700 '+LF+'px ui-monospace,Menlo,"Courier New",monospace';
+  var wLab = rNum ? ctx.measureText(rLab).width : 0;
+  var wTag = ctx.measureText(tag).width;
+  ctx.font='700 '+NF+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  var wNum = rNum ? ctx.measureText(rNum).width : 0;
+
+  var GAP=9, SEP=16, DOT=7, PADX=16, PH=28, y=452;
+  var inner = (rNum ? wLab+GAP+wNum+SEP : 0) + DOT+GAP+wTag;
+  var w = inner+PADX*2, x = W/2-w/2, cy = y+PH/2;
+  /* One shared baseline for both sizes -- they sit on a line together, the
+     way type does; centring each on its own box would stagger them. */
+  var base = cy + Math.round(NF*0.35);
+
+  panel(x,y,w,PH);
+  var cx = x+PADX;
+  if (rNum){
+    monoText(rLab,cx,base,LF,'#a99fdc');            cx += wLab+GAP;
+    glowText(rNum,cx,base,NF,'#ffd23f','left',12);  cx += wNum;
+    ctx.fillStyle='rgba(124,58,237,.75)';
+    ctx.fillRect(Math.round(cx+SEP/2)+0.5,y+7,1,PH-14);
+    cx += SEP;
+  }
+  ctx.fillStyle=dot; ctx.shadowColor=dot; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(cx+DOT/2,cy,DOT/2,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  cx += DOT+GAP;
+  monoText(tag,cx,base,LF,'#cfd6ff');
+
+  /* The failure case is a warning, not a caption: storage is blocked and the
+     run you are about to do will not be kept. It gets the whole sentence, in
+     amber, under the plate. The old build put it at #6b5a1e. */
+  if (!saveOK) monoText(T('SAVED_OFF'),W/2,494,LF,'#ffd23f','center');
+}
+
+/* The four keyboard shortcuts, as caps rather than as one run-on line.
    Laid out by measurement rather than by fixed columns: the labels differ in
    length between English and Spanish, and hard-coded x positions drifted
    apart the moment either string changed. */
 function titleKeys(cru){
-  var sz=26, fs=13, gap=30, pad=sz*0.32, i, x;
+  var sz=26, fs=TS.LABEL, gap=30, pad=sz*0.32, i, x;
   var items=[['G',T('TF_GARAGE')],['I',T('TF_INFO')],['L',T('TF_LANG')],
              ['C',cru?T('MODE_RUN'):T('MODE_CRUISE')]];
   ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
@@ -4424,14 +4540,15 @@ function titleKeys(cru){
 
 function drawPause(){
   overlay(0.6);
-  glowText(T('PAUSED'),W/2,H/2-26,46,'#21e6ff','center',26);
+  glowText(T('PAUSED'),W/2,H/2-26,TS.TITLE,'#21e6ff','center',26);
   if (TOUCH){
-    monoText(T('PAUSE_TOUCH'),W/2,H/2+16,12,'#a99fdc','center');
+    monoText(T('PAUSE_TOUCH'),W/2,H/2+16,TS.LABEL,'#a99fdc','center');
   } else {
-    monoText(T('PAUSE_RESUME'),W/2,H/2+12,12,'#a99fdc','center');
-    monoText(T('PAUSE_GARAGE'),W/2,H/2+36,12,'#21e6ff','center');
-    monoText(T('PAUSE_INFO'),W/2,H/2+60,12,'#7cff4f','center');
-    monoText(T('PAUSE_LANG'),W/2,H/2+84,12,'#ff2fbe','center');
+    monoText(T('PAUSE_RESUME'),W/2,H/2+12,TS.LABEL,'#a99fdc','center');
+    monoText(T('PAUSE_GARAGE'),W/2,H/2+36,TS.LABEL,'#21e6ff','center');
+    monoText(T('PAUSE_INFO'),W/2,H/2+60,TS.LABEL,'#7cff4f','center');
+    monoText(T('PAUSE_LANG'),W/2,H/2+84,TS.LABEL,'#ff2fbe','center');
+    monoText(T('MENU_LINE'),W/2,H/2+108,TS.LABEL,'#ffd23f','center');
   }
 }
 
@@ -4514,7 +4631,7 @@ var INFO_PAGES=4;          /* touch only; the desktop shows everything at once *
 function drawInfo(){
   overlay(0.92);
   var big=TOUCH;
-  glowText(T('HOW_IT_WORKS'),W/2,big?56:52,big?34:30,'#21e6ff','center',20);
+  glowText(T('HOW_IT_WORKS'),W/2,big?56:52,TS.SUB,'#21e6ff','center',20);
   ctx.fillStyle='rgba(124,58,237,.8)';
   ctx.fillRect(W/2-160,big?68:62,320,2);
 
@@ -4527,12 +4644,12 @@ function drawInfo(){
     }
   } else {
     drawInfoDesk();
-    glowText(T('INFO_BACK'),W/2,478,15,'#7cff4f','center',14);
+    glowText(T('INFO_BACK'),W/2,478,TS.LABEL,'#7cff4f','center',14);
   }
 }
 
 function drawInfoDesk(){
-  var SFS=22, BFS=14, LH=20, LX=52, RX=428, i;
+  var SFS=TS.HERO, BFS=TS.LABEL, LH=20, LX=52, RX=428, i;
 
   infoHead(LX,104,T('H_CONTROLS'),'#21e6ff',SFS);
   monoText(T('CTRL1'),LX,132,BFS,'#cfd6ff');
@@ -4580,7 +4697,7 @@ function drawInfoDesk(){
 }
 
 function drawInfoTouch(){
-  var SFS=30, BFS=20, LH=30, X=70, i;
+  var SFS=Math.round(TS.HERO*UI), BFS=Math.round(TS.LABEL*UI), LH=30, X=70, i;
 
   if (infoPage===0){
     infoHead(X,116,T('H_CONTROLS'),'#21e6ff',SFS);
@@ -4638,17 +4755,18 @@ function drawInfoTouch(){
 
 function drawOver(){
   overlay(0.7);
-  glowText(endReason==='WRECKED'?T('OVER_WRECKED'):T('OVER_TIMEUP'),W/2,164,56,'#ff2fbe','center',28);
-  monoText(T('OVER_FINAL'),W/2,210,12,'#8a7ec4','center');
-  glowText(String(score|0),W/2,252,44,'#ffffff','center',16);
-  monoText(T('OVER_LAPS')+lap+T('OVER_OVERTAKES')+overtakes+T('OVER_BEST')+best,W/2,292,13,'#a99fdc','center');
+  glowText(endReason==='WRECKED'?T('OVER_WRECKED'):T('OVER_TIMEUP'),W/2,164,TS.TITLE,'#ff2fbe','center',28);
+  monoText(T('OVER_FINAL'),W/2,210,TS.LABEL,'#8a7ec4','center');
+  glowText(String(score|0),W/2,252,TS.SUB,'#ffffff','center',16);
+  monoText(T('OVER_LAPS')+lap+T('OVER_OVERTAKES')+overtakes+T('OVER_BEST')+best,W/2,292,TS.LABEL,'#a99fdc','center');
   if (Math.floor(performance.now()/420)%2===0)
-    glowText(T('OVER_AGAIN'),W/2,362,20,'#7cff4f','center',18);
-  monoText(T('OVER_GARAGE'),W/2,394,12,'#21e6ff','center');
+    glowText(T('OVER_AGAIN'),W/2,362,TS.HERO,'#7cff4f','center',18);
+  monoText(T('OVER_GARAGE'),W/2,394,TS.LABEL,'#21e6ff','center');
+  monoText(T('MENU_LINE'),W/2,418,TS.LABEL,'#ffd23f','center');
 }
 
 function swatchRow(label,yy,list,sel,active,paintSw){
-  monoText(label,116,yy+13,11,active?'#ffffff':'#8a7ec4');
+  monoText(label,116,yy+13,TS.MICRO,active?'#ffffff':'#8a7ec4');
   if (active){
     ctx.fillStyle='#7cff4f';
     ctx.beginPath(); ctx.moveTo(99,yy+4); ctx.lineTo(108,yy+9); ctx.lineTo(99,yy+14); ctx.closePath(); ctx.fill();
@@ -4670,7 +4788,7 @@ function swatchRow(label,yy,list,sel,active,paintSw){
       ctx.strokeRect(x+0.5,yy+0.5,sw-1,17);
     }
   }
-  monoText(list[sel].n, x0+list.length*(sw+gap)+8, yy+13, 10, active?'#ffffff':'#a99fdc');
+  monoText(list[sel].n, x0+list.length*(sw+gap)+8, yy+13, TS.MICRO, active?'#ffffff':'#a99fdc');
 }
 
 function swColour(x,y,w,h,item,i){
@@ -4715,8 +4833,8 @@ function swChassis(x,y,w,h,item){
 
 function drawGarage(){
   overlay(0.88);
-  glowText(T('GARAGE'),W/2,48,32,'#21e6ff','center',20);
-  monoText(T('GAR_HINT'),W/2,66,11,'#a99fdc','center');
+  glowText(T('GARAGE'),W/2,48,TS.SUB,'#21e6ff','center',20);
+  monoText(T('GAR_HINT'),W/2,66,TS.MICRO,'#a99fdc','center');
 
   ctx.save();
   ctx.translate(W/2,180+Math.sin(performance.now()/700)*3);
@@ -4726,10 +4844,10 @@ function drawGarage(){
   /* Live stats for whatever chassis is selected, so the numbers move while
      you cycle the row rather than being buried in a submenu. */
   var ch=CH_(), sx=W/2;
-  monoText(ch.n, sx-150, 212, 12, ch.c);
-  monoText(T('GAR_SPD') +' '+Math.round(ch.spd*100) +'%', sx-46, 212, 12, '#cfd6ff');
-  monoText(T('GAR_GRIP')+' '+Math.round(ch.grip*100)+'%', sx+50, 212, 12, '#cfd6ff');
-  monoText(T('GAR_HP')  +' '+ch.hp,                       sx+156, 212, 12, '#cfd6ff');
+  monoText(ch.n, sx-150, 212, TS.LABEL, ch.c);
+  monoText(T('GAR_SPD') +' '+Math.round(ch.spd*100) +'%', sx-46, 212, TS.MICRO, '#cfd6ff');
+  monoText(T('GAR_GRIP')+' '+Math.round(ch.grip*100)+'%', sx+50, 212, TS.MICRO, '#cfd6ff');
+  monoText(T('GAR_HP')  +' '+ch.hp,                       sx+156, 212, TS.MICRO, '#cfd6ff');
 
   swatchRow(T('GAR_TRIM'),     236, NEONS,   trimI,    garRow===0, swColour);
   swatchRow(T('GAR_BARCOL'),   272, NEONS,   lightI,   garRow===1, swColour);
@@ -4738,7 +4856,7 @@ function drawGarage(){
   swatchRow(T('GAR_PAINT'),    380, PAINTS,  paintI,   garRow===4, swPaint);
   swatchRow(T('GAR_CHASSIS'),  416, CHASSIS, chassisI, garRow===5, swChassis);
 
-  glowText(T('GAR_BACK'), W/2, 466, 15, '#7cff4f','center',14);
+  glowText(T('GAR_BACK'), W/2, 466, TS.LABEL, '#7cff4f','center',14);
 }
 
 /* ---------------------------------------------------------------
