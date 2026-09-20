@@ -632,29 +632,123 @@ var CP_BONUS   = 32;   // (legacy) the real award now scales with the leg
                        // CLOCK_CAP removed 2026-08-18 — see the checkpoint block
 var CRASH_TIME = 2;
 
-var FOG = [44,14,74];
-function mix(c, f){
-  return 'rgb(' + ((c[0]+(FOG[0]-c[0])*f)|0) + ',' +
-                  ((c[1]+(FOG[1]-c[1])*f)|0) + ',' +
-                  ((c[2]+(FOG[2]-c[2])*f)|0) + ')';
+
+/* ---------------------------------------------------------------
+   ZONES
+   Authored in the Zone Lab and pasted in whole. The schema is the
+   lab's COPY ZONE JSON payload, field for field, so an export drops
+   in without translation.
+
+   `vapor` is the game exactly as it shipped in build 58 — every value
+   below was read back off the old hardcoded literals, not retyped from
+   the lab. Two fields deliberately differ from the lab's VAPOR: the
+   lab gives it a 0.16 magenta horizon haze and a five-colour traffic
+   palette, and the game has neither. Keeping the game's values means
+   build 59 changes nothing you have already played; flip `haze.a` to
+   0.16 and `traffic` to the lab's list if you want them to match.
+
+   Physics dials (`curve`, `len`, `grip`, `cf`) follow the four-edit
+   plan in the zone-system doc. VAPOR sits at 1/1/1 with cf 1.0, which
+   is today's behaviour, so the whole base game is untouched until you
+   decide the global CF_GAIN question.
+--------------------------------------------------------------- */
+var ZONES = {
+
+vapor: {
+  id:'vapor', name:'VAPOR', accent:'#ff2fbe',
+  sky:['#0a0418','#2a0b4e','#6b1170'], skyMid:0.55,
+  haze:{col:'#ff2fbe', a:0, h:70},
+  stars:{n:90, col:'#dcefff', tw:1},
+  orb:{on:1, r:88, y:18, cols:['#fff27a','#ff9b3d','#ff2fbe'],
+       glow:'rgba(255,80,190,.85)', slats:7, slatCol:'rgba(12,4,26,0.85)'},
+  skyline:{on:1, fill:'#14062b', edgeA:'33,230,255', edgeB:'255,47,190', win:'33,230,255'},
+  ground:['#2c0e4c','#170830','#0a0418'],
+  grid:{major:'255,47,190', minor:'124,58,237', ring:'33,230,255'},
+  fog:[44,14,74], fogPow:3.2,
+  road:{a:[27,23,44], b:[19,16,32], rumA:[0,236,255], rumB:[255,46,190], lane:[228,235,255]},
+  posts:['#21e6ff','#ff2fbe'],
+  props:['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'],
+  propStruct:'138,104,206', propWarm:'#ffb15a', gate:'#7cff4f',
+  traffic:['#ff2fbe','#21e6ff','#ffd23f','#7cff4f','#ff6a3d','#b06cff'],
+  weather:'none', wcol:'#ffffff', wamt:0.5,
+  bloom:1, grade:{bri:1, con:1, sat:1, hue:0},
+  propMask:127, propDens:1, groundFog:0, fogMul:1, bloomMul:1, weatherAmt:1,
+  curve:1, len:1, grip:1, cf:1, mult:1 },
+
+/* Carlos's first authored zone, 2026-09-12. The colours below are the
+   RAW export — they are green. The rose/purple you screenshotted is
+   `grade.hue:180` rotating them, which the game now applies as a CSS
+   filter on the canvas exactly as the lab does. Nothing is baked, so
+   re-exporting from the lab overwrites this block cleanly. */
+vaporEdit: {
+  id:'vapor-edit', name:'VAPOR (EDIT)', accent:'#ff2fbe',
+  sky:['#03100a','#0a2a16','#1e5220'], skyMid:0.58,
+  haze:{col:'#a8ff4f', a:0.46, h:96},
+  stars:{n:31, col:'#c8ffb0', tw:0.4},
+  orb:{on:1, r:97, y:-163, cols:['#e8ffb0','#9ee03c','#3d7a1e'],
+       glow:'rgba(140,230,60,.55)', slats:5, slatCol:'rgba(4,18,8,0.7)'},
+  skyline:{on:1, fill:'#06180e', edgeA:'124,255,79', edgeB:'200,255,60', win:'160,255,110'},
+  ground:['#15381d','#0b2011','#030c07'],
+  grid:{major:'124,255,79', minor:'70,140,70', ring:'200,255,120'},
+  fog:[28,66,34], fogPow:1.75,
+  road:{a:[27,23,44], b:[19,16,32], rumA:[0,236,255], rumB:[255,46,190], lane:[228,235,255]},
+  posts:['#21e6ff','#ff2fbe'],
+  props:['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'],
+  propStruct:'138,104,206', propWarm:'#ffb15a', gate:'#7cff4f',
+  traffic:['#ff5f8a','#5fd0ff','#c78bff','#ffd05f','#7cff9a'],
+  weather:'rain', wcol:'#b8ff8a', wamt:0.8,
+  bloom:1.05, grade:{bri:1.23, con:1.09, sat:1.65, hue:180},
+  propMask:106, propDens:1.65, groundFog:0.44, fogMul:1.15, bloomMul:1.25, weatherAmt:0.4,
+  curve:1.4, len:0.7, grip:1.1, cf:2, mult:1.3 }
+
+};
+
+var ZN = ZONES.vapor;             /* the live zone */
+function Z(){ return ZN; }        /* physics dials read through here */
+
+var GB = 1;                       /* bloom multiplier for the world layer */
+function blur(v){ return v*GB; }
+
+/* The lab does its grade as a CSS filter on the canvas element rather
+   than a per-frame ctx.filter, so it costs nothing to draw and the
+   compositor does the work. Same here. */
+function gradeString(){
+  var g=ZN.grade;
+  return 'brightness('+g.bri.toFixed(2)+') contrast('+g.con.toFixed(2)+
+         ') saturate('+g.sat.toFixed(2)+') hue-rotate('+Math.round(g.hue)+'deg)';
 }
-var C_ROAD_A=[27,23,44], C_ROAD_B=[19,16,32],
-    C_RUM_A=[0,236,255], C_RUM_B=[255,46,190],
-    C_LANE=[228,235,255];
+function applyGrade(){
+  var f=gradeString();
+  cv.style.filter = (f==='brightness(1.00) contrast(1.00) saturate(1.00) hue-rotate(0deg)') ? '' : f;
+}
+
+function mix(c, f){
+  var F=ZN.fog;
+  return 'rgb(' + ((c[0]+(F[0]-c[0])*f)|0) + ',' +
+                  ((c[1]+(F[1]-c[1])*f)|0) + ',' +
+                  ((c[2]+(F[2]-c[2])*f)|0) + ')';
+}
 
 var rowZ=[], rowPPU=[], rowFog=[], rowCol=[];
-for (var y=0; y<H; y++){
-  if (y < topRow){ rowZ[y]=Infinity; rowPPU[y]=0; rowFog[y]=1; rowCol[y]=null; continue; }
-  var denom = y - H/2 - yOff;
-  var z = camDepth*camH*(H/2)/denom;
-  var sc = camDepth/z;
-  var f  = Math.pow(Math.min(1, z/MAXZ), 3.2);
-  rowZ[y]=z; rowPPU[y]=sc*roadWidth*W/2; rowFog[y]=f;
-  rowCol[y]={ a:mix(C_ROAD_A,f), b:mix(C_ROAD_B,f),
-              ra:mix(C_RUM_A,f), rb:mix(C_RUM_B,f), ln:mix(C_LANE,f) };
+/* This used to be a top-level loop that ran once at load, which meant the
+   game physically could not change road colour. It is a function now; it
+   is ~500 rows and sub-millisecond, and it only runs on a zone change. */
+function rebuildRows(){
+  var R=ZN.road, pw=ZN.fogPow*ZN.fogMul;
+  for (var y=0; y<H; y++){
+    if (y < topRow){ rowZ[y]=Infinity; rowPPU[y]=0; rowFog[y]=1; rowCol[y]=null; continue; }
+    var denom = y - H/2 - yOff;
+    var z = camDepth*camH*(H/2)/denom;
+    var sc = camDepth/z;
+    var f  = Math.pow(Math.min(1, z/MAXZ), pw);
+    rowZ[y]=z; rowPPU[y]=sc*roadWidth*W/2; rowFog[y]=f;
+    rowCol[y]={ a:mix(R.a,f), b:mix(R.b,f),
+                ra:mix(R.rumA,f), rb:mix(R.rumB,f), ln:mix(R.lane,f) };
+  }
 }
+rebuildRows();
 
-function fogAt(z){ return Math.pow(Math.min(1, Math.max(0,z)/MAXZ), 3.2); }
+function fogAt(z){ return Math.pow(Math.min(1, Math.max(0,z)/MAXZ), ZN.fogPow*ZN.fogMul); }
 function proj(zRel){
   var sc = camDepth/zRel;
   return { ppu: sc*roadWidth*W/2, y: H/2 + sc*camH*(H/2) + yOff };
@@ -691,9 +785,16 @@ function newSection(){
     return;
   }
   secLen=(90+Math.random()*110)|0;    // 36k–80k units: a long sweeper
+  /* Section LENGTH is the dial that was never exposed, and it is capped by
+     nothing — it holds peak push constant while changing how fast the force
+     arrives and how much ground it covers. Short is busy, long is heavy. */
+  secLen=Math.max(8,(secLen*Z().len)|0);
   var dir = Math.random()<0.72 ? -lastDir : lastDir;
   lastDir = dir;
-  var peak = (0.5+Math.random()*0.5)*S_PEAK;
+  /* Multiplied HERE and nowhere else. drawBendWarning() and the drift-charge
+     term keep measuring against the global S_PEAK on purpose, so a sharper
+     zone objectively warns more and pays more. */
+  var peak = (0.5+Math.random()*0.5)*S_PEAK*Z().curve;
   secAmp = dir * peak*Math.PI/(secLen*CH);
 }
 
@@ -703,8 +804,11 @@ function genChunk(){
   secPos++;
   var s0=slA[genN], s1=s0 + k*CH;
   if (secPos>=secLen && secAmp!==0) s1=0;             // exit the bend flat
-  if (s1 >  SLOPE_MAX) s1 =  SLOPE_MAX;
-  if (s1 < -SLOPE_MAX) s1 = -SLOPE_MAX;
+  /* the safety ceiling scales with the zone, or a sharp zone would be
+     silently flattened back to VAPOR's geometry by its own clamp */
+  var lim = SLOPE_MAX*Math.max(1,Z().curve);
+  if (s1 >  lim) s1 =  lim;
+  if (s1 < -lim) s1 = -lim;
   k = (s1-s0)/CH;
   kA[genN]   = k;
   ofA[genN+1]= ofA[genN] + s0*CH + 0.5*k*CH*CH;
@@ -745,6 +849,9 @@ function maxSpeedFor(l){ return Math.min(14800, 11500 + (l-1)*640) * CH_().spd; 
    is short, it ends whether you used it well or not, and paying flat made it
    a survival break rather than a scoring window. Both kill sites read this,
    so ramming and shooting can never drift apart. */
+/* Every point in the game goes through here, so a zone multiplier is one
+   line instead of seven. */
+function addScore(n){ score += n*ZN.mult; }
 function killScore(){ return 300*(1+0.2*(lap-1))*(dinoT>0?2:1); }
 /* Shorter than before at the start — the first checkpoint now lands at ~17s
    instead of 21s — and longer than before at the end. 520k rather than 620k:
@@ -878,6 +985,10 @@ var STR={
     PAUSE_RESUME:'P OR ENTER \u2014 BACK TO THE ROAD', PAUSE_GARAGE:'G \u2014 GARAGE',
     PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
     MENU_LINE:'ESC \u2014 MAIN MENU',
+    HAIL_CALL:'SIGNAL SENT \u2014 LOOK UP', BEAM_HOLD:'HOLD THE BEAM',
+    BEAM_SEEN:'IT SAW YOU', T_REAR:'REAR-ENDED \u2014 NO PENALTY',
+    BEAM_GONE:'IT GAVE UP', CLOCK_HELD:'CLOCK HELD',
+    ZONE_IN:'ZONE', ZONE_PAY:'POINTS',
     HOW_IT_WORKS:'HOW IT WORKS', INFO_BACK:'I OR ENTER \u2014 BACK',
     H_CONTROLS:'CONTROLS', H_DRIVING:'DRIVING', H_SAVED:'SAVED',
     H_RUN:'THE RUN', H_HAZARDS:'HAZARDS', H_PICKUPS:'PICKUPS',
@@ -976,6 +1087,10 @@ var STR={
     PAUSE_RESUME:'P O ENTER \u2014 VOLVER A LA PISTA', PAUSE_GARAGE:'G \u2014 GARAJE',
     PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
     MENU_LINE:'ESC \u2014 MEN\u00da PRINCIPAL',
+    HAIL_CALL:'SE\u00d1AL ENVIADA \u2014 MIRA ARRIBA', BEAM_HOLD:'QU\u00c9DATE EN EL HAZ',
+    BEAM_SEEN:'TE VIO', T_REAR:'GOLPE TRASERO \u2014 SIN CASTIGO',
+    BEAM_GONE:'SE RINDI\u00d3', CLOCK_HELD:'RELOJ EN PAUSA',
+    ZONE_IN:'ZONA', ZONE_PAY:'PUNTOS',
     HOW_IT_WORKS:'C\u00d3MO FUNCIONA', INFO_BACK:'I O ENTER \u2014 VOLVER',
     H_CONTROLS:'CONTROLES', H_DRIVING:'CONDUCCI\u00d3N', H_SAVED:'GUARDADO',
     H_RUN:'LA CARRERA', H_HAZARDS:'PELIGROS', H_PICKUPS:'OBJETOS',
@@ -1143,6 +1258,62 @@ var shots=0, pshots=[], blasts=[];
 var odT=0, odShotN=0, fireCd=0;
 var dBank=0, dPot=0, drifting=false, scrapeCd=0;
 var ufo=null, ufoT=14;
+
+/* ---------------------------------------------------------------
+   THE RIDE
+   Two props that were pure scenery become the only way between zones.
+
+   A HAILER is a roadside alien that has stepped forward to the very edge
+   of its usual band and is waving with both arms under a blinking ?/!.
+   Passing close to one calls a saucer down. That is the whole input —
+   no stopping, because the alien band sits at 2.00 road units and the
+   car's hard stop is 1.55, so it was never reachable, and because touch
+   has no handbrake.
+
+   The saucer that answers is a HUNTER. It keeps station ahead of you and
+   MATCHES YOUR SPEED up to UFO_TOP, so easing off the throttle parks you
+   under it; above that you simply outrun it and nothing happens. The beam
+   eases sideways onto you but not fast enough to do the work alone. Hold
+   both for UFO_LOCK seconds and it takes you. Every step is refusable and
+   none of it costs you anything if you decline.
+--------------------------------------------------------------- */
+var HAIL_LAT   = 2.00;   /* a hailer stands here exactly, nearer than its kin */
+var HAIL_R     = 1.15;   /* pass this close to send the signal              */
+var HAIL_ODDS  = 0.34;   /* share of roadside aliens that are hailers       */
+var HAIL_COOL  = 26;     /* seconds before another one will flag you down   */
+var HAIL_LAP   = 2;      /* not on the opening lap                          */
+var UFO_HOLD   = 900;    /* the hunter's station, ahead of the car          */
+var UFO_BAND   = 1500;   /* how far off station the beam still reaches      */
+var UFO_TOP    = 0.72;   /* share of top speed the hunter can manage        */
+var UFO_TRACK  = 1.15;   /* how hard the beam eases sideways onto you       */
+var UFO_BEAM_R = 0.46;   /* beam half-width in road units (a car is 0.26)   */
+var UFO_LOCK   = 2.0;    /* seconds inside the beam before it takes you     */
+var UFO_NOTICE = 5400;   /* how close a WANDERING saucer lets you get first  */
+var UFO_HUNT_T = 20;     /* ...and how long it will keep trying             */
+var hailCool   = 0;
+var zoneI      = 'vapor';
+
+/* the cutscene writes these; the world renderer never knows */
+var cut=null;
+var cutCar={x:0,y:0,sc:1,tilt:0,alpha:1,spin:0};
+function cutCarRest(){ cutCar.x=0; cutCar.y=0; cutCar.sc=1; cutCar.tilt=0; cutCar.alpha=1; cutCar.spin=0; }
+function ease(t){ return t<0?0:(t>1?1:t*t*(3-2*t)); }
+
+/* A prop slot holds a hailer only if it holds an alien at all. The test
+   mirrors drawDecor's own hashes exactly, so what you drive past and what
+   you see are the same decision made twice, not two decisions. */
+function isHailer(idx){
+  if (hashAt(idx,1) > Math.min(1,0.5*ZN.propDens)) return false;
+  var t=hashAt(idx,4);
+  var type = t<0.22?0 : t<0.42?1 : t<0.59?2 : t<0.76?3 : t<0.85?4 : t<0.94?5 : 6;
+  if (!(ZN.propMask & (1<<type))){
+    var allow=[];
+    for (var pm=0;pm<7;pm++) if (ZN.propMask & (1<<pm)) allow.push(pm);
+    if (!allow.length) return false;
+    type=allow[(hashAt(idx,11)*allow.length)|0];
+  }
+  return type===6 && hashAt(idx,10)<HAIL_ODDS;
+}
 var keys={};
 /* The keyboard and the on-screen pad can each be holding a direction, so
    they are tracked apart and merged. Otherwise letting go of DRIFT would
@@ -1179,7 +1350,8 @@ function reset(){
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
   dBank=0; dPot=0; drifting=false;
-  ufo=null; ufoT=14;
+  ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5;
+  cut=null; cutCarRest(); setZone('vapor');
   cpStart=0; cpLen=lapLength(1); nextCP=cpLen;
   taughtWeavers=false; endReason='';
   chain=0; chainT=0; chainBest=0; nmPops=[];
@@ -1294,9 +1466,32 @@ function audioInit(){
     sf.frequency.value=1600; sf.Q.value=3.2;
     var sg=actx.createGain(); sg.gain.value=0;
     ns.connect(sf); sf.connect(sg); sg.connect(master);
+    /* ---- reverb send (build 58): a small feedback-delay network, no impulse
+       file needed so the single-file build is untouched. Highpassed so it never
+       muddies the sub, two delay lines cross-fed with damping so the tail decays
+       like a small plate. One shared bus; each music voice sends at its rev level. */
+    var verbIn=actx.createGain(); verbIn.gain.value=1;
+    var vpre=actx.createBiquadFilter(); vpre.type='highpass'; vpre.frequency.value=380; verbIn.connect(vpre);
+    var vd1=actx.createDelay(0.2), vd2=actx.createDelay(0.2);
+    vd1.delayTime.value=0.037; vd2.delayTime.value=0.053;
+    var vfb1=actx.createGain(), vfb2=actx.createGain(); vfb1.gain.value=0.60; vfb2.gain.value=0.58;
+    var vdmp1=actx.createBiquadFilter(), vdmp2=actx.createBiquadFilter();
+    vdmp1.type='lowpass'; vdmp1.frequency.value=3200; vdmp2.type='lowpass'; vdmp2.frequency.value=2600;
+    var vwet=actx.createGain(); vwet.gain.value=0.9;
+    vpre.connect(vd1); vpre.connect(vd2);
+    vd1.connect(vdmp1); vdmp1.connect(vfb1); vfb1.connect(vd2);   /* cross-couple */
+    vd2.connect(vdmp2); vdmp2.connect(vfb2); vfb2.connect(vd1);
+    vdmp1.connect(vwet); vdmp2.connect(vwet); vwet.connect(master);
+    /* drum bus: own layer gain (musMix opens it in state 'playing') + light reverb */
+    var dbus=actx.createGain(); dbus.gain.value=0; dbus.connect(master);
+    var dsend=actx.createGain(); dsend.gain.value=0.12; dbus.connect(dsend); dsend.connect(verbIn);
+    /* shared vibrato LFO for the body voice (the JSON asks for vibrato there) */
+    var vibOsc=actx.createOscillator(); vibOsc.type='sine'; vibOsc.frequency.value=5.2;
+    var vibGain=actx.createGain(); vibGain.gain.value=1; vibOsc.connect(vibGain); vibOsc.start();
     o1.start(); o2.start(); o3.start(); ns.start();
     A={ctx:actx, master:master, makeup:makeup, g:g, o1:o1, o2:o2, o3:o3,
-       lp:lp, wg:wg, wf:wf, sg:sg, sf:sf};
+       lp:lp, wg:wg, wf:wf, sg:sg, sf:sf,
+       verbIn:verbIn, dbus:dbus, noise:nb, vib:vibGain};
     if (actx.state==='suspended') actx.resume();
     musInit();
   }catch(e){ A=null; }
@@ -1515,28 +1710,122 @@ var MUS_SEQ=[[1,1,1,2,1,1,1,1,1,1,1,2,1,1,2,1],[1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,2]
    mirror: lengths are untouched and every bar still fills the same 32 ticks.
    Pitches never move, so the SCALE the engine snaps itself to is identical
    and the two versions stay in tune with each other and with the car. */
-var MUS_PAT_R=(function(){
+function buildPatR(pat){
   var out=[],ch,pi,n,src,ns;
-  for (ch=0;ch<MUS_PAT.length;ch++){
+  for (ch=0;ch<pat.length;ch++){
     out.push([]);
-    for (pi=0;pi<MUS_PAT[ch].length;pi++){
-      src=MUS_PAT[ch][pi]; ns=[];
+    for (pi=0;pi<pat[ch].length;pi++){
+      src=pat[ch][pi]; ns=[];
       for (n=0;n<src.length;n++) ns.push([MUS_TPBAR-src[n][0]-src[n][1],src[n][1],src[n][2]]);
       ns.sort(function(a,b){ return a[0]-b[0]; });
       out[ch].push(ns);
     }
   }
   return out;
-})();
+}
+var MUS_PAT_R=buildPatR(MUS_PAT);
+/* ---- DRUM TRACK (build 58) -------------------------------------------
+   The music has always carried three pitched channels and an empty drum lane.
+   This fills it: a synthesised kit on a 4th, non-pitched channel. A hit is
+   [tick, type]; patterns are sequenced per bar by MUS_DSEQ exactly like
+   MUS_SEQ, and mirrored for the rampage the same way MUS_PAT_R mirrors the
+   melody, so the groove reads backwards without limping.
+   Grid: 32 ticks/bar = 8 beats; a quarter is 4 ticks, an eighth is 2. */
+var DK=0, DS=1, DH=2, DO=3, DC=4, DTH=5, DTL=6;  /* kick snare c-hat o-hat clap tomHi tomLo */
+var MUS_DRUM=[
+  /* 1: four-on-the-floor, offbeat hats, backbeat clap+snare */
+  [[0,DK],[2,DH],[4,DK],[6,DH],[8,DK],[8,DS],[8,DC],[10,DH],[12,DK],[14,DH],
+   [16,DK],[18,DH],[20,DK],[22,DH],[24,DK],[24,DS],[24,DC],[26,DH],[28,DK],[30,DH],[30,DO]],
+  /* 2: busier accent bar — downbeat hats too, a pickup kick, extra open hat */
+  [[0,DK],[0,DH],[2,DH],[4,DK],[4,DH],[6,DH],[8,DK],[8,DS],[8,DC],[8,DH],[10,DH],[12,DK],[12,DH],
+   [14,DH],[14,DO],[16,DK],[16,DH],[18,DH],[20,DK],[20,DH],[22,DH],[24,DK],[24,DS],[24,DC],[24,DH],
+   [26,DH],[28,DK],[28,DH],[30,DK],[30,DH],[30,DO]],
+  /* 3: fill — groove for three beats, then a tom roll into the "1" */
+  [[0,DK],[2,DH],[4,DK],[6,DH],[8,DK],[8,DS],[10,DH],[12,DK],[14,DH],[16,DK],[18,DH],
+   [20,DK],[20,DS],[22,DH],[24,DK],[24,DO],[26,DTH],[27,DTH],[28,DTL],[29,DTL],[30,DS],[31,DS]]
+];
+/* which drum pattern each of the 16 bars plays. Accent bars (2) sit where the
+   melody changes; fills (3) fall mid-loop and just before the loop point. */
+var MUS_DSEQ=[1,1,1,2, 1,1,1,3, 1,1,1,2, 1,1,2,3];
+/* rampage mirror: a hit at t reflects to (TPBAR - t) mod TPBAR, so the kick on
+   the "1" stays on the "1" and a symmetric groove is unchanged. */
+function buildDrumR(drum){
+  var out=[],pi,i,src,ns;
+  for (pi=0;pi<drum.length;pi++){
+    src=drum[pi]; ns=[];
+    for (i=0;i<src.length;i++) ns.push([(MUS_TPBAR-src[i][0])%MUS_TPBAR, src[i][1]]);
+    ns.sort(function(a,b){ return a[0]-b[0]; });
+    out.push(ns);
+  }
+  return out;
+}
+var MUS_DRUM_R=buildDrumR(MUS_DRUM);
+
 var MUS_DINO_RATE = 1.25;              /* 150 BPM becomes 187.5 while it lasts */
 var MUS_TICK_D    = MUS_TICK/MUS_DINO_RATE;
 
-/* one voice per channel: waveform, level, bus filter cutoff, release */
+/* one voice per channel (build 58: richer). w=wave, v=level, cut=bus lowpass,
+   rel=release. NEW: det=detune spread in cents for a doubled oscillator (0=single,
+   the old behaviour), sub=level of a sine an octave down (0=none), vib=vibrato
+   depth in cents from the shared LFO (0=none), rev=reverb send level. Levels were
+   trimmed for the doubled voices so the mix sits about where it did — trim MUS_VOL
+   by ear on hardware if the whole tune wants to move. */
 var MUS_VOICE=[
-  {w:'sawtooth', v:0.050, cut:2400, rel:0.18},   /* body   (harmonics) */
-  {w:'square',   v:0.042, cut:3000, rel:0.26},   /* lead   (PWM)       */
-  {w:'sawtooth', v:0.075, cut:320,  rel:0.14}    /* bass   (FM)        */
+  {w:'sawtooth', v:0.034, cut:2600, rel:0.20, det:7, sub:0,   vib:6, rev:0.26},  /* body (harmonics) */
+  {w:'square',   v:0.030, cut:3200, rel:0.26, det:9, sub:0,   vib:0, rev:0.34},  /* lead (PWM)       */
+  {w:'sawtooth', v:0.055, cut:360,  rel:0.15, det:4, sub:0.5, vib:0, rev:0.10}   /* bass (FM + sub)  */
 ];
+
+/* ---- SONG BUNDLE (build 62). Everything above still works exactly as it
+   did in build 61 -- MUS_BPM/MUS_PAT/MUS_SEQ/MUS_DRUM/MUS_DSEQ/MUS_VOICE are
+   still the plain globals musSched()/musNote()/engBuildScale() read every
+   pass. This bundle just gives a zone something to point at, and
+   musLoadSong() below is the one place that reassigns those globals when a
+   zone's bundle differs from the one currently loaded. Today there is
+   exactly one bundle and both zones point at it (see the ZONES.*.song lines
+   right below), so this ships with zero audible change -- it's the anchor
+   for the next map's own song. */
+var MUS_SONG_VAPOR = { bpm:MUS_BPM, tpbar:MUS_TPBAR, bars:MUS_BARS, key:MUS_KEY,
+  /* voice is a CLONE, not a reference: musLoadSong() mutates MUS_VOICE's
+     objects in place (so the live AudioParam push has something stable to
+     read), and if this bundle's own voice were the same objects, swapping
+     to a different song and back would leave this bundle's "original"
+     values silently overwritten too -- an aliasing bug caught by testing a
+     real second-bundle swap before shipping, not by reading the diff. */
+  voice:MUS_VOICE.map(function(v){return {w:v.w,v:v.v,cut:v.cut,rel:v.rel,det:v.det,sub:v.sub,vib:v.vib,rev:v.rev};}),
+  pat:MUS_PAT, seq:MUS_SEQ, drum:MUS_DRUM, dseq:MUS_DSEQ };
+var musCur = MUS_SONG_VAPOR;
+
+/* Swap the whole tune. Mutates MUS_VOICE's existing objects in place --
+   musNote() rereads MUS_VOICE[ch] fresh on every note, so nothing else has
+   to know -- and reassigns the pattern-table globals, which musSched() also
+   rereads fresh every 25ms scheduler pass. Rebuilds the two rampage-mirror
+   tables against the new patterns, resets the bar counter so the new song
+   starts clean on its own bar 0, and clears the car engine's pitch-snap
+   cache (engPC) so it re-learns the new song's scale instead of staying
+   keyed to the old one -- that cache used to build once and never
+   invalidate, which would have gone audibly out of tune the first time two
+   zones ever carried different songs. */
+function musLoadSong(song){
+  if (!song || song===musCur) return;
+  musCur = song;
+  MUS_BPM=song.bpm; MUS_TPBAR=song.tpbar; MUS_BARS=song.bars; MUS_KEY=song.key;
+  MUS_TICK=60/MUS_BPM/4; MUS_TICK_D=MUS_TICK/MUS_DINO_RATE;
+  MUS_PAT=song.pat; MUS_SEQ=song.seq; MUS_DRUM=song.drum; MUS_DSEQ=song.dseq;
+  MUS_PAT_R=buildPatR(MUS_PAT); MUS_DRUM_R=buildDrumR(MUS_DRUM);
+  for (var i=0;i<MUS_VOICE.length && i<song.voice.length;i++){
+    var v=MUS_VOICE[i], sv=song.voice[i];
+    v.w=sv.w; v.v=sv.v; v.cut=sv.cut; v.rel=sv.rel; v.det=sv.det; v.sub=sv.sub; v.vib=sv.vib; v.rev=sv.rev;
+    if (A){
+      if (A.musFilt && A.musFilt[i]) A.musFilt[i].frequency.setTargetAtTime(v.cut, A.ctx.currentTime, 0.05);
+      if (A.musSend && A.musSend[i]) A.musSend[i].gain.setTargetAtTime(v.rev, A.ctx.currentTime, 0.05);
+    }
+  }
+  musTick=0;
+  engPC=null; engCur=null; engLastF=-1;
+}
+ZONES.vapor.song = MUS_SONG_VAPOR;
+ZONES.vaporEdit.song = MUS_SONG_VAPOR;
 
 /* The tyre screech used to be a one-shot sawtooth fired on 35% of frames:
    ~21 notes a second, each jumping to full volume instantly. The onsets
@@ -1559,18 +1848,25 @@ function screech(amt){
    clock decides WHEN it sounds. Timing a rhythm off setTimeout alone drags
    audibly under frame load, which is why the one-shot sfx pattern used
    elsewhere in this file is not reused here. */
-var musTick=0, musNext=0, musTimer=null, musLast=[-1,-1,-1];
+var musTick=0, musNext=0, musTimer=null, musLast=[-1,-1,-1], musDLast=-1;
 
 function musInit(){
   if (!A || A.mus) return;
-  var buses=[];
+  var buses=[], filts=[], sends=[];
   for (var i=0;i<MUS_VOICE.length;i++){
     var f=A.ctx.createBiquadFilter(); f.type='lowpass';
     f.frequency.value=MUS_VOICE[i].cut; f.connect(A.master);
+    /* wet send: dry still hits master, a copy feeds the reverb bus at rev level.
+       Build 62: always created, even when this song's rev is 0, so a later
+       musLoadSong() can ramp it up or down without ever rewiring the graph. */
+    var sd=null;
+    if (A.verbIn){
+      sd=A.ctx.createGain(); sd.gain.value=MUS_VOICE[i].rev; f.connect(sd); sd.connect(A.verbIn);
+    }
     var g=A.ctx.createGain(); g.gain.value=0; g.connect(f);
-    buses.push(g);
+    buses.push(g); filts.push(f); sends.push(sd);
   }
-  A.mus=buses;
+  A.mus=buses; A.musFilt=filts; A.musSend=sends;
   musTick=0; musNext=A.ctx.currentTime+0.08;
   musTimer=setInterval(musSched,25);
 }
@@ -1597,6 +1893,14 @@ function musSched(){
           if (notes[n][0]===tb) musNote(ch, notes[n][2], notes[n][1]*tick, musNext);
         }
       }
+      /* drums (build 58): own channel, own reverse table, gated by its layer */
+      if (musDLast>0.0005){
+        var dp=MUS_DSEQ[bar];
+        if (dp){
+          var dn=(rage?MUS_DRUM_R:MUS_DRUM)[dp-1];
+          for (var di=0;di<dn.length;di++) if (dn[di][0]===tb) drumHit(dn[di][1], musNext);
+        }
+      }
       musTick=(musTick+1)%(MUS_BARS*MUS_TPBAR);
       musNext+=tick;
     }
@@ -1606,16 +1910,86 @@ function musSched(){
 function musNote(ch,pitch,dur,when){
   try{
     var V=MUS_VOICE[ch];
-    var o=A.ctx.createOscillator(), g=A.ctx.createGain();
-    o.type=V.w;
-    o.frequency.value=440*Math.pow(2,(MUS_KEY+pitch-69)/12);
+    var base=440*Math.pow(2,(MUS_KEY+pitch-69)/12);
     var v=V.v*MUS_VOL, end=when+dur;
+    var g=A.ctx.createGain();
     g.gain.setValueAtTime(0.0001,when);
     g.gain.linearRampToValueAtTime(v,when+0.012);          /* soft attack   */
     g.gain.setValueAtTime(v*0.85,Math.max(when+0.013,end-V.rel));
     g.gain.exponentialRampToValueAtTime(0.0001,end+V.rel); /* and a tail    */
-    o.connect(g); g.connect(A.mus[ch]);
-    o.start(when); o.stop(end+V.rel+0.02);
+    g.connect(A.mus[ch]);
+    var oscs=[], k;
+    if (V.det>0){          /* two slightly-detuned voices beat together = width */
+      var a=A.ctx.createOscillator(); a.type=V.w; a.frequency.value=base; a.detune.value=-V.det;
+      var b=A.ctx.createOscillator(); b.type=V.w; b.frequency.value=base; b.detune.value= V.det;
+      oscs.push(a,b);
+    } else {
+      var o=A.ctx.createOscillator(); o.type=V.w; o.frequency.value=base; oscs.push(o);
+    }
+    if (V.sub>0){          /* a sine an octave down for weight (bass) */
+      var sO=A.ctx.createOscillator(), sG=A.ctx.createGain();
+      sO.type='sine'; sO.frequency.value=base*0.5; sG.gain.value=V.sub;
+      sO.connect(sG); sG.connect(g); sO.start(when); sO.stop(end+V.rel+0.02);
+    }
+    if (V.vib>0 && A.vib){ /* shared LFO -> detune, in cents */
+      var vG=A.ctx.createGain(); vG.gain.value=V.vib; A.vib.connect(vG);
+      for (k=0;k<oscs.length;k++) vG.connect(oscs[k].detune);
+    }
+    for (k=0;k<oscs.length;k++){ oscs[k].connect(g); oscs[k].start(when); oscs[k].stop(end+V.rel+0.02); }
+  }catch(e){}
+}
+
+/* One synthesised drum kit, all oscillators and one shared noise buffer
+   (A.noise, the same 2s buffer the wind bed uses). Every hit routes to A.dbus,
+   its own layer gain, so drums can swell in when a run starts; A.dbus also
+   feeds a little reverb. DRUM_VOL trims the whole kit in one place. */
+var DRUM_VOL = 1.0;
+function noiseSrc(){ var n=A.ctx.createBufferSource(); n.buffer=A.noise; return n; }
+function drumHit(type, when){
+  if (!A || !A.dbus) return;
+  try{
+    var ctx=A.ctx, out=A.dbus, t=when;
+    if (type===DK){                                   /* kick: pitch-drop sine + click */
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(48,t+0.11);
+      g.gain.setValueAtTime(0.9*DRUM_VOL,t); g.gain.exponentialRampToValueAtTime(0.0008,t+0.17);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t+0.2);
+      var c=noiseSrc(), cf=ctx.createBiquadFilter(), cg=ctx.createGain();
+      cf.type='highpass'; cf.frequency.value=1400;
+      cg.gain.setValueAtTime(0.25*DRUM_VOL,t); cg.gain.exponentialRampToValueAtTime(0.0005,t+0.02);
+      c.connect(cf); cf.connect(cg); cg.connect(out); c.start(t); c.stop(t+0.03);
+    } else if (type===DS){                            /* snare: tone body + noise */
+      var s1=ctx.createOscillator(), s2=ctx.createOscillator(), sg=ctx.createGain();
+      s1.type='triangle'; s1.frequency.value=185; s2.type='triangle'; s2.frequency.value=330;
+      sg.gain.setValueAtTime(0.18*DRUM_VOL,t); sg.gain.exponentialRampToValueAtTime(0.0006,t+0.11);
+      s1.connect(sg); s2.connect(sg); sg.connect(out);
+      s1.start(t); s2.start(t); s1.stop(t+0.12); s2.stop(t+0.12);
+      var sn=noiseSrc(), snf=ctx.createBiquadFilter(), sng=ctx.createGain();
+      snf.type='highpass'; snf.frequency.value=1500;
+      sng.gain.setValueAtTime(0.30*DRUM_VOL,t); sng.gain.exponentialRampToValueAtTime(0.0006,t+0.14);
+      sn.connect(snf); snf.connect(sng); sng.connect(out); sn.start(t); sn.stop(t+0.16);
+    } else if (type===DC){                            /* clap: quick noise slaps + tail */
+      var cf2=ctx.createBiquadFilter(); cf2.type='bandpass'; cf2.frequency.value=1200; cf2.Q.value=1.1;
+      cf2.connect(out);
+      var offs=[0,0.009,0.018,0.028], lv=[0.22,0.22,0.20,0.16], dr=[0.02,0.02,0.02,0.11], ci;
+      for (ci=0;ci<offs.length;ci++){
+        var cs=noiseSrc(), cgg=ctx.createGain();
+        cgg.gain.setValueAtTime(lv[ci]*DRUM_VOL,t+offs[ci]);
+        cgg.gain.exponentialRampToValueAtTime(0.0005,t+offs[ci]+dr[ci]);
+        cs.connect(cgg); cgg.connect(cf2); cs.start(t+offs[ci]); cs.stop(t+offs[ci]+dr[ci]+0.02);
+      }
+    } else if (type===DH || type===DO){               /* hats: filtered noise, short/long */
+      var hn=noiseSrc(), hf=ctx.createBiquadFilter(), hg=ctx.createGain();
+      hf.type='highpass'; hf.frequency.value=(type===DO?7000:8500);
+      var d=(type===DO?0.18:0.03), lvl=(type===DO?0.14:0.10);
+      hg.gain.setValueAtTime(lvl*DRUM_VOL,t); hg.gain.exponentialRampToValueAtTime(0.0005,t+d);
+      hn.connect(hf); hf.connect(hg); hg.connect(out); hn.start(t); hn.stop(t+d+0.02);
+    } else if (type===DTH || type===DTL){             /* toms, for fills */
+      var to=ctx.createOscillator(), tg=ctx.createGain(), f0=(type===DTH?200:130);
+      to.type='sine'; to.frequency.setValueAtTime(f0,t); to.frequency.exponentialRampToValueAtTime(f0*0.6,t+0.16);
+      tg.gain.setValueAtTime(0.28*DRUM_VOL,t); tg.gain.exponentialRampToValueAtTime(0.0006,t+0.18);
+      to.connect(tg); tg.connect(out); to.start(t); to.stop(t+0.2);
+    }
   }catch(e){}
 }
 
@@ -1637,6 +2011,12 @@ function musMix(){
     if (tgt[i]===musLast[i]) continue;
     musLast[i]=tgt[i];
     try{ A.mus[i].gain.setTargetAtTime(tgt[i],A.ctx.currentTime,0.22); }catch(e){}
+  }
+  /* drums enter only while actually driving, so the title screen stays calm */
+  var dtgt = (musicOn && state==='playing') ? 1 : 0;
+  if (dtgt!==musDLast){
+    musDLast=dtgt;
+    try{ if (A.dbus) A.dbus.gain.setTargetAtTime(dtgt,A.ctx.currentTime,0.25); }catch(e){}
   }
 }
 
@@ -2355,7 +2735,7 @@ function trySpawn(){
   cars.push({
     z:z, lane:lane, x:LANES[lane],
     speed: top*(0.55+Math.random()*0.45),
-    color: weav ? '#ffd23f' : PAL[(Math.random()*PAL.length)|0],
+    color: weav ? '#ffd23f' : ZN.traffic[(Math.random()*ZN.traffic.length)|0],
     passed:false,
     weaver:weav, phase:weav?'wait':null, sigT:0, moveT:0, sigDir:0,
     fromX:0, toLane:0,
@@ -2384,7 +2764,7 @@ function fire(){
    one place so the drift award cannot drift out of step with the pickup. */
 function giveBolt(){
   if (odT>0){                       /* already lit: top it back up */
-    odT=OD_TIME; score+=500;
+    odT=OD_TIME; addScore(500);
     say(T('T_OD_REFRESH'),'#ffd23f',true,'bolt');
     overdriveSfx();
     return;
@@ -2403,10 +2783,37 @@ function giveBolt(){
   }
 }
 
-function crash(){
-  dPot=0;                         /* a drift you crash out of pays nothing */
+/* `rear` is true when the car was behind your anchor at the moment of
+   contact — it came in through the back face of the hitbox. */
+function crash(rear){
   chain=0; chainT=0;              /* any contact breaks the chain, always */
-  invT=2.3; hitFlash=1;
+  hitFlash=1;
+
+  /* A REAR-END IS NOT YOUR MISTAKE, so it does not carry your mistake's
+     price. Traffic tops out well below your top speed, so the only way a
+     car reaches your back face at all is that you are slower than it: you
+     are threading a queue at low speed and one you already went past is
+     still sitting inside the 215 units behind your anchor when you move
+     across. Charging two seconds of clock and a heart for that is punishing
+     the player for the situation rather than for the driving.
+
+     It is not free — it halves your speed, and in a game whose real enemy
+     is the clock, momentum IS the currency. That is the whole cost. The
+     drift bank survives too; losing a charge you could not have protected
+     is the same unfairness in a different coat. The near-miss chain does
+     break, because a chain is defined as consecutive passes WITHOUT
+     contact and this was contact. */
+  if (rear){
+    speed*=0.5; spinT=0; shake=12;   /* deliberately the overdrive reaction */
+    invT=Math.max(invT,0.9);         /* long enough for it to get through you,
+                                        far too short to be a free battering ram */
+    crashSfx();
+    say(T('T_REAR'),'#ffd23f',false,null,1.3);
+    return;                          /* no health, no clock, dPot untouched */
+  }
+
+  dPot=0;                         /* a drift you crash out of pays nothing */
+  invT=2.3;
   if (odT>0){
     /* no invulnerability, but the aura carries you through: half your speed
        and a jolt instead of a spin and a dead stop */
@@ -2441,6 +2848,11 @@ function update(dt){
   hitFlash=Math.max(0,hitFlash-dt*2.6);
   flash   =Math.max(0,flash-dt*1.8);
   for (i=msgs.length-1;i>=0;i--){ msgs[i].life-=dt; if (msgs[i].life<=0) msgs.splice(i,1); }
+
+  /* The cutscene owns the frame. Everything below this line — the clock,
+     collision, spawning, scoring — is simply not reached, which is how
+     the clock freeze costs one branch instead of a pause system. */
+  if (state==='abduct'){ cutStep(dt); return; }
 
   if (state!=='playing'){
     if (state!=='garage' && state!=='info' && state!=='paused') position += 2400*dt;
@@ -2495,7 +2907,7 @@ function update(dt){
       speed -= (maxS/6.5)*dt;
     }
 
-    var grip = CH_().grip;
+    var grip = CH_().grip * Z().grip;   /* chassis grip composes with the zone's */
     var agility = (1.60 - 0.70 * spct) * grip;
     var resp = (9.5 - 5.4 * spct) * grip;
 
@@ -2544,13 +2956,18 @@ function update(dt){
   playerX += steerVel*dt*Math.min(1, spct*3.2);
 
   /* the bend throws you wide — measured where the car actually is */
-  playerX -= curSlope*speed*dt*(0.007 + 0.024*Math.pow(spct,1.5));
+  /* The bend is the only force in the game that writes straight to playerX
+     with no state of its own, which is why curves used to read as a camera
+     trick. Z().cf is the centrifugal gain: VAPOR keeps 1.0 (build 58's
+     behaviour, untouched) and an authored zone raises it. 2.0 is the
+     recommended value for the base game once it has been played on a Mac. */
+  playerX -= curSlope*speed*dt*(0.007 + 0.024*Math.pow(spct,1.5))*Z().cf;
 
   if (playerX> 1.55){ playerX= 1.55; steerVel=0; }
   if (playerX<-1.55){ playerX=-1.55; steerVel=0; }
 
   position += speed*dt;
-  score    += speed*dt/220;
+  addScore(speed*dt/220);
   invT=Math.max(0,invT-dt);
 
   /* the chain lapses on its own if you stop threading traffic */
@@ -2587,7 +3004,7 @@ function update(dt){
        hand nothing to anyone. The generous early awards are the beginner
        assist now, and the tapering multiplier plus the traffic curve take that
        cushion back over the following ten laps. */
-    score+=2500; flash=1;
+    addScore(2500); flash=1;
     /* ONE CARD, NOT FIVE SENTENCES.
        This block used to fire up to five separate say() lines at the same
        instant. On lap 8 that was a 480x117 slab parked at y=120 — across the
@@ -2653,7 +3070,7 @@ function update(dt){
     var dzPrev=dz+(speed-c.speed)*dt;    // where it was one step ago
     if (!c.passed && dz<0){
       c.passed=true; overtakes++;
-      score+=180*(1+0.2*(lap-1));
+      addScore(180*(1+0.2*(lap-1)));
       blip(1200,0.05,'sine',0.06);
 
       /* NEAR MISS — the reason to shave past traffic instead of avoiding it.
@@ -2675,7 +3092,7 @@ function update(dt){
         /* runs 0.5 at the outer edge of the band to 1.5 for a paint-scraping
            pass — the part of the score the player has no other way to see */
         var closeMul=0.5+close;
-        score += Math.round(NM_BASE*closeMul*mult*(1+0.2*(lap-1)));
+        addScore(NM_BASE*closeMul*mult*(1+0.2*(lap-1)));
         var nmSide=(c.x>playerX?1:-1);
         nmPops.push({m:closeMul, t:0, side:nmSide});
         if (nmPops.length>5) nmPops.shift();
@@ -2735,13 +3152,18 @@ function update(dt){
     if (dinoT>0){
       if (inBox && lat<DINO_HIT){
         blasts.push({z:c.z, x:c.x, t:0, isBlast:true});
-        score += killScore();
+        addScore(killScore());
         cars.splice(i,1);
         blip(150,0.20,'sawtooth',0.16);
         shake=Math.max(shake,6);
         continue;
       }
-    } else if (invT<=0 && spinT<=0 && inBox && lat<CAR_W-0.01) crash();
+    } else if (invT<=0 && spinT<=0 && inBox && lat<CAR_W-0.01){
+      /* dz<0 means it sits behind the anchor right now — the same sign the
+         overtake test uses two dozen lines up, so "it is behind me" means
+         exactly one thing in this loop. */
+      crash(dz<0);
+    }
   }
   if (fireHeld && odT>0) fire();      /* held trigger only runs in overdrive */
 
@@ -2758,7 +3180,7 @@ function update(dt){
       pickups.splice(i,1); flash=1;
       if (pk.kind==='heart'){
         if (health<CH_().hp){ health++; say(T('T_HULL_UP'),'#ff6ad5',true,'heart'); }
-        else { score+=10000; say(T('T_HULL_FULL'),'#ff6ad5',true,'heart'); }
+        else { addScore(10000); say(T('T_HULL_FULL'),'#ff6ad5',true,'heart'); }
         blip(740,0.09,'sine',0.2);
         setTimeout(function(){ blip(988,0.09,'sine',0.2); },90);
         setTimeout(function(){ blip(1319,0.20,'sine',0.2); },180);
@@ -2773,9 +3195,67 @@ function update(dt){
   }
 
 
+  /* ---- the hail: did we just pass a waving alien close enough? ----
+     Props sit on a fixed grid, so "passing one" is the frame in which the
+     car's own z crosses a slot boundary. One test a frame, no scanning. */
+  hailCool=Math.max(0,hailCool-dt);
+  if (!ufo && hailCool<=0 && lap>=HAIL_LAP){
+    var zcNow=position+Z_CAR, zcPrev=zcNow-speed*dt;
+    var iNow=Math.floor(zcNow/DECO_SPACE);
+    if (iNow>Math.floor(zcPrev/DECO_SPACE) && isHailer(iNow)){
+      var hSide=hashAt(iNow,2)<0.5?-1:1;
+      if (Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R) callUfo();
+    }
+  }
+
   /* the saucer: drifts along the road at half your speed, so you reel it in
-     slowly instead of blowing past it. Scenery only — nothing collides. */
-  if (ufo){
+     slowly instead of blowing past it. Scenery only — nothing collides.
+     A HUNTER (called by a hailer) ignores all of that and flies the block
+     below instead. */
+  if (ufo && ufo.hunt){
+    var dzc=ufo.z-(position+Z_CAR);
+    var uTop=UFO_TOP*maxSpeedFor(lap);
+    /* Station-keeping that is really speed-matching: the target is your own
+       speed, corrected toward UFO_HOLD, and capped. Under the cap it sits
+       over you for as long as you let it; over the cap you leave it behind,
+       which is the refusal. */
+    var uWant=clamp(speed+(UFO_HOLD-dzc)*0.9, 0, uTop);
+    ufo.v += (uWant-ufo.v)*Math.min(1,dt*2.2);
+    ufo.z += ufo.v*dt;
+    ufo.x += (playerX-ufo.x)*Math.min(1,dt*UFO_TRACK);
+    ufo.spin+=dt*2.4; ufo.bob+=dt; ufo.beamOn=true; ufo.beamK=1;
+    /* spinning out breaks the lock: you cannot be picked up mid-crash */
+    var onBeam = spinT<=0 && invT<=0.01 &&
+                 Math.abs(dzc-UFO_HOLD)<UFO_BAND && Math.abs(playerX-ufo.x)<UFO_BEAM_R;
+    /* drains faster than it fills, so a wobble costs you, but half a second
+       of bad luck does not throw the whole attempt away */
+    ufo.lock=clamp(ufo.lock+(onBeam?dt:-dt*1.6),0,UFO_LOCK);
+    if (!ufo.told && ufo.lock>0.25){ ufo.told=true; say(T('BEAM_HOLD'),'#7cff4f',false,null,1.5); }
+    ufo.life-=dt;
+    /* `state` is re-tested because crash() runs EARLIER in this same frame
+       and may already have ended the run. Losing beats being abducted.
+       The return hands the rest of the frame to the cutscene. */
+    if (ufo.lock>=UFO_LOCK && state==='playing'){ startAbduct(); return; }
+    else if (ufo.life<=0 || dzc<-4200){
+      ufo.fade-=dt*1.3;
+      if (ufo.fade<=0){ ufo=null; hailCool=HAIL_COOL; say(T('BEAM_GONE'),'#8a7ec4',false,null,1.4); }
+    }
+  } else if (ufo){
+    /* A wandering saucer is scenery until you put yourself under its lit
+       cone. Then it notices, and from that moment it is a hunter like any
+       other. This is the opportunistic way in: no alien needed, but you
+       have to run one down and time its sway, because it drifts at half
+       your speed and the beam blinks. */
+    if (ufo.beamOn && lap>=HAIL_LAP && state==='playing' && spinT<=0 && invT<=0.01){
+      var adz = ufo.z-(position+Z_CAR);
+      if (adz < UFO_NOTICE && adz > -400 && Math.abs(playerX-ufo.x) < UFO_BEAM_R){
+        ufo.hunt=true; ufo.lock=0; ufo.told=false; ufo.beamK=1;
+        ufo.v=speed; ufo.life=UFO_HUNT_T; ufo.fade=1; ufo.color=ZN.accent;
+        say(T('BEAM_SEEN'),'#7cff4f',true,null,1.8);
+        blip(300,0.10,'square',0.16);
+        setTimeout(function(){ blip(400,0.14,'square',0.16); },100);
+      }
+    }
     ufo.z    += speed*0.5*dt;
     ufo.phase+= ufo.rate*dt;
     ufo.x     = ufo.amp*Math.sin(ufo.phase);
@@ -2793,11 +3273,11 @@ function update(dt){
     ufoT -= dt;
     if (ufoT<=0){
       ufoT = 20+Math.random()*14;
-      ufo = { z: position+44000+Math.random()*6000, x:0,
+      ufo = { z: position+44000+Math.random()*6000, x:0, hunt:false, lock:0, beamK:1,
               amp: 1.5+Math.random()*1.0, rate: 0.45+Math.random()*0.60,
               phase: Math.random()*Math.PI*2,
               hover: 0.95+Math.random()*0.50, bob: Math.random()*6, spin:0,
-              color: PROP_COLS[(Math.random()*PROP_COLS.length)|0],
+              color: ZN.props[(Math.random()*ZN.props.length)|0],
               beamOn: Math.random()<0.5, beamT: 0.6+Math.random()*1.4,
               life: 26, fade: 1, isUfo: true };
       ufo.x = ufo.amp*Math.sin(ufo.phase);
@@ -2840,7 +3320,7 @@ function update(dt){
       var tc=cars[j];
       if (Math.abs(tc.x-sh.x)<0.22 && tc.z>sh.prevZ-340 && tc.z<=sh.z+340){
         blasts.push({z:tc.z, x:tc.x, t:0, isBlast:true});
-        score += killScore();
+        addScore(killScore());
         cars.splice(j,1);
         blip(150,0.20,'sawtooth',0.16);
       }
@@ -2900,57 +3380,77 @@ function hudTag(txt,x,y,size,color,align){
 
 function drawSky(){
   var g=ctx.createLinearGradient(0,0,0,horizonY);
-  g.addColorStop(0,'#0a0418'); g.addColorStop(0.55,'#2a0b4e'); g.addColorStop(1,'#6b1170');
+  g.addColorStop(0,ZN.sky[0]); g.addColorStop(ZN.skyMid,ZN.sky[1]); g.addColorStop(1,ZN.sky[2]);
   ctx.fillStyle=g; ctx.fillRect(0,0,W,horizonY+1);
 
   var now=performance.now();
-  for (var i=0;i<stars.length;i++){
+  /* Clamped: a zone can push `tw` past 1 to make its sky sparkle harder.
+     Browsers silently clamp an out-of-range alpha, which would quietly
+     flatten every bright star to the same value instead. */
+  var starN=Math.min(stars.length, ZN.stars.n|0);
+  for (var i=0;i<starN;i++){
     var s=stars[i];
-    ctx.globalAlpha=s.a*(0.45+0.55*Math.abs(Math.sin(i+now/1400)));
-    ctx.fillStyle='#dcefff';
+    ctx.globalAlpha=clamp(s.a*(0.45+0.55*Math.abs(Math.sin(i+now/1400)))*ZN.stars.tw,0,1);
+    ctx.fillStyle=ZN.stars.col;
     ctx.fillRect(s.x,s.y,s.r,s.r);
   }
   ctx.globalAlpha=1;
 
-  var cxs=W/2+bgX*0.6, cys=horizonY+18, R=88;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0,0,W,horizonY); ctx.clip();
-  var sg=ctx.createLinearGradient(0,cys-R,0,cys+R);
-  sg.addColorStop(0,'#fff27a'); sg.addColorStop(0.45,'#ff9b3d'); sg.addColorStop(1,'#ff2fbe');
-  ctx.shadowColor='rgba(255,80,190,.85)'; ctx.shadowBlur=50;
-  ctx.beginPath(); ctx.arc(cxs,cys,R,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.fillStyle='rgba(12,4,26,0.85)';
-  for (var k=0;k<7;k++){
-    var yy=cys-R+26+k*10+k*k*1.4;
-    ctx.fillRect(cxs-R,yy,R*2,2+k*0.9);
+  /* The sun/moon. `y` is measured DOWN from the horizon, so a negative
+     value lifts it clear into the sky, which is how VAPOR (EDIT)'s moon
+     sits high while VAPOR's sun is half-swallowed by the skyline. */
+  if (ZN.orb.on){
+    var o=ZN.orb, cxs=W/2+bgX*0.6, cys=horizonY+o.y, R=o.r;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,W,horizonY); ctx.clip();
+    var sg=ctx.createLinearGradient(0,cys-R,0,cys+R);
+    sg.addColorStop(0,o.cols[0]); sg.addColorStop(0.45,o.cols[1]); sg.addColorStop(1,o.cols[2]);
+    ctx.shadowColor=o.glow; ctx.shadowBlur=blur(50);
+    ctx.beginPath(); ctx.arc(cxs,cys,R,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=o.slatCol;
+    for (var k=0;k<o.slats;k++){
+      var yy=cys-R+26+k*10+k*k*1.4;
+      ctx.fillRect(cxs-R,yy,R*2,2+k*0.9);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 
-  var shift=((bgX%TILE)+TILE)%TILE;
-  for (var pass=0;pass<2;pass++){
-    var ox=shift-40-pass*TILE;
-    for (var b=0;b<skyline.length;b++){
-      var bd=skyline[b], bx=bd.x+ox;
-      if (bx>W||bx+bd.w<0) continue;
-      ctx.fillStyle='#14062b';
-      ctx.fillRect(bx,horizonY-bd.h,bd.w,bd.h);
-      ctx.strokeStyle=bd.lit?'rgba(33,230,255,.42)':'rgba(255,47,190,.36)';
-      ctx.lineWidth=1;
-      ctx.strokeRect(bx+0.5,horizonY-bd.h+0.5,bd.w-1,bd.h);
-      if (bd.lit){
-        ctx.fillStyle='rgba(33,230,255,.30)';
-        for (var wy=horizonY-bd.h+6; wy<horizonY-4; wy+=7)
-          for (var wx=bx+3; wx<bx+bd.w-3; wx+=6)
-            if ((((wx+wy)|0)%3)===0) ctx.fillRect(wx,wy,2,3);
+  if (ZN.skyline.on){
+    var sk=ZN.skyline, shift=((bgX%TILE)+TILE)%TILE;
+    for (var pass=0;pass<2;pass++){
+      var ox=shift-40-pass*TILE;
+      for (var b=0;b<skyline.length;b++){
+        var bd=skyline[b], bx=bd.x+ox;
+        if (bx>W||bx+bd.w<0) continue;
+        ctx.fillStyle=sk.fill;
+        ctx.fillRect(bx,horizonY-bd.h,bd.w,bd.h);
+        ctx.strokeStyle=bd.lit?('rgba('+sk.edgeA+',.42)'):('rgba('+sk.edgeB+',.36)');
+        ctx.lineWidth=1;
+        ctx.strokeRect(bx+0.5,horizonY-bd.h+0.5,bd.w-1,bd.h);
+        if (bd.lit){
+          ctx.fillStyle='rgba('+sk.win+',.30)';
+          for (var wy=horizonY-bd.h+6; wy<horizonY-4; wy+=7)
+            for (var wx=bx+3; wx<bx+bd.w-3; wx+=6)
+              if ((((wx+wy)|0)%3)===0) ctx.fillRect(wx,wy,2,3);
+        }
       }
     }
+  }
+
+  /* Horizon haze, on top of the skyline so distant buildings sink into it.
+     VAPOR ships with a==0, so this is a no-op until a zone asks for it. */
+  if (ZN.haze.a>0){
+    var hz=ctx.createLinearGradient(0,horizonY-ZN.haze.h,0,horizonY+2);
+    hz.addColorStop(0,hexA(ZN.haze.col,0));
+    hz.addColorStop(1,hexA(ZN.haze.col,ZN.haze.a));
+    ctx.fillStyle=hz; ctx.fillRect(0,horizonY-ZN.haze.h,W,ZN.haze.h+2);
   }
 }
 
 function drawGround(){
   var g=ctx.createLinearGradient(0,horizonY,0,H);
-  g.addColorStop(0,'#2c0e4c'); g.addColorStop(0.35,'#170830'); g.addColorStop(1,'#0a0418');
+  g.addColorStop(0,ZN.ground[0]); g.addColorStop(0.35,ZN.ground[1]); g.addColorStop(1,ZN.ground[2]);
   ctx.fillStyle=g; ctx.fillRect(0,horizonY,W,H-horizonY);
 
   var grid=1200, i, zRel, p, a;
@@ -2961,7 +3461,8 @@ function drawGround(){
     var xr=base+i*gu;
     var xb=W/2+bppu*(xr-playerX);
     if (xb<-W||xb>W*2) continue;
-    ctx.strokeStyle=(Math.round(xr/gu)%4===0)?'rgba(255,47,190,.20)':'rgba(124,58,237,.13)';
+    ctx.strokeStyle=(Math.round(xr/gu)%4===0)
+      ? 'rgba('+ZN.grid.major+',.20)' : 'rgba('+ZN.grid.minor+',.13)';
     ctx.beginPath(); ctx.moveTo(W/2,horizonY); ctx.lineTo(xb,H); ctx.stroke();
   }
   var start=Math.floor(position/grid)+1;
@@ -2972,7 +3473,7 @@ function drawGround(){
     p=proj(zRel);
     if (p.y<=horizonY+1||p.y>=H) continue;
     a=(1-fogAt(zRel))*0.4;
-    ctx.fillStyle='rgba(33,230,255,'+a.toFixed(3)+')';
+    ctx.fillStyle='rgba('+ZN.grid.ring+','+a.toFixed(3)+')';
     ctx.fillRect(0,p.y,W,Math.max(1,p.ppu*0.006));
   }
 }
@@ -3037,7 +3538,7 @@ function v3(lx,ly,lz,rot,lat,zRelBase){
    bright, which is all the depth cue a wireframe needs. */
 function decoObelisk(zRel,lat,u,idx){
   var rot=performance.now()/2600 + hashAt(idx,6)*6.283;
-  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  var col=ZN.props[(hashAt(idx,5)*ZN.props.length)|0];
   var w0=0.30, w1=0.18, hgt=2.30, cap=0.60;
   var corner=[[-1,-1],[1,-1],[1,1],[-1,1]];
   var b=[], tp=[], i, e, az;
@@ -3062,7 +3563,7 @@ function decoObelisk(zRel,lat,u,idx){
     ctx.globalAlpha=0.30;
     ctx.beginPath(); ctx.moveTo(e[0].x,e[0].y); ctx.lineTo(e[1].x,e[1].y); ctx.stroke();
   }
-  ctx.shadowColor=col; ctx.shadowBlur=Math.min(16,u*0.30);
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(16,u*0.30));
   for (i=0;i<edges.length;i++){
     e=edges[i]; az=(e[0].zr+e[1].zr)/2;
     if (az>zRel) continue;                        /* then the near half */
@@ -3081,7 +3582,7 @@ function decoObelisk(zRel,lat,u,idx){
 
 /* Alien: a jointed figure whose limbs are placed in 3D, so the wave sweeps
    toward you rather than sliding flat across the screen. */
-function decoAlien(zRel,lat,u,idx,side){
+function decoAlien(zRel,lat,u,idx,side,hail){
   var t=performance.now()/1000 + hashAt(idx,6)*11;
   var col=['#7cff4f','#21e6ff','#b06cff'][(hashAt(idx,5)*3)|0];
   var rot=(side>0?-0.55:0.55);                    /* turned toward the road */
@@ -3102,8 +3603,12 @@ function decoAlien(zRel,lat,u,idx,side){
   var elbow=P(swX+d*0.10, 0.62, 0.05);
   var hand =P(swX+d*(0.15+0.05*wave), 0.80+0.05*wave, 0.10);
   var oS=(d<0?shR:shL), oX=-d*0.11;
-  var oElbow=P(oX-d*0.02, 0.42, 0);
-  var oHand =P(oX+d*0.01, 0.27, 0.01);
+  /* the far arm hangs at rest normally and waves in antiphase when hailing,
+     which is what turns "an alien is standing there" into "it wants you" */
+  var wave2=Math.sin(t*4.4+1.9);
+  var oElbow= hail ? P(oX-d*0.10, 0.62, 0.05)                  : P(oX-d*0.02, 0.42, 0);
+  var oHand = hail ? P(oX-d*(0.15+0.05*wave2), 0.80+0.05*wave2, 0.10)
+                   : P(oX+d*0.01, 0.27, 0.01);
 
   ctx.globalAlpha=0.20; ctx.fillStyle=col;
   ctx.beginPath(); ctx.ellipse(footL.x+(footR.x-footL.x)/2, footL.y,
@@ -3112,7 +3617,7 @@ function decoAlien(zRel,lat,u,idx,side){
 
   ctx.strokeStyle=col; ctx.lineCap='round'; ctx.lineJoin='round';
   ctx.lineWidth=Math.max(1,u*0.030);
-  ctx.shadowColor=col; ctx.shadowBlur=Math.min(14,u*0.25);
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(14,u*0.25));
   function seg(a,bb){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(bb.x,bb.y); ctx.stroke(); }
   seg(hipL,footL); seg(hipR,footR); seg(hipL,hipR);
   seg(oS,oElbow); seg(oElbow,oHand);
@@ -3146,8 +3651,27 @@ function decoAlien(zRel,lat,u,idx,side){
       ctx.restore();
     }
   }
+
+  /* The sign over its head: a cartoon ?/! that swaps every 0.6s and blinks,
+     on a bubble so it stays legible against a bright sky. Drawn last so it
+     sits over the figure, and only once the prop is big enough to read. */
+  if (hail && u>14){
+    var bt=performance.now()/1000;
+    if (Math.sin(bt*7.2) > -0.55){
+      var mk=(Math.floor(bt*1.6)%2) ? '!' : '?';
+      var bs=Math.min(52,u*0.46);
+      var byy=head.y-hh*1.30-Math.abs(Math.sin(bt*2.6))*u*0.10;
+      ctx.globalAlpha=0.80;
+      ctx.fillStyle='rgba(6,3,14,0.72)';
+      rr(head.x-bs*0.46, byy-bs*0.86, bs*0.92, bs*1.06, bs*0.26); ctx.fill();
+      ctx.strokeStyle=hexA('#ffd23f',0.55); ctx.lineWidth=Math.max(1,bs*0.05); ctx.stroke();
+      ctx.globalAlpha=1;
+      glowText(mk, head.x, byy, bs*0.80, '#ffd23f', 'center', blur(Math.min(20,bs*0.45)), '900');
+    }
+  }
 }
-var PROP_COLS=['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'];
+/* prop colours now come off the zone; this name is kept as the accessor */
+function PROP_COLS_(){ return ZN.props; }
 
 var DINO=[
   "..............######....",
@@ -3198,7 +3722,7 @@ var DINO_LEGS=[
 function decoDino(x,gy,u,idx,side,walk){
   var cols=24, rows=17, wR=5.0, hR=3.6;   /* longer head needs a wider grid */
   var bw=u*wR/cols, bh=u*hR/rows;
-  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  var col=ZN.props[(hashAt(idx,5)*ZN.props.length)|0];
   /* stride is driven by how far it has crossed, not by the clock, so the feet
      move in step with the body instead of paddling on the spot */
   var moving = walk>0.001 && walk<0.999;
@@ -3211,14 +3735,14 @@ function decoDino(x,gy,u,idx,side,walk){
   ctx.fillStyle='rgba(10,5,22,.8)';
   ctx.fillRect(-u*wR*0.30,-u*0.13,u*wR*0.60,u*0.15);
   dinoPath(x0,y0,bw,bh,frame);
-  ctx.shadowColor=col; ctx.shadowBlur=Math.min(24,u*0.4);
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(24,u*0.4));
   ctx.fillStyle=col; ctx.fill();
   ctx.shadowBlur=0;
   ctx.restore();
 }
 
 function decoBuilding(x,gy,u,idx){
-  var col=PROP_COLS[(hashAt(idx,5)*PROP_COLS.length)|0];
+  var col=ZN.props[(hashAt(idx,5)*ZN.props.length)|0];
   var wR=1.5+hashAt(idx,6)*0.9, hR=3.2+hashAt(idx,7)*2.6;
   var w=u*wR, h=u*hR, bx=x-w/2, by=gy-h;
   var cn=Math.max(2,Math.round(wR*2.6)), rn=Math.max(3,Math.round(hR*2.1));
@@ -3230,7 +3754,7 @@ function decoBuilding(x,gy,u,idx){
     if (hashAt(idx*131+r*17+c,8)<0.48) continue;      
     ctx.rect(bx+c*cw+pad, by+r*ch+pad, Math.max(0.8,cw-pad*2), Math.max(0.8,ch-pad*2));
   }
-  ctx.shadowColor=col; ctx.shadowBlur=Math.min(11,u*0.18);
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(11,u*0.18));
   ctx.fillStyle=col; ctx.fill();
   ctx.shadowBlur=0;
   ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,u*0.022);
@@ -3238,7 +3762,7 @@ function decoBuilding(x,gy,u,idx){
   ctx.fillStyle=col;
   ctx.fillRect(x-Math.max(1,u*0.02)/2, by-u*0.30, Math.max(1,u*0.02), u*0.30);
   if ((Math.floor(performance.now()/700+idx)%2)===0){
-    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=Math.min(14,u*0.3);
+    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=blur(Math.min(14,u*0.3));
     ctx.fillStyle='#ff5d78';
     ctx.fillRect(x-Math.max(1,u*0.045)/2, by-u*0.36, Math.max(1,u*0.045), Math.max(1,u*0.06));
     ctx.shadowBlur=0;
@@ -3247,7 +3771,7 @@ function decoBuilding(x,gy,u,idx){
 
 function decoMast(x,gy,u,idx){
   var hgt=u*2.55, w=Math.max(1,u*0.05), i, f, yy, ww;
-  ctx.strokeStyle='rgba(138,104,206,.72)';
+  ctx.strokeStyle='rgba('+ZN.propStruct+',.72)';
   ctx.lineWidth=Math.max(1,u*0.022);
   ctx.beginPath();
   ctx.moveTo(x-w*1.7,gy); ctx.lineTo(x-w*0.28,gy-hgt);
@@ -3264,7 +3788,7 @@ function decoMast(x,gy,u,idx){
   ctx.ellipse(x+w*2.4,gy-hgt*0.62,Math.max(1,u*0.15),Math.max(1,u*0.10),0.5,0,Math.PI*2);
   ctx.fill();
   if ((Math.floor(performance.now()/640+idx)%2)===0){
-    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=Math.min(20,u*0.5);
+    ctx.shadowColor='#ff3b5c'; ctx.shadowBlur=blur(Math.min(20,u*0.5));
     ctx.fillStyle='#ff5d78';
     ctx.beginPath(); ctx.arc(x,gy-hgt-u*0.07,Math.max(1.2,u*0.055),0,Math.PI*2); ctx.fill();
     ctx.shadowBlur=0;
@@ -3283,7 +3807,7 @@ function decoBillboard(x,gy,u,idx){
   var col=(idx%3===0)?'#21e6ff':((idx%3===1)?'#ff2fbe':'#b06cff');
   ctx.save();
   ctx.globalAlpha*=0.70+0.30*Math.abs(Math.sin(performance.now()/(240+(idx%7)*95)+idx));
-  ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=Math.min(15,u*0.34);
+  ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(15,u*0.34));
   ctx.fillRect(x-pw*0.40,py+ph*0.17,pw*0.25,ph*0.52);
   for (i=0;i<3;i++)
     ctx.fillRect(x-pw*0.05,py+ph*0.20+i*ph*0.18,pw*(0.26+0.13*((idx+i)%3)),ph*0.085);
@@ -3298,7 +3822,7 @@ function decoKiosk(x,gy,u,idx,side){
   var w=u*1.0, h=u*0.5;
   ctx.save();
   ctx.globalAlpha*=0.5;
-  ctx.fillStyle='#ffb15a';
+  ctx.fillStyle=ZN.propWarm;
   ctx.beginPath(); ctx.ellipse(x,gy,w*0.9,Math.max(1,u*0.15),0,0,Math.PI*2); ctx.fill();
   ctx.restore();
   ctx.fillStyle='#150d24';
@@ -3309,7 +3833,7 @@ function decoKiosk(x,gy,u,idx,side){
   ctx.fillRect(x-w*0.60,gy-h-Math.max(1,u*0.05),w*1.20,Math.max(1.2,u*0.05));
   var col=(idx%2===0)?'#21e6ff':'#ffd23f';
   var bx=x+side*w*0.66, bw=Math.max(1.2,u*0.05);
-  ctx.shadowColor=col; ctx.shadowBlur=Math.min(13,u*0.3);
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(13,u*0.3));
   ctx.fillStyle=col;
   ctx.fillRect(bx-bw/2,gy-h*2.5,bw,h*2.0);
   ctx.shadowBlur=0;
@@ -3321,7 +3845,7 @@ function drawDecor(){
   var first=Math.floor(position/DECO_SPACE)+1;
   var last =Math.floor((position+MAXZ)/DECO_SPACE);
   for (var idx=last; idx>=first; idx--){          
-    if (hashAt(idx,1)>0.5) continue;              
+    if (hashAt(idx,1) > Math.min(1,0.5*ZN.propDens)) continue;
     var zRel=idx*DECO_SPACE-position;
     if (zRel<=350||zRel>MAXZ) continue;
     var p=proj(zRel), a=1-fogAt(zRel);
@@ -3331,6 +3855,16 @@ function drawDecor(){
     /* mast .22 | billboard .20 | kiosk .17 | tower .17 | dino .09 |
        obelisk .09 | alien .06 — the two new ones stay rare on purpose */
     var type = t<0.22?0 : t<0.42?1 : t<0.59?2 : t<0.76?3 : t<0.85?4 : t<0.94?5 : 6;
+    /* propMask is a bitfield straight off the lab: bit 0 mast, 1 billboard,
+       2 kiosk, 3 tower, 4 dino, 5 obelisk, 6 alien. A masked-out type is
+       re-rolled onto an allowed one rather than left as a hole, so a zone
+       that only wants towers and aliens still gets a populated roadside. */
+    if (!(ZN.propMask & (1<<type))){
+      var allow=[];
+      for (var pm=0;pm<7;pm++) if (ZN.propMask & (1<<pm)) allow.push(pm);
+      if (!allow.length) continue;
+      type=allow[(hashAt(idx,11)*allow.length)|0];
+    }
     var lat, walk=0;
     if (type===4){
       /* it crosses the road well ahead and is clear of it long before you
@@ -3344,6 +3878,12 @@ function drawDecor(){
       var latSpan= type===3?1.4 : (type===5?1.2 : (type===6?0.60 : 0.95));
       lat=side*(latMin+hashAt(idx,3)*latSpan);
     }
+    /* A hailer has stepped forward to the near edge of the alien band, so
+       it is both closer to you and visibly out of line with its kin. The
+       same hash decides it here and in isHailer(); HAIL_LAT is pinned so
+       the pass distance is one number rather than a range. */
+    var hail = (type===6) && hashAt(idx,10)<HAIL_ODDS && lap>=HAIL_LAP;
+    if (hail) lat = side*HAIL_LAT;
     var x=W/2+p.ppu*(bend(zRel)+lat-playerX);
     if (x<-p.ppu*7||x>W+p.ppu*7) continue;
     ctx.globalAlpha=a;
@@ -3357,7 +3897,7 @@ function drawDecor(){
     else if (type===3) decoBuilding(x,p.y,p.ppu,idx);
     else if (type===4) decoDino(x,p.y,p.ppu,idx,side,walk);
     else if (type===5) decoObelisk(zRel,lat,p.ppu,idx);
-    else               decoAlien(zRel,lat,p.ppu,idx,side);
+    else               decoAlien(zRel,lat,p.ppu,idx,side,hail);
     ctx.globalAlpha=1;
   }
 }
@@ -3370,7 +3910,7 @@ function drawPosts(){
     var p=proj(zRel);
     if (p.y<=horizonY||p.y>H) continue;
     var a=1-fogAt(zRel);
-    var col=(((start+i)&1)===1)?'#21e6ff':'#ff2fbe';
+    var col=(((start+i)&1)===1)?ZN.posts[0]:ZN.posts[1];
     var w=Math.max(1,p.ppu*0.03), h=p.ppu*0.46;
     var cRoad=bend(zRel);
     for (var s=-1;s<=1;s+=2){
@@ -3394,8 +3934,8 @@ function drawGate(){
   var h=p.ppu*1.05, thick=Math.max(2,p.ppu*0.06);
   var x0=W/2+p.ppu*(cRoad-1.3-playerX), x1=W/2+p.ppu*(cRoad+1.3-playerX);
   ctx.globalAlpha=a;
-  ctx.shadowColor='#7cff4f'; ctx.shadowBlur=Math.min(26,p.ppu*0.3);
-  ctx.fillStyle='#7cff4f';
+  ctx.shadowColor=ZN.gate; ctx.shadowBlur=blur(Math.min(26,p.ppu*0.3));
+  ctx.fillStyle=ZN.gate;
   ctx.fillRect(x0-thick/2,p.y-h,thick,h);
   ctx.fillRect(x1-thick/2,p.y-h,thick,h);
   ctx.fillRect(x0,p.y-h-thick,x1-x0,thick*1.2);
@@ -3447,7 +3987,7 @@ function vanChevrons(x,yTop,w,dir){
     /* index from the leading edge out, so the chase runs the way it points */
     lit = ph > (dir>0 ? i : (2-i));
     ctx.strokeStyle = lit ? '#ffd24a' : 'rgba(120,92,26,.85)';
-    if (lit){ ctx.shadowColor='#ffb020'; ctx.shadowBlur=Math.min(22,w*0.55); }
+    if (lit){ ctx.shadowColor='#ffb020'; ctx.shadowBlur=blur(Math.min(22,w*0.55)); }
     cx = x0 + cw*(i+0.5);
     ctx.beginPath();
     ctx.moveTo(cx-dir*cw*0.24, yTop);
@@ -3486,7 +4026,7 @@ function drawTraffic(c){
            strip leans AND blooms. At five pixels wide the glow is doing more
            work than the shape is. */
         if (fsg){
-          ctx.shadowColor='#ffb020'; ctx.shadowBlur=9; ctx.fillStyle='#ffe07a';
+          ctx.shadowColor='#ffb020'; ctx.shadowBlur=blur(9); ctx.fillStyle='#ffe07a';
           ctx.fillRect(x+(fsg>0?mw*0.05:-mw*0.55), p.y-mh-3, mw*0.5, 3);
           ctx.shadowBlur=0;
         } else {
@@ -3519,13 +4059,13 @@ function drawTraffic(c){
       vanChevrons(x, p.y-vh-w*0.20, w, sgn);
     } else {
       var on=(Math.floor(performance.now()/230)%2)===0;
-      if (on){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=Math.min(20,w*0.55); }
+      if (on){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=blur(Math.min(20,w*0.55)); }
       ctx.fillStyle=on?'#ffe98a':'#6b5a1e';
       ctx.fillRect(x-w*0.32,p.y-vh-w*0.11,w*0.64,w*0.10);
       ctx.shadowBlur=0;
     }
 
-    ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=Math.min(14,w*0.3);
+    ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=blur(Math.min(14,w*0.3));
     ctx.fillStyle='#ff4747';
     ctx.fillRect(x-w*0.42,p.y-vh*0.28,w*0.18,vh*0.11);
     ctx.fillRect(x+w*0.24,p.y-vh*0.28,w*0.18,vh*0.11);
@@ -3543,7 +4083,7 @@ function drawTraffic(c){
   ctx.fillStyle='rgba(120,200,255,.14)';
   rr(x-w*0.34,p.y-h*0.95,w*0.68,h*0.36,w*0.08); ctx.fill();
 
-  ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=Math.min(16,w*0.35);
+  ctx.shadowColor='#ff2b2b'; ctx.shadowBlur=blur(Math.min(16,w*0.35));
   ctx.fillStyle='#ff4747';
   ctx.fillRect(x-w*0.44,p.y-h*0.44,w*0.20,h*0.16);
   ctx.fillRect(x+w*0.24,p.y-h*0.44,w*0.20,h*0.16);
@@ -3580,7 +4120,7 @@ function drawHeart(hh){
   var g=ctx.createLinearGradient(x-s,y-s*1.6,x+s,y);
   for (var i=0;i<=4;i++) g.addColorStop(i/4,'hsl('+((hue+i*72)%360)+',100%,63%)');
   ctx.shadowColor='hsl('+((hue+180)%360)+',100%,60%)';
-  ctx.shadowBlur=Math.min(30,w*0.95);
+  ctx.shadowBlur=blur(Math.min(30,w*0.95));
   heartPath(x,y,s); ctx.fillStyle=g; ctx.fill();
   ctx.shadowBlur=0;
   if (w>10){
@@ -3608,7 +4148,7 @@ function drawShot(sh){
   g.addColorStop(0,'rgba(255,255,255,.85)'); g.addColorStop(1,hexA(sc,0));
   ctx.strokeStyle=g; ctx.lineWidth=Math.max(1.5,w*0.6); ctx.lineCap='round';
   ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tx,ty); ctx.stroke();
-  ctx.shadowColor=sc; ctx.shadowBlur=Math.min(26,w*2.4);
+  ctx.shadowColor=sc; ctx.shadowBlur=blur(Math.min(26,w*2.4));
   ctx.globalAlpha=a*0.45; ctx.fillStyle=sc;
   ctx.beginPath(); ctx.ellipse(x,y,w*0.95,w*1.5,0,0,Math.PI*2); ctx.fill();
   ctx.globalAlpha=a; ctx.fillStyle='#ffffff';
@@ -3645,7 +4185,7 @@ function drawBlast(bl){
   var g=ctx.createRadialGradient(x,gy-rise,R*0.08,x,gy-rise,R);
   g.addColorStop(0,'#ffffff'); g.addColorStop(0.30,'#ffe487');
   g.addColorStop(0.68,'#ff7a2f'); g.addColorStop(1,'rgba(255,50,30,0)');
-  ctx.shadowColor='#ff9b3d'; ctx.shadowBlur=Math.min(26,R*0.9);
+  ctx.shadowColor='#ff9b3d'; ctx.shadowBlur=blur(Math.min(26,R*0.9));
   ctx.fillStyle=g;
   ctx.beginPath(); ctx.ellipse(x,gy-rise,R,R*0.80,0,0,Math.PI*2); ctx.fill();
   ctx.shadowBlur=0; ctx.globalAlpha=1;
@@ -3663,15 +4203,48 @@ function drawUfo(uf){
   var gy=p.y;
   var y=gy-(uf.hover*p.ppu)-Math.sin(uf.bob*1.3)*w*0.10;
 
-  if (uf.beamOn){                             /* cone of light down to the road */
-    var bw=w*0.72;
-    ctx.globalAlpha=a*0.14; ctx.fillStyle=uf.color;
+  var live = !!(uf.hunt||uf.cutting);
+  if (uf.beamOn && (!live || uf.beamK>0.01)){
+    /* A hunter's beam is drawn at EXACTLY the width it is tested at, so
+       what you steer into is what catches you. The ambient saucer keeps
+       its old cosmetic cone, which happens to be almost the same size. */
+    var k  = live ? uf.beamK : 1;
+    /* Drawn at the tested width in BOTH modes now. The old cosmetic cone
+       was 0.446 road units against a 0.46 test, which was close enough to
+       mislead: you could be a hair outside a beam that looked like it had
+       you. */
+    var bw = live ? UFO_BEAM_R*p.ppu*(0.55+0.45*k) : UFO_BEAM_R*p.ppu;
+    ctx.globalAlpha=a*(live?0.26:0.14)*k; ctx.fillStyle=uf.color;
     ctx.beginPath();
     ctx.moveTo(x-w*0.20,y+dh*0.55); ctx.lineTo(x+w*0.20,y+dh*0.55);
     ctx.lineTo(x+bw,gy); ctx.lineTo(x-bw,gy);
     ctx.closePath(); ctx.fill();
-    ctx.globalAlpha=a*0.30;
+    ctx.globalAlpha=a*(live?0.42:0.30)*k;
     ctx.beginPath(); ctx.ellipse(x,gy,bw,Math.max(1,bw*0.24),0,0,Math.PI*2); ctx.fill();
+
+    if (live){
+      /* rings travelling down the cone, so the beam reads as pulling */
+      var tR=performance.now()/1000;
+      ctx.globalAlpha=a*0.30*k; ctx.strokeStyle=uf.color; ctx.lineWidth=Math.max(1,w*0.03);
+      for (var r=0;r<4;r++){
+        var rp=((tR*0.85+r*0.25)%1);
+        var ry=y+dh+rp*(gy-y-dh);
+        var rw2=bw*(0.30+rp*0.70);
+        ctx.beginPath(); ctx.ellipse(x,ry,rw2,Math.max(1,rw2*0.20),0,0,Math.PI*2); ctx.stroke();
+      }
+      /* and the lock: the ring on the road closes as it takes hold */
+      if (uf.lock>0.02){
+        var lk=clamp(uf.lock/UFO_LOCK,0,1);
+        ctx.globalAlpha=a*0.95;
+        ctx.strokeStyle=lk>=1?'#ffffff':'#7cff4f';
+        ctx.lineWidth=Math.max(1.5,w*0.05);
+        ctx.shadowColor='#7cff4f'; ctx.shadowBlur=blur(Math.min(18,w*0.30));
+        ctx.beginPath();
+        ctx.ellipse(x,gy,bw*1.06,Math.max(1,bw*0.26),0,-Math.PI/2,-Math.PI/2+lk*Math.PI*2);
+        ctx.stroke(); ctx.shadowBlur=0;
+      }
+    }
+    ctx.globalAlpha=1;
   }
 
   ctx.globalAlpha=a;
@@ -3685,7 +4258,7 @@ function drawUfo(uf){
   ctx.fillStyle=g;
   ctx.beginPath(); ctx.ellipse(x,y,w*0.5,dh,0,0,Math.PI*2); ctx.fill();
   ctx.lineWidth=Math.max(1,w*0.032); ctx.strokeStyle=uf.color;
-  ctx.shadowColor=uf.color; ctx.shadowBlur=Math.min(20,w*0.36);
+  ctx.shadowColor=uf.color; ctx.shadowBlur=blur(Math.min(20,w*0.36));
   ctx.stroke(); ctx.shadowBlur=0;
 
   if (w>12){                                  /* running lights round the rim */
@@ -3715,7 +4288,7 @@ function drawDinoPickup(pu){
   ctx.globalAlpha=a;
   dinoPath(x-w/2, y-h, w/24, h/17, 1+((Math.floor(t/190))&1));
   ctx.shadowColor='hsl('+(((t/9)+180)%360)+',100%,60%)';
-  ctx.shadowBlur=Math.min(26,w*0.7);
+  ctx.shadowBlur=blur(Math.min(26,w*0.7));
   ctx.fillStyle=rainbowFill(x-w/2,y-h,x+w/2,y);
   ctx.fill(); ctx.shadowBlur=0;
   ctx.globalAlpha=1;
@@ -3738,7 +4311,7 @@ function drawBoost(bb){
   ctx.globalAlpha=a;
   var g=ctx.createLinearGradient(x,y-s,x,y+s);
   g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,'#8ef4ff'); g.addColorStop(1,'#21e6ff');
-  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=Math.min(30,w*zap);
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=blur(Math.min(30,w*zap));
   ctx.beginPath();
   for (var i=0;i<BOLT.length;i++){
     var px=x+BOLT[i][0]*s, py=y+BOLT[i][1]*s;
@@ -3760,7 +4333,7 @@ function drawLightBar(pw,ph,col,shape){
   var y=-ph-pw*0.076, w=pw*0.92, x0=-pw*0.46, th=pw*0.054, i, s, cx;
   var t=performance.now();
   ctx.fillStyle=col; ctx.strokeStyle=col;
-  ctx.shadowColor=col; ctx.shadowBlur=pw*0.14;
+  ctx.shadowColor=col; ctx.shadowBlur=blur(pw*0.14);
 
   if (shape===1){                                   /* SAWTOOTH */
     var n=7, tw=w/n, hg=pw*0.085;
@@ -3825,7 +4398,7 @@ function drawEyes(pw,ph,style,braking){
   var t=performance.now(), blink=(t%4300)<130;
   var ex=pw*0.15, ey=-ph*0.76, r=pw*0.055, s, cx;
   var col='#eaf6ff';
-  ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=pw*0.09;
+  ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=blur(pw*0.09);
 
   if (style===6){                                   /* VISOR */
     ctx.fillStyle='#ff3b5c'; ctx.shadowColor='#ff3b5c';
@@ -3942,7 +4515,7 @@ function paintCar(pw,o){
   ctx.fillStyle=bg;
   rr(-pw/2,-ph,pw,ph,pw*0.10); ctx.fill();
   ctx.lineWidth=Math.max(1.4,pw*0.026); ctx.strokeStyle=trim;
-  ctx.shadowColor=trim; ctx.shadowBlur=pw*0.17; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.shadowColor=trim; ctx.shadowBlur=blur(pw*0.17); ctx.stroke(); ctx.shadowBlur=0;
 
   ctx.fillStyle='rgba(140,215,255,.20)';
   rr(-pw*0.31,-ph*0.94,pw*0.62,ph*0.34,pw*0.05); ctx.fill();
@@ -3952,7 +4525,7 @@ function paintCar(pw,o){
 
   var braking=o.brake;
   ctx.shadowColor=braking?'#ff2020':'#ff5a5a';
-  ctx.shadowBlur=braking?pw*0.24:pw*0.11;
+  ctx.shadowBlur=blur(braking?pw*0.24:pw*0.11);
   ctx.fillStyle=braking?'#ff2626':'#c53a4a';
   ctx.fillRect(-pw*0.42,-ph*0.42,pw*0.22,ph*0.17);
   ctx.fillRect( pw*0.20,-ph*0.42,pw*0.22,ph*0.17);
@@ -3975,7 +4548,7 @@ function drawPlayerDino(lean){
   ctx.beginPath(); ctx.ellipse(0,4,w*0.48,h*0.10,0,0,Math.PI*2); ctx.fill();
   ctx.globalAlpha=fade;
   dinoPath(-w/2,-h,w/24,h/17,frame);
-  ctx.shadowColor='hsl('+(((t/6)+180)%360)+',100%,60%)'; ctx.shadowBlur=28;
+  ctx.shadowColor='hsl('+(((t/6)+180)%360)+',100%,60%)'; ctx.shadowBlur=blur(28);
   ctx.fillStyle=rainbowFill(-w/2,-h,w/2,0,6);
   ctx.fill(); ctx.shadowBlur=0;
   ctx.restore();
@@ -3988,10 +4561,12 @@ function drawPlayer(){
   var blink=invT>0&&(Math.floor(invT*12)%2===0);
   var spct=clamp(speed/maxSpeedFor(lap),0,1);
 
+  if (cutCar.alpha<=0.01) return;
   ctx.save();
-  ctx.translate(W/2 + lean*9, PLAYER_Y);
-  ctx.rotate(spinT>0 ? spinAng : (-lean*0.07 - curSlope*92));
-  ctx.globalAlpha=blink?0.42:1;
+  ctx.translate(W/2 + lean*9 + cutCar.x, PLAYER_Y + cutCar.y);
+  if (cutCar.sc!==1) ctx.scale(cutCar.sc, cutCar.sc);
+  ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92)) + cutCar.tilt + cutCar.spin);
+  ctx.globalAlpha=(blink?0.42:1)*cutCar.alpha;
   var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
   paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn});
   ctx.restore();
@@ -4198,9 +4773,14 @@ function drawHUD(){
     ctx.fillRect(bx2,by,barW*clamp((position+Z_CAR-cpStart)/cpLen,0,1),13);
     ctx.shadowBlur=0;
     ctx.strokeStyle='rgba(124,255,79,.65)'; ctx.lineWidth=1;
+    /* This outline used to sit OUTSIDE the `state!=='title'` block that
+       build 57 wrapped around the bottom HUD row, while the three values it
+       reads are declared inside it. `var` hoisting meant that on the title
+       screen it stroked a rectangle of NaN every frame — invisible, but a
+       real stray draw call. Caught headless; the fix is the brace it should
+       always have been inside. */
+    ctx.strokeRect(bx2+0.5,by+0.5,barW-1,12);
   }
-
-  ctx.strokeRect(bx2+0.5,by+0.5,barW-1,12);
 
   if (state==='playing') drawBendWarning();
 
@@ -4862,6 +5442,259 @@ function drawGarage(){
 /* ---------------------------------------------------------------
    FRAME
 --------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------
+   WEATHER
+   Lifted from the Zone Lab. One flake pool, reused by every mode; the
+   zone picks the mode and how much of the pool is alive. `d` is a fake
+   depth, so near flakes are bigger, faster and more opaque than far
+   ones, and everything drifts with the road so it does not read as a
+   sticker on the glass.
+--------------------------------------------------------------- */
+var WEATHERS=['none','snow','rain','ember','dust','ash'];
+var flakes=[];
+function seedFlakes(){
+  flakes=[];
+  for (var i=0;i<420;i++)
+    flakes.push({x:Math.random()*W, y:Math.random()*H, d:0.25+Math.random()*0.75,
+                 p:Math.random()*6.28, s:Math.random()});
+}
+seedFlakes();
+
+function drawWeather(dt){
+  var kind=ZN.weather; if (!kind||kind==='none') return;
+  var amt=clamp(ZN.wamt*ZN.weatherAmt,0,1); if (amt<=0.01) return;
+  var n=Math.round(flakes.length*amt), t=performance.now()/1000, i, f;
+  var drift=-bgX*0.0006-playerX*0.4;
+  ctx.save();
+  if (kind==='ember') ctx.globalCompositeOperation='lighter';
+  for (i=0;i<n;i++){
+    f=flakes[i];
+    if (kind==='snow'){
+      f.y+=(26+f.d*66)*dt; f.x+=Math.sin(t*0.8+f.p)*11*dt+drift;
+      var sz=0.9+f.d*2.2;
+      ctx.globalAlpha=0.22+f.d*0.55;
+      ctx.fillStyle=ZN.wcol; ctx.fillRect(f.x,f.y,sz,sz);
+    } else if (kind==='rain'){
+      f.y+=(520+f.d*900)*dt; f.x+=(-90-f.d*70)*dt+drift;
+      var ln=8+f.d*22;
+      ctx.globalAlpha=0.10+f.d*0.28;
+      ctx.strokeStyle=ZN.wcol; ctx.lineWidth=0.7+f.d*0.9;
+      ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(f.x+ln*0.16,f.y-ln); ctx.stroke();
+    } else if (kind==='ember'){
+      f.y-=(30+f.d*130)*dt; f.x+=Math.sin(t*1.6+f.p)*22*dt+drift;
+      if (f.y<-6){ f.y=H+Math.random()*40; f.x=Math.random()*W; }
+      var e=0.55+0.45*Math.sin(t*7+f.p), es=Math.max(1,f.d*2.6);
+      ctx.globalAlpha=(0.15+f.d*0.55)*e;
+      ctx.fillStyle=ZN.wcol; ctx.fillRect(f.x,f.y,es,es*1.6);
+    } else if (kind==='dust'){
+      f.y+=Math.sin(t*0.5+f.p)*7*dt; f.x+=(-14-f.d*34)*dt+drift;
+      ctx.globalAlpha=(0.05+f.d*0.20)*(0.6+0.4*Math.sin(t*1.1+f.p));
+      ctx.fillStyle=ZN.wcol; ctx.fillRect(f.x,f.y,1+f.d,1+f.d);
+    } else if (kind==='ash'){
+      f.y+=(14+f.d*40)*dt; f.x+=Math.sin(t*0.4+f.p)*17*dt+drift;
+      ctx.globalAlpha=0.10+f.d*0.30;
+      ctx.fillStyle=ZN.wcol; ctx.fillRect(f.x,f.y,1+f.d*1.6,1+f.d*1.6);
+    }
+    if (f.y>H+8){ f.y=-8-Math.random()*40; f.x=Math.random()*W; }
+    else if (f.y<-48){ f.y=H+Math.random()*20; f.x=Math.random()*W; }
+    if (f.x<-60) f.x+=W+120; else if (f.x>W+60) f.x-=W+120;
+  }
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* A low band of fog hugging the road surface. Cheap, and it does more for
+   "this zone feels different" than almost anything else. */
+function drawGroundFog(){
+  if (ZN.groundFog<=0.01) return;
+  var top=horizonY, h=H-horizonY, F=ZN.fog;
+  var g=ctx.createLinearGradient(0,top,0,top+h*0.62);
+  g.addColorStop(0,'rgba('+F[0]+','+F[1]+','+F[2]+','+(0.85*ZN.groundFog).toFixed(3)+')');
+  g.addColorStop(1,'rgba('+F[0]+','+F[1]+','+F[2]+',0)');
+  ctx.fillStyle=g; ctx.fillRect(0,top,W,h*0.62);
+}
+
+/* ---------------------------------------------------------------
+   ZONE SWITCHING
+   A hard snap, always behind a cutaway, exactly as decided: no
+   crossfade. Props are placed on a deterministic grid and coloured at
+   draw time, so nothing needs per-prop zone memory.
+--------------------------------------------------------------- */
+function setZone(id){
+  /* setZone owns `zoneI`. Nothing else may assign it — that split is
+     exactly what let the two drift apart across a reset(). */
+  if (!ZONES[id]) id='vapor';
+  zoneI = id;
+  ZN = ZONES[id];
+  GB = ZN.bloom*ZN.bloomMul;
+  rebuildRows();
+  applyGrade();
+  if (ZN.song) musLoadSong(ZN.song);
+  for (var i=0;i<cars.length;i++)
+    cars[i].color = cars[i].weaver ? '#ffd23f'
+                                   : ZN.traffic[(Math.random()*ZN.traffic.length)|0];
+}
+
+
+/* ---------------------------------------------------------------
+   THE ABDUCTION
+   Ported from the cutaway lab's `abduct` script, beat for beat. The
+   renderer is never captured or masked — it just keeps running while
+   this drives the car sprite, the camera and the saucer.
+
+   THE CLOCK IS FROZEN FOR THE WHOLE THING. update() hands over to
+   abductStep() before it reaches `timeLeft -= dt`, so the freeze is the
+   absence of a line rather than a new pause path. You get the seconds
+   back that the cutscene spends, which is the only fair reading: you
+   did not choose to stop driving, the saucer stopped you.
+--------------------------------------------------------------- */
+function callUfo(){
+  ufo = { z: position+Z_CAR+22000, x: playerX*0.4, amp:0, rate:0, phase:0,
+          hover: 1.15, bob: Math.random()*6, spin: 0,
+          color: ZN.accent, beamOn: true, beamT: 99, beamK: 1,
+          life: UFO_HUNT_T, fade: 1, isUfo: true,
+          hunt: true, lock: 0, told: false, v: speed*0.8 };
+  hailCool = HAIL_COOL;
+  say(T('HAIL_CALL'), '#7cff4f', true, null, 2.0);
+  blip(320,0.10,'square',0.16);
+  setTimeout(function(){ blip(214,0.16,'square',0.16); },110);
+}
+
+/* The transition table, same shape as the cutaway lab's. `swapAt` is the
+   moment the map changes underneath; `freeze` marks the five lab cuts that
+   redraw a captured frame (VHS TEAR, PIXEL MELT, CHROMA SPLIT, TAPE REWIND,
+   CRT COLLAPSE) and would additionally need an offscreen snapshot canvas.
+   Adding one of the four LIVE cuts is a row here plus a case in cutScript()
+   and one in drawCut(); nothing else in the game has to move. */
+var CUTS = {
+  abduct: { dur:5.4, swapAt:0.74, freeze:false }
+};
+
+function startCut(kind, to){
+  cut = { kind:kind, t:0, dur:CUTS[kind].dur, swapped:false, to:to };
+  state = 'abduct';
+  cutCarRest();
+  ufo.hunt=false; ufo.cutting=true; ufo.lock=UFO_LOCK;
+  shake=Math.max(shake,10);
+  blip(880,0.30,'sine',0.22);
+  setTimeout(function(){ blip(1320,0.45,'sine',0.20); },160);
+}
+
+function endAbduct(){
+  cut=null; cutCarRest();
+  ufo=null; ufoT=18; hailCool=HAIL_COOL;
+  spinT=0; spinAng=0;                 /* never set down mid-spin */
+  invT=Math.max(invT,1.2);            /* a beat to read the new road */
+  state='playing';
+  var zn=ZONES[zoneI];
+  msgs.length=0;                                /* drop any stale banner */
+  say(T('ZONE_IN')+'  '+zn.name, zn.accent, true, null, 2.6);
+  if (zn.mult!==1)
+    say('×'+zn.mult.toFixed(1)+'  '+T('ZONE_PAY'), '#ffd23f', false, null, 2.6);
+}
+
+function startAbduct(){
+  startCut('abduct', zoneI==='vapor' ? 'vaporEdit' : 'vapor');
+}
+
+function cutStep(dt){
+  var p = clamp(cut.t/cut.dur, 0, 1);
+  cut.t += dt;
+  cutScript(cut.kind, p, dt);
+
+  if (!cut.swapped && p>=CUTS[cut.kind].swapAt){
+    cut.swapped=true;
+    setZone(cut.to);
+    /* The road AHEAD of you is already generated, so the new zone's curve
+       and len dials arrive with the next section rather than at the seam.
+       That is deliberate and it is free: regenerating the centreline here
+       would jump the road under the white-out, and a gentle first bend is
+       exactly what lets you learn a zone's grip before it punishes you.
+       Grip and the centrifugal gain ARE instant — they are read per frame. */
+  }
+
+  /* the world keeps flowing underneath, minus the clock and minus every
+     way the player could be hurt */
+  position += speed*dt;
+  for (var i=cars.length-1;i>=0;i--){
+    cars[i].z += cars[i].speed*dt;
+    if (cars[i].z-position < -6000) cars.splice(i,1);
+  }
+  ensure(position+MAXZ+Z_CAR+CH);
+  cAnchor=curveAt(position+Z_CAR);
+  curSlope=slopeAt(position+Z_CAR);
+  warnSlope=slopeAt(position+Z_CAR+17000);
+  bgX += (-curSlope*108000 - bgX)*Math.min(1,3*dt);
+  engine(ENG_IDLE+(speed/14800)*0.5, true);
+  screech(0);
+  musMix();
+
+  if (cut.t>=cut.dur) endAbduct();
+}
+
+/* How each cut drives the world and the car sprite. */
+function cutScript(kind, p, dt){
+  var e;
+  if (kind!=='abduct') return;
+
+  /* 0.00-0.16 lock   — beam widens, throttle dies
+     0.16-0.62 lift   — the car rises, sways and shrinks into the cone
+     0.62-0.80 bloom  — white-out, and the map swaps at 0.74
+     0.80-1.00 set down on the new road                                  */
+  if (ufo){
+    ufo.z = position+Z_CAR+UFO_HOLD - UFO_HOLD*Math.min(1,p/0.16);
+    ufo.spin += dt*3.1; ufo.bob += dt;
+  }
+  if (p<0.16){
+    speed += (2100-speed)*Math.min(1,dt*2.6);
+    if (ufo) playerX += (ufo.x-playerX)*Math.min(1,dt*1.6);
+  } else if (p<0.62){
+    e=(p-0.16)/0.46;
+    speed += (900-speed)*Math.min(1,dt*1.4);
+    cutCar.y   = -ease(e)*430;
+    cutCar.x   = Math.sin(e*7.2)*46*(1-e*0.35);
+    cutCar.tilt= Math.sin(e*5.1)*0.30 + Math.sin(e*11)*0.06;
+    cutCar.sc  = 1 - ease(e)*0.68;
+    cutCar.spin= e*e*2.4;
+  } else if (p<0.80){
+    cutCar.alpha = Math.max(0, 1-(p-0.62)/0.10);
+    speed += (600-speed)*Math.min(1,dt*1.4);
+  } else {
+    e=(p-0.80)/0.20;
+    if (ufo) ufo.beamK = Math.max(0, 1-e*2);
+    cutCar.alpha = Math.min(1, e*2.4);
+    cutCar.sc    = 0.32 + ease(Math.min(1,e*1.3))*0.68;
+    cutCar.y     = -260*(1-ease(Math.min(1,e*1.15)));
+    cutCar.x     = Math.sin(e*9)*18*(1-e);
+    cutCar.tilt  = Math.sin(e*8)*0.10*(1-e);
+    cutCar.spin  = 0;
+    speed += (maxSpeedFor(lap)*0.62-speed)*Math.min(1,dt*1.5);
+  }
+
+}
+
+/* The screen-space overlay for the running cut. */
+function drawCut(){
+  if (cut.kind!=='abduct') return;
+  var p=clamp(cut.t/cut.dur,0,1), b=0;
+  if (p>0.62 && p<0.88) b=clamp((p-0.62)/0.12,0,1)*clamp((0.88-p)/0.14,0,1);
+  if (b>0){
+    var g=ctx.createRadialGradient(W/2,horizonY+70,20,W/2,horizonY+70,640);
+    g.addColorStop(0,'rgba(240,255,214,'+b.toFixed(3)+')');
+    g.addColorStop(0.45,'rgba(124,255,79,'+(b*0.85).toFixed(3)+')');
+    g.addColorStop(1,'rgba(124,255,79,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(255,255,255,'+(b*b*0.9).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+  }
+  if (mode==='run' && p<0.90){
+    ctx.globalAlpha=clamp(p/0.08,0,1)*clamp((0.90-p)/0.10,0,1);
+    /* below the saucer and above the horizon: at y=96 it sat on the hull */
+    glowText(T('CLOCK_HELD'), W/2, 170, TS.LABEL*UI, '#21e6ff', 'center', 14);
+    ctx.globalAlpha=1;
+  }
+}
+
 function render(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W*dpr,H*dpr); // Clear taking scaling into account
@@ -4895,12 +5728,16 @@ function render(){
     else                        drawTraffic(sorted[i]);
   }
 
+  drawGroundFog();
   drawPlayer();
+  drawWeather(lastDt);
   drawNearMissPops();
   ctx.restore();
 
   if (flash>0){ ctx.fillStyle='rgba(124,255,79,'+(flash*0.28).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
   if (hitFlash>0){ ctx.fillStyle='rgba(255,60,90,'+(hitFlash*0.34).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
+
+  if (state==='abduct') drawCut();
 
   if (state!=='garage' && state!=='info') drawHUD();
   if (state==='title')    drawTitle();
@@ -4910,9 +5747,10 @@ function render(){
   if (state==='info')     drawInfo();
 }
 
-var last=performance.now();
+var last=performance.now(), lastDt=0.016;
 function loop(now){
   var dt=Math.min(0.05,(now-last)/1000); last=now;
+  lastDt=dt;
   update(dt);
   syncPad();
   render();
