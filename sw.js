@@ -4,9 +4,21 @@
    point: you never have to bump CACHE to see a new build, because index.html
    is re-fetched on every launch and only falls back to the cached copy when
    the phone is offline. Bump CACHE only when you change the icons or this
-   file itself. */
+   file itself.
 
-const CACHE = 'vapor-lane-v1';
+   Shared-origin note (2026-09-20): every GitHub Pages repo under one account
+   is served from the same origin (username.github.io), and Cache Storage
+   belongs to the origin, not to the path. This worker therefore only ever
+   deletes caches that are its own (see OWN_PREFIXES). It used to delete every
+   cache that was not the current one, which would also have wiped the offline
+   copy of any other game hosted under the same account (Neon Paint) each
+   time this file changed. CACHE went v1 -> v2 with that change. */
+
+const CACHE = 'vapor-lane-v2';
+
+/* Every cache name this game has ever used starts with one of these:
+   'vapor-lane-' now, 'neon-rush-' before the rename. */
+const OWN_PREFIXES = ['vapor-lane-', 'neon-rush-'];
 
 const ASSETS = [
   './',
@@ -36,11 +48,13 @@ self.addEventListener('install', function (e) {
 self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
-      /* Delete every cache that is not the current one, rather than matching
-         a name prefix — an old prefix stops matching the moment the game is
-         renamed, and the stale cache then lives forever. */
+      /* Only this game's own old caches, never anything else on the origin
+         (see the shared-origin note at the top). If the game is ever renamed
+         again, add the old prefix to OWN_PREFIXES or its stale cache will
+         live forever. */
       return Promise.all(keys.map(function (k) {
-        return k === CACHE ? null : caches.delete(k);
+        var mine = OWN_PREFIXES.some(function (p) { return k.indexOf(p) === 0; });
+        return (mine && k !== CACHE) ? caches.delete(k) : null;
       }));
     }).then(function () { return self.clients.claim(); })
   );
