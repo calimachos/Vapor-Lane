@@ -23,6 +23,24 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <style>
+  /* EMBEDDED DISPLAY FACE (build 64, 2026-09-24).
+     "Arial Black" is a system font: Mac and Windows have it, Android, iOS and
+     Linux do not, so on the main mobile target the display face used to fall
+     through to Roboto/SF and lose its character. This is Archivo Black
+     (Copyright 2017 The Archivo Black Project Authors,
+     https://github.com/Omnibus-Type/ArchivoBlack), licensed under the SIL Open
+     Font License 1.1 (https://openfontlicense.org), subset to Latin + Spanish
+     accents + common punctuation (~8.7 KB). It sits SECOND in every canvas
+     font stack, right after "Arial Black": machines that have Arial Black
+     look exactly as before; everything else gets this instead of a generic
+     sans. To use it everywhere instead, swap the first two names in the six
+     ctx.font stacks. One face covers every weight the game asks for
+     (700/800/900) so the browser never fakes a bold on top of a black. */
+  @font-face{
+    font-family:"VL Display"; font-style:normal; font-weight:100 900;
+    font-display:block;
+    src:url(data:font/woff2;base64,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) format("woff2");
+  }
   :root{
     --cyan:#21e6ff;
     --pink:#ff2fbe;
@@ -70,33 +88,6 @@
     mix-blend-mode:multiply;
   }
   
-  .keys{
-    position:relative; z-index:1;
-    display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;justify-content:center;
-    /* 2026-08-23: x2.5 at Carlos's request (11px -> 27.5px). This element is
-       desktop-only already — body.touch .keys{display:none} below hides it
-       on every touch layout — so no extra gating is needed here. Wraps to
-       two lines on a laptop-width window, which is expected and fine. */
-    font-size:27.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a7ec4;
-  }
-  .keys b{color:var(--cyan);font-weight:700}
-  @media (max-width:560px){ .keys{font-size:25px} }
-  /* 2026-08-23: trimmed to throttle/brake-drift/steer + info, at Carlos's
-     request — everything dropped (fire/start/garage/pause/sound/language)
-     is already on the title screen footer or the HOW IT WORKS page, so this
-     bar no longer needs to repeat it. The "I" is now a key-cap badge that
-     mirrors keyCap() in the canvas (title footer, info page): same ratios,
-     just in CSS since this row is DOM, not canvas — 2em box, 0.44em corner
-     radius (22% of size, matching sz*0.22), 0.07em cyan border+glow, near-
-     white glyph. Sized in em off .keys' own font-size, so it stays in ratio
-     if that 27.5px ever changes again. */
-  .keys b.kcap{
-    display:inline-flex;align-items:center;justify-content:center;
-    width:2em;height:2em;margin-right:.22em;border-radius:.44em;
-    background:rgba(33,230,255,.10);border:.07em solid #21e6ff;
-    box-shadow:0 0 .3em rgba(33,230,255,.7);
-    color:#eaf6ff;letter-spacing:normal;text-shadow:0 0 .2em rgba(33,230,255,.8);
-  }
 
   /* ------------------------------------------------------------------
      TOUCH LAYOUT
@@ -106,7 +97,6 @@
      ------------------------------------------------------------------ */
   body.touch{ justify-content:flex-start; padding:6px 8px 14px; gap:8px;
               overscroll-behavior:none; }
-  body.touch .keys{ display:none }
 
   /* about 1.5cm of breathing room between the screen and your thumbs */
   /* 2cm further from the screen than the old layout: thumbs sit lower on a
@@ -430,6 +420,28 @@
     border-color:#ffffff; color:#ffffff;
     box-shadow:0 0 22px rgba(255,255,255,.55), inset 0 0 18px rgba(255,255,255,.22);
   }
+
+  /* ------------------------------------------------------------------
+     FIT TO WINDOW — desktop only (build 63, 2026-09-24, for itch.io)
+     #stage is a flex item in a column with only a max-width, so in any
+     window shorter than it needs (an itch.io embed, a short laptop
+     browser) it used to SHRINK IN HEIGHT while keeping its full width —
+     stretching the 8:5 canvas (a 960x600 embed drew it at 924x458).
+     Now it never shrinks, and its width is capped by the height that is
+     actually available, so the canvas is always exactly 8:5.
+     36px = body padding (18 top + 18 bottom). Build 64 removed the key
+     legend that used to sit under the stage, so the stage is the only
+     thing in the column. Under 620px of height (an itch.io embed) the
+     padding tightens to 10px. Scoped to body:not(.touch), so every
+     phone/tablet layout above is untouched.
+     ------------------------------------------------------------------ */
+  body:not(.touch) #stage{ flex-shrink:0;
+    max-width:min(calc(940px + 4.8cm), calc((100vh - 36px) * 1.6)) }
+  @media (max-height:620px){
+    body:not(.touch){ padding:10px }
+    body:not(.touch) #stage{
+      max-width:min(calc(940px + 4.8cm), calc((100vh - 20px) * 1.6)) }
+  }
 </style>
 </head>
 <body>
@@ -485,13 +497,6 @@
     </div>
   </div>
   <div id="padMenu"></div>
-</div>
-
-<div class="keys">
-  <span><b>&uarr;</b> <span id="kThrottle">throttle</span></span>
-  <span><b>&darr;</b> <span id="kBrakeDrift">brake/drift</span></span>
-  <span><b>&larr; &rarr;</b> <span id="kSteer">steer</span></span>
-  <span><b class="kcap">I</b> <span id="kInfo">info</span></span>
 </div>
 
 <script>
@@ -681,7 +686,7 @@ vapor: {
    filter on the canvas exactly as the lab does. Nothing is baked, so
    re-exporting from the lab overwrites this block cleanly. */
 vaporEdit: {
-  id:'vapor-edit', name:'VAPOR (EDIT)', accent:'#ff2fbe',
+  id:'vapor-edit', name:'ALIEN PLAINS', accent:'#ff2fbe',
   sky:['#03100a','#0a2a16','#1e5220'], skyMid:0.58,
   haze:{col:'#a8ff4f', a:0.46, h:96},
   stars:{n:31, col:'#c8ffb0', tw:0.4},
@@ -977,13 +982,14 @@ var STR={
     HINT3:'Drift through the bends for better grip.',
     PRESS_DRIVE_TOUCH:'TAP DRIVE BELOW', PRESS_DRIVE_KEY:'PRESS ENTER TO DRIVE',
     /* Title footer: one key cap each, so these are labels only now. */
-    TF_GARAGE:'GARAGE', TF_INFO:'HOW IT WORKS', TF_LANG:'IDIOMA',
+    TF_GARAGE:'GARAGE', TF_INFO:'HOW IT WORKS', TF_LANG:'IDIOMA', TF_SOUND:'MUSIC/SOUND',
     BEST_LINE:'BEST  ', SAVED_ON:'PROGRESS SAVED ON THIS DEVICE',
     SAVE_TAG_ON:'SAVED', SAVE_TAG_OFF:'NOT SAVED',
     SAVED_OFF:'PROGRESS NOT SAVED HERE \u2014 DOWNLOAD THE FILE TO KEEP IT',
     PAUSED:'PAUSED', PAUSE_TOUCH:'USE THE BUTTONS BELOW',
     PAUSE_RESUME:'P OR ENTER \u2014 BACK TO THE ROAD', PAUSE_GARAGE:'G \u2014 GARAGE',
     PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
+    PAUSE_SOUND:'M \u2014 MUSIC / SOUND',
     MENU_LINE:'ESC \u2014 MAIN MENU',
     HAIL_CALL:'SIGNAL SENT \u2014 LOOK UP', BEAM_HOLD:'HOLD THE BEAM',
     BEAM_SEEN:'IT SAW YOU', T_REAR:'REAR-ENDED \u2014 NO PENALTY',
@@ -992,7 +998,7 @@ var STR={
     HOW_IT_WORKS:'HOW IT WORKS', INFO_BACK:'I OR ENTER \u2014 BACK',
     H_CONTROLS:'CONTROLS', H_DRIVING:'DRIVING', H_SAVED:'SAVED',
     H_RUN:'THE RUN', H_HAZARDS:'HAZARDS', H_PICKUPS:'PICKUPS',
-    CTRL1:'ARROWS \u2014 throttle, brake, steer',
+    CTRL1:'ARROWS / WASD \u2014 throttle, brake, steer',
     CTRL2:'SPACE \u2014 fire a loaded shot',
     DRV3:'Drift through bends to fill the DRIFT bar.',
     DRV4:'A full bar loads one shot.',
@@ -1044,6 +1050,7 @@ var STR={
     T_HULL_UP:'+1 HEALTH', T_HULL_FULL:'HEALTH FULL  +10000',
     T_OD_REFRESH:'OVERDRIVE REFRESHED', T_OD_ON:'OVERDRIVE  ',
     T_SHOT_LOADED1:'SHOT LOADED  ', T_SHOT_LOADED2:'/',
+    T_SPACE_SHOOT:'PRESS SPACE TO SHOOT',
     T_RAMPAGE_ON:'RAMPAGE  ',
     T_OD_ENDING:'OVERDRIVE ENDING', T_OD_SPENT:'OVERDRIVE SPENT',
     T_RAMPAGE_ENDING:'RAMPAGE ENDING', T_BACK_TO_CAR:'BACK TO THE CAR',
@@ -1079,13 +1086,14 @@ var STR={
     HINT2:'Recoge potenciadores y salud por el camino.',
     HINT3:'Derrapa en las curvas para mejor agarre.',
     PRESS_DRIVE_TOUCH:'TOCA CONDUCIR ABAJO', PRESS_DRIVE_KEY:'PULSA ENTER PARA CONDUCIR',
-    TF_GARAGE:'GARAJE', TF_INFO:'C\u00d3MO FUNCIONA', TF_LANG:'LANGUAGE',
+    TF_GARAGE:'GARAJE', TF_INFO:'C\u00d3MO FUNCIONA', TF_LANG:'LANGUAGE', TF_SOUND:'M\u00daSICA/SONIDO',
     BEST_LINE:'R\u00c9CORD  ', SAVED_ON:'PROGRESO GUARDADO EN ESTE DISPOSITIVO',
     SAVE_TAG_ON:'GUARDADO', SAVE_TAG_OFF:'SIN GUARDAR',
     SAVED_OFF:'PROGRESO NO GUARDADO \u2014 DESCARGA EL ARCHIVO PARA CONSERVARLO',
     PAUSED:'PAUSA', PAUSE_TOUCH:'USA LOS BOTONES DE ABAJO',
     PAUSE_RESUME:'P O ENTER \u2014 VOLVER A LA PISTA', PAUSE_GARAGE:'G \u2014 GARAJE',
     PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
+    PAUSE_SOUND:'M \u2014 M\u00daSICA / SONIDO',
     MENU_LINE:'ESC \u2014 MEN\u00da PRINCIPAL',
     HAIL_CALL:'SE\u00d1AL ENVIADA \u2014 MIRA ARRIBA', BEAM_HOLD:'QU\u00c9DATE EN EL HAZ',
     BEAM_SEEN:'TE VIO', T_REAR:'GOLPE TRASERO \u2014 SIN CASTIGO',
@@ -1094,7 +1102,7 @@ var STR={
     HOW_IT_WORKS:'C\u00d3MO FUNCIONA', INFO_BACK:'I O ENTER \u2014 VOLVER',
     H_CONTROLS:'CONTROLES', H_DRIVING:'CONDUCCI\u00d3N', H_SAVED:'GUARDADO',
     H_RUN:'LA CARRERA', H_HAZARDS:'PELIGROS', H_PICKUPS:'OBJETOS',
-    CTRL1:'FLECHAS \u2014 acelerar, frenar, girar',
+    CTRL1:'FLECHAS / WASD \u2014 acelerar, frenar, girar',
     CTRL2:'ESPACIO \u2014 disparar arma cargada',
     DRV3:'Derrapa en las curvas para llenar DERRAPE.',
     DRV4:'Una barra llena carga un disparo.',
@@ -1142,6 +1150,7 @@ var STR={
     T_HULL_UP:'+1 SALUD', T_HULL_FULL:'SALUD AL M\u00c1XIMO  +10000',
     T_OD_REFRESH:'SOBRECARGA RENOVADA', T_OD_ON:'SOBRECARGA  ',
     T_SHOT_LOADED1:'DISPARO CARGADO  ', T_SHOT_LOADED2:'/',
+    T_SPACE_SHOOT:'PULSA ESPACIO PARA DISPARAR',
     T_RAMPAGE_ON:'ARRASE  ',
     T_OD_ENDING:'SOBRECARGA TERMINANDO', T_OD_SPENT:'SOBRECARGA AGOTADA',
     T_RAMPAGE_ENDING:'ARRASE TERMINANDO', T_BACK_TO_CAR:'DE VUELTA AL AUTO',
@@ -1168,9 +1177,9 @@ function toggleMode(){ mode = (mode==='run') ? 'cruise' : 'run'; saveGame(); }
    once at load and again on every language toggle. */
 function applyStaticText(){
   var ids={
-    lblGas:'PAD_GAS', lblDrift:'PAD_DRIFT', lblBrake:'PAD_BRAKE',
-    kThrottle:'K_THROTTLE', kBrakeDrift:'K_BRAKEDRIFT', kSteer:'K_STEER',
-    kInfo:'K_INFO'
+    lblGas:'PAD_GAS', lblDrift:'PAD_DRIFT', lblBrake:'PAD_BRAKE'
+    /* the desktop key legend under the stage (kThrottle/kBrakeDrift/kSteer/
+       kInfo) was removed in build 64; its K_* strings stay in STR, unused */
   };
   for (var id in ids){
     var node=el(id);
@@ -1253,6 +1262,9 @@ var spinT=0, invT=0, shake=0, spinAng=0;
 var cars=[], spawnT=0, cpStart=0, cpLen=lapLength(1), nextCP=cpLen, endReason='';
 var msgs=[], flash=0, hitFlash=0, bgX=0, curSlope=0, warnSlope=0;
 var pickups=[], dinoT=0, taughtWeavers=false;
+/* Desktop only: the first time a shot is ready in a run, say which key fires
+   it. Once per run (reset() clears it), whichever way the bolt came. */
+var taughtSpace=false;
 var chain=0, chainT=0, chainBest=0, nmPops=[];
 var shots=0, pshots=[], blasts=[];
 var odT=0, odShotN=0, fireCd=0;
@@ -1353,7 +1365,7 @@ function reset(){
   ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5;
   cut=null; cutCarRest(); setZone('vapor');
   cpStart=0; cpLen=lapLength(1); nextCP=cpLen;
-  taughtWeavers=false; endReason='';
+  taughtWeavers=false; taughtSpace=false; endReason='';
   chain=0; chainT=0; chainBest=0; nmPops=[];
   bestAtStart=best;
   ensure(MAXZ+Z_CAR+CH); cAnchor=curveAt(Z_CAR);
@@ -1793,7 +1805,10 @@ var MUS_SONG_VAPOR = { bpm:MUS_BPM, tpbar:MUS_TPBAR, bars:MUS_BARS, key:MUS_KEY,
      values silently overwritten too -- an aliasing bug caught by testing a
      real second-bundle swap before shipping, not by reading the diff. */
   voice:MUS_VOICE.map(function(v){return {w:v.w,v:v.v,cut:v.cut,rel:v.rel,det:v.det,sub:v.sub,vib:v.vib,rev:v.rev};}),
-  pat:MUS_PAT, seq:MUS_SEQ, drum:MUS_DRUM, dseq:MUS_DSEQ };
+  pat:MUS_PAT, seq:MUS_SEQ, drum:MUS_DRUM, dseq:MUS_DSEQ,
+  /* kit level (build 65): DRUM_VOL's shipped value. A literal because
+     DRUM_VOL itself is declared further down the file. */
+  dvol:1.0 };
 var musCur = MUS_SONG_VAPOR;
 
 /* Swap the whole tune. Mutates MUS_VOICE's existing objects in place --
@@ -1813,6 +1828,7 @@ function musLoadSong(song){
   MUS_TICK=60/MUS_BPM/4; MUS_TICK_D=MUS_TICK/MUS_DINO_RATE;
   MUS_PAT=song.pat; MUS_SEQ=song.seq; MUS_DRUM=song.drum; MUS_DSEQ=song.dseq;
   MUS_PAT_R=buildPatR(MUS_PAT); MUS_DRUM_R=buildDrumR(MUS_DRUM);
+  if (song.dvol!==undefined) DRUM_VOL=song.dvol;   /* per-song kit level (build 65) */
   for (var i=0;i<MUS_VOICE.length && i<song.voice.length;i++){
     var v=MUS_VOICE[i], sv=song.voice[i];
     v.w=sv.w; v.v=sv.v; v.cut=sv.cut; v.rel=sv.rel; v.det=sv.det; v.sub=sv.sub; v.vib=sv.vib; v.rev=sv.rev;
@@ -1824,8 +1840,109 @@ function musLoadSong(song){
   musTick=0;
   engPC=null; engCur=null; engLastF=-1;
 }
+/* ALIEN PLAINS' own song (build 65). Carlos's Loop Forge GAME TABLES export
+   of 2026-09-24 (exported as SONG_HEROIC_I_V_VI_IV_TRY_MAJOR): 118 bpm, same
+   key as the main song (MUS_KEY 15), 16 bars in three parts -- bars 1-4 and
+   5-8 share the melody but change the bass and the drums, and bars 9-16 bring
+   a new melody over a busier bass. The tables are pasted verbatim into this
+   bundle ONLY; the plain MUS_* globals above still hold the main VAPOR song,
+   and musLoadSong() swaps between the two. Source kept as
+   Vapor Lane Music/alien-plains-loop-forge-export.js.
+   dvol is this song's kit level (the Loop Forge DRUMS fader), and DRUM_VOL
+   is one global, so it travels with the song instead of being edited by
+   hand (which would have turned the main song's drums down too).
+   Build 67 (2026-09-25): re-mixed from Carlos's second export
+   (SONG_DRIVE_I_VI_III_VII, kept as alien-plains-loop-forge-export-2026-09-25.js),
+   made after Loop Forge's PLAY SONG was changed to play exactly like the
+   game. Build 65's pad buried the lead in-game. Only bpm (118 -> 122), the
+   three voices and dvol (0.74 -> 0.34) changed; the notes and drums are the
+   same as build 65's.
+   Build 68 (same day): Carlos's export #3 (alien-plains-loop-forge-export-
+   2026-09-25b.js) -- louder body, brighter/wider lead, a triangle bass, and
+   the kit at 0.40. Voices and dvol only; notes and drums unchanged. */
+var SONG_ALIEN_PLAINS = { bpm:122, tpbar:32, bars:16, key:15, dvol:0.4,
+  voice:[
+    {w:'sine', v:0.0329, cut:2000, rel:0.2, det:7, sub:0, vib:6, rev:0.24},  /* body */
+    {w:'sawtooth', v:0.0489, cut:6000, rel:0.26, det:10, sub:0, vib:0, rev:0.3},  /* lead */
+    {w:'triangle', v:0.0825, cut:2320, rel:0.15, det:6, sub:0.5, vib:0, rev:0.4}   /* bass */
+  ],
+  pat:[
+    [[[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]],
+     [[0,16,33],[0,16,36],[0,16,40],[16,16,40],[16,16,43],[16,16,47]],
+     [[0,16,41],[0,16,45],[0,16,48],[16,16,38],[16,16,41],[16,16,45]]],
+    [[[0,2,52],[2,2,50],[4,2,48],[6,2,45],[16,2,45],[18,2,48],[20,2,50],[22,2,52]],
+     [[0,2,60],[2,2,59],[4,2,52],[6,2,45],[16,2,53],[20,2,55],[22,2,50],[24,2,52],[26,2,59],[28,2,60],[30,2,67]],
+     [[0,2,52],[2,2,50],[4,2,48],[6,2,45],[16,2,45],[18,2,48],[20,2,50],[22,2,52]],
+     [[0,2,60],[2,2,59],[4,2,52],[6,2,45],[16,2,53],[20,2,55],[22,2,50],[24,2,52],[26,2,59],[28,2,60],[30,2,67]],
+     [[0,2,52],[2,2,50],[4,2,48],[6,2,45],[16,2,48],[18,2,50],[20,2,55],[22,2,52]],
+     [[0,2,60],[2,2,59],[4,2,52],[6,2,45],[16,2,53],[20,2,55],[22,2,50],[24,2,52],[26,2,59],[28,2,60],[30,2,67]],
+     [[0,2,52],[2,2,50],[4,2,48],[6,2,45],[16,2,48],[18,2,50],[20,2,55],[22,2,52]],
+     [[0,2,60],[2,2,59],[4,2,52],[6,2,45],[16,2,53],[20,2,55],[22,2,50],[24,2,52],[26,2,59],[28,2,60],[30,2,67]],
+     [[0,2,52],[4,2,59],[6,2,57],[8,2,52],[18,2,52],[20,2,55],[22,2,52]],
+     [[0,2,60],[4,2,67],[6,2,64],[16,2,50],[18,2,60],[22,2,53],[24,2,64],[26,2,62],[28,2,60],[30,2,59]],
+     [[0,2,52],[4,2,59],[6,2,57],[8,2,52],[18,2,52],[20,2,55],[22,2,52]],
+     [[0,2,60],[4,2,67],[6,2,64],[16,2,50],[18,2,60],[22,2,53],[24,2,64],[26,2,62],[28,2,60],[30,2,59]],
+     [[0,2,52],[4,2,59],[6,2,57],[8,2,52],[18,2,52],[20,2,55],[22,2,52]],
+     [[0,2,60],[4,2,67],[6,2,64],[16,2,50],[18,2,60],[22,2,53],[24,2,64],[26,2,62],[28,2,60],[30,2,59]],
+     [[0,2,52],[4,2,59],[6,2,57],[8,2,52],[18,2,52],[20,2,55],[22,2,52]],
+     [[0,2,60],[4,2,67],[6,2,64],[16,2,50],[18,2,60],[22,2,53],[24,2,64],[26,2,62],[28,2,60],[30,2,59]]],
+    [[[0,2,21],[2,2,21],[4,2,21],[6,2,21],[8,2,21],[10,2,21],[12,2,21],[14,2,21],[16,2,28],[18,2,28],[20,2,28],[22,2,28],[24,2,28],[26,2,28],[28,2,28],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,29],[6,2,29],[8,2,29],[10,2,29],[12,2,29],[14,2,29],[16,2,26],[18,2,26],[20,2,26],[22,2,26],[24,2,26],[26,2,26],[28,2,26],[30,2,26]],
+     [[0,2,21],[2,2,21],[4,2,21],[6,2,21],[8,2,21],[10,2,21],[12,2,21],[14,2,21],[16,2,28],[18,2,28],[20,2,28],[22,2,28],[24,2,28],[26,2,28],[28,2,28],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,29],[6,2,29],[8,2,29],[10,2,29],[12,2,29],[14,2,29],[16,2,26],[18,2,26],[20,2,26],[22,2,26],[24,2,26],[26,2,26],[28,2,26],[30,2,26]],
+     [[0,8,21],[8,8,21],[16,8,28],[24,8,28]],
+     [[0,8,29],[8,8,29],[16,8,26],[24,8,26]],
+     [[0,8,21],[8,8,21],[16,8,28],[24,8,28]],
+     [[0,8,29],[8,8,29],[16,8,26],[24,8,26]],
+     [[0,2,21],[2,2,21],[4,2,33],[6,2,21],[8,2,21],[10,2,21],[12,2,33],[14,2,21],[16,2,28],[18,2,28],[20,2,40],[22,2,28],[24,2,28],[26,2,28],[28,2,40],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,41],[6,2,29],[8,2,29],[10,2,29],[12,2,41],[14,2,29],[16,2,26],[18,2,26],[20,2,38],[22,2,26],[24,2,26],[26,2,26],[28,2,38],[30,2,26]],
+     [[0,2,21],[2,2,21],[4,2,33],[6,2,21],[8,2,21],[10,2,21],[12,2,33],[14,2,21],[16,2,28],[18,2,28],[20,2,40],[22,2,28],[24,2,28],[26,2,28],[28,2,40],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,41],[6,2,29],[8,2,29],[10,2,29],[12,2,41],[14,2,29],[16,2,26],[18,2,26],[20,2,38],[22,2,26],[24,2,26],[26,2,26],[28,2,38],[30,2,26]],
+     [[0,2,21],[2,2,21],[4,2,33],[6,2,21],[8,2,21],[10,2,21],[12,2,33],[14,2,21],[16,2,28],[18,2,28],[20,2,40],[22,2,28],[24,2,28],[26,2,28],[28,2,40],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,41],[6,2,29],[8,2,29],[10,2,29],[12,2,41],[14,2,29],[16,2,26],[18,2,26],[20,2,38],[22,2,26],[24,2,26],[26,2,26],[28,2,38],[30,2,26]],
+     [[0,2,21],[2,2,21],[4,2,33],[6,2,21],[8,2,21],[10,2,21],[12,2,33],[14,2,21],[16,2,28],[18,2,28],[20,2,40],[22,2,28],[24,2,28],[26,2,28],[28,2,40],[30,2,28]],
+     [[0,2,29],[2,2,29],[4,2,41],[6,2,29],[8,2,29],[10,2,29],[12,2,41],[14,2,29],[16,2,26],[18,2,26],[20,2,38],[22,2,26],[24,2,26],[26,2,26],[28,2,38],[30,2,26]]]
+  ],
+  seq:[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]],
+  drum:[
+    /* 1 */ [[0,DK],[0,DH],[2,DH],[4,DK],[4,DH],[6,DH],[8,DK],[8,DS],[8,DC],[8,DH],[10,DH],[12,DK],[12,DH],[14,DH],[14,DO],[16,DK],[16,DH],[18,DH],[20,DK],[20,DH],[22,DH],[24,DK],[24,DS],[24,DC],[24,DH],[26,DH],[28,DK],[28,DH],[30,DH],[30,DO]],
+    /* 2 */ [[0,DK],[0,DH],[2,DH],[4,DK],[4,DH],[6,DH],[8,DK],[8,DS],[8,DC],[8,DH],[10,DH],[12,DK],[12,DH],[14,DH],[14,DO],[16,DK],[18,DH],[20,DK],[20,DS],[22,DH],[24,DK],[24,DO],[26,DTH],[27,DTH],[28,DTL],[29,DTL],[30,DS],[31,DS]],
+    /* 3 */ [[0,DK],[0,DH],[1,DH],[2,DH],[3,DH],[4,DK],[4,DS],[4,DH],[5,DH],[6,DK],[6,DH],[7,DH],[8,DK],[8,DH],[9,DH],[10,DH],[11,DH],[12,DK],[12,DS],[12,DH],[13,DH],[14,DK],[14,DH],[15,DH],[16,DK],[16,DH],[17,DH],[18,DH],[19,DH],[20,DK],[20,DS],[20,DH],[21,DH],[22,DK],[22,DH],[23,DH],[24,DK],[24,DH],[25,DH],[26,DH],[27,DH],[28,DK],[28,DS],[28,DH],[29,DH],[30,DK],[30,DH],[31,DH]],
+    /* 4 */ [[0,DK],[0,DH],[1,DH],[2,DH],[3,DH],[4,DK],[4,DS],[4,DH],[5,DH],[6,DK],[6,DH],[7,DH],[8,DK],[8,DH],[9,DH],[10,DH],[11,DH],[12,DK],[12,DS],[12,DH],[13,DH],[14,DK],[14,DH],[15,DH],[16,DK],[18,DH],[20,DK],[20,DS],[22,DH],[24,DS],[25,DS],[26,DS],[27,DS],[28,DS],[29,DS],[30,DS],[31,DS]],
+    /* 5 */ [[0,DK],[0,DH],[1,DH],[2,DH],[3,DH],[4,DK],[4,DS],[4,DH],[5,DH],[6,DK],[6,DH],[7,DH],[8,DK],[8,DH],[9,DH],[10,DH],[11,DH],[12,DK],[12,DS],[12,DH],[13,DH],[14,DK],[14,DH],[15,DH],[16,DK],[17,DK],[18,DH],[20,DK],[20,DS],[22,DH],[24,DK],[26,DK],[28,DK],[28,DC],[29,DK],[30,DK],[31,DK]]
+  ],
+  dseq:[1,2,1,2,3,3,3,4,3,5,3,5,3,5,3,5]
+};
 ZONES.vapor.song = MUS_SONG_VAPOR;
-ZONES.vaporEdit.song = MUS_SONG_VAPOR;
+ZONES.vaporEdit.song = SONG_ALIEN_PLAINS;
+
+/* Drop-off after a ride (build 65). The ride fades the music layers out
+   (musMix: state 'abduct' is not 'playing'), setZone() swaps the map at the
+   white-out WITHOUT touching the song, and this runs on landing: the new
+   zone's song starts on its own bar 1. The first tick is placed
+   MUS_ARRIVE_LEAD seconds ahead so the downbeat lands after the layers have
+   faded back in (time constant 0.22 s for the tune, 0.25 s for the drums,
+   so ~75-80% up by then) instead of being swallowed by the fade-in. If the
+   zone's song is the one already loaded, nothing restarts. */
+var MUS_ARRIVE_LEAD = 0.30;
+function musArrive(song){
+  if (!song || song===musCur) return;
+  musLoadSong(song);
+  if (A && A.mus) musNext = A.ctx.currentTime + MUS_ARRIVE_LEAD;
+}
 
 /* The tyre screech used to be a one-shot sawtooth fired on 35% of frames:
    ~21 notes a second, each jumping to full volume instantly. The onsets
@@ -1984,10 +2101,11 @@ function drumHit(type, when){
       var d=(type===DO?0.18:0.03), lvl=(type===DO?0.14:0.10);
       hg.gain.setValueAtTime(lvl*DRUM_VOL,t); hg.gain.exponentialRampToValueAtTime(0.0005,t+d);
       hn.connect(hf); hf.connect(hg); hg.connect(out); hn.start(t); hn.stop(t+d+0.02);
-    } else if (type===DTH || type===DTL){             /* toms, for fills */
+    } else if (type===DTH || type===DTL){             /* toms, for fills. Build 67: .56 (was .28), matching
+                                                         Loop Forge's TOM_GAIN, Carlos's 2026-09-13 call */
       var to=ctx.createOscillator(), tg=ctx.createGain(), f0=(type===DTH?200:130);
       to.type='sine'; to.frequency.setValueAtTime(f0,t); to.frequency.exponentialRampToValueAtTime(f0*0.6,t+0.16);
-      tg.gain.setValueAtTime(0.28*DRUM_VOL,t); tg.gain.exponentialRampToValueAtTime(0.0006,t+0.18);
+      tg.gain.setValueAtTime(0.56*DRUM_VOL,t); tg.gain.exponentialRampToValueAtTime(0.0006,t+0.18);
       to.connect(tg); tg.connect(out); to.start(t); to.stop(t+0.2);
     }
   }catch(e){}
@@ -2777,6 +2895,13 @@ function giveBolt(){
     overdriveSfx();
   } else {
     say(T('T_SHOT_LOADED1')+shots+T('T_SHOT_LOADED2')+MAX_SHOTS,'#21e6ff',true,'bolt');
+    /* A second line on the same card, green like the title's PRESS ENTER
+       prompt. life 3.0 = gone exactly 3 s later (the card's own fade takes
+       the last 0.55 s of it). Touch has an on-screen fire button instead. */
+    if (!TOUCH && !taughtSpace){
+      taughtSpace=true;
+      say(T('T_SPACE_SHOOT'),'#7cff4f',true,null,3.0);
+    }
     blip(520,0.07,'square',0.18);
     setTimeout(function(){ blip(780,0.07,'square',0.18); },70);
     setTimeout(function(){ blip(1170,0.18,'square',0.18); },140);
@@ -3350,7 +3475,7 @@ function rr(x,y,w,h,r){
   ctx.closePath();
 }
 function glowText(txt,x,y,size,color,align,blur,weight){
-  ctx.font=(weight||'700')+' '+size+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.font=(weight||'700')+' '+size+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
   ctx.shadowColor=color; ctx.shadowBlur=(blur===undefined?14:blur);
   ctx.fillStyle=color; ctx.fillText(txt,x,y);
@@ -3367,7 +3492,7 @@ function monoText(txt,x,y,size,color,align){
    the top of the bottom row: HERO on desktop, LABEL * UI on touch. */
 function hudTag(txt,x,y,size,color,align){
   var ls = ('letterSpacing' in ctx);
-  ctx.font='900 '+size+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.font='900 '+size+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   if (ls) ctx.letterSpacing='1.5px';
   ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
   ctx.lineJoin='round'; ctx.lineWidth=4.5;
@@ -4787,7 +4912,9 @@ function drawHUD(){
   if (Math.abs(playerX)>1 && state==='playing' && Math.floor(performance.now()/220)%2===0)
     glowText(T('OFF_ROAD'),W/2,H-72,TS.HERO,'#ffd23f','center',18);
 
-  drawMessages();
+  /* On the title the card is drawn by render() after drawTitle() instead
+     (build 69), so a sound change made there reads on top, not behind. */
+  if (state!=='title') drawMessages();
 }
 
 function iconHeart(cx,cy,sz){
@@ -4915,7 +5042,7 @@ function drawMessages(){
           var ch=m.chips[b];
           var txt = ch.label ? ch.label : (ch.n>1 ? 'x'+ch.n : '');
           var pf  = ch.label ? lw : lf;
-          ctx.font='800 '+pf+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+          ctx.font='800 '+pf+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
           var tw  = txt ? ctx.measureText(txt).width+fs*0.18 : 0;
           parts.push({icon:ch.icon, txt:txt, iw:box*CHIP_SLOT, tw:tw, lf:pf});
           w += box*CHIP_SLOT + tw + (b<m.chips.length-1 ? fs*0.42 : 0);
@@ -4923,7 +5050,7 @@ function drawMessages(){
       } else {
         fs=Math.max(9,Math.round((m.big?TS.BODY:TS.LABEL)*sc));
         lh=fs*1.32; box=fs*1.90;
-        ctx.font='700 '+fs+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+        ctx.font='700 '+fs+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
         w=ctx.measureText(m.t).width + (m.icon?box*1.16:0);
       }
       lines.push({m:m, fs:fs, w:w, parts:parts, lh:lh, box:box});
@@ -5008,7 +5135,7 @@ function drawTitle(){
   var cru=(mode==='cruise');
   var mTxt=(cru?T('MODE_CRUISE'):T('MODE_RUN'));
   var mCol=cru?'#7cff4f':'#21e6ff';
-  ctx.font='900 '+TS.HERO+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.font='900 '+TS.HERO+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   var mw=ctx.measureText(mTxt).width+44;
   ctx.fillStyle=cru?'rgba(124,255,79,.14)':'rgba(33,230,255,.14)';
   rr(W/2-mw/2,264,mw,42,9); ctx.fill();
@@ -5065,7 +5192,7 @@ function titleFooter(){
   ctx.font='700 '+LF+'px ui-monospace,Menlo,"Courier New",monospace';
   var wLab = rNum ? ctx.measureText(rLab).width : 0;
   var wTag = ctx.measureText(tag).width;
-  ctx.font='700 '+NF+'px "Arial Black","Segoe UI",Impact,system-ui,sans-serif';
+  ctx.font='700 '+NF+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   var wNum = rNum ? ctx.measureText(rNum).width : 0;
 
   var GAP=9, SEP=16, DOT=7, PADX=16, PH=28, y=452;
@@ -5096,21 +5223,32 @@ function titleFooter(){
   if (!saveOK) monoText(T('SAVED_OFF'),W/2,494,LF,'#ffd23f','center');
 }
 
-/* The four keyboard shortcuts, as caps rather than as one run-on line.
+/* The keyboard shortcuts, as caps rather than as one run-on line (five from
+   build 68: M MUSIC/SOUND joined, so the sound setting is findable without
+   opening HOW IT WORKS).
    Laid out by measurement rather than by fixed columns: the labels differ in
    length between English and Spanish, and hard-coded x positions drifted
    apart the moment either string changed. */
 function titleKeys(cru){
   var sz=26, fs=TS.LABEL, gap=30, pad=sz*0.32, i, x;
-  var items=[['G',T('TF_GARAGE')],['I',T('TF_INFO')],['L',T('TF_LANG')],
-             ['C',cru?T('MODE_RUN'):T('MODE_CRUISE')]];
+  var items=[['G',T('TF_GARAGE')],['I',T('TF_INFO')],['M',T('TF_SOUND')],
+             ['L',T('TF_LANG')],['C',cru?T('MODE_RUN'):T('MODE_CRUISE')]];
   ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
-  var total=0, ws=[];
+  var total=0, ws=[], lw=0;
   for (i=0;i<items.length;i++){
     ws[i]=sz+pad+ctx.measureText(items[i][1]).width;
     total+=ws[i];
   }
-  total+=gap*(items.length-1);
+  /* Five caps can outgrow the stage (Spanish is the long one): close the gaps
+     first, down to 16, and only then shrink the whole row to fit 760 px. */
+  var MAXW=W-40, n=items.length;
+  if (total+gap*(n-1)>MAXW) gap=Math.max(16,(MAXW-total)/(n-1));
+  if (total+gap*(n-1)>MAXW){
+    var k=(MAXW-gap*(n-1))/total;
+    sz*=k; fs*=k; pad*=k; total*=k;
+    for (i=0;i<n;i++) ws[i]*=k;
+  }
+  total+=gap*(n-1);
   x=W/2-total/2;
   for (i=0;i<items.length;i++){
     keyCap(x,422,sz,items[i][0],items[i][1],fs);
@@ -5127,8 +5265,12 @@ function drawPause(){
     monoText(T('PAUSE_RESUME'),W/2,H/2+12,TS.LABEL,'#a99fdc','center');
     monoText(T('PAUSE_GARAGE'),W/2,H/2+36,TS.LABEL,'#21e6ff','center');
     monoText(T('PAUSE_INFO'),W/2,H/2+60,TS.LABEL,'#7cff4f','center');
-    monoText(T('PAUSE_LANG'),W/2,H/2+84,TS.LABEL,'#ff2fbe','center');
-    monoText(T('MENU_LINE'),W/2,H/2+108,TS.LABEL,'#ffd23f','center');
+    /* Build 68: M was only ever listed on HOW IT WORKS. The line carries the
+       current setting, since M cycles four states (all on / no music / no
+       effects / all off) and this is where you'd press it mid-run. */
+    monoText(T('PAUSE_SOUND')+'  \u00b7  '+T(AUD_MSG[audioMode]),W/2,H/2+84,TS.LABEL,'#b06cff','center');
+    monoText(T('PAUSE_LANG'),W/2,H/2+108,TS.LABEL,'#ff2fbe','center');
+    monoText(T('MENU_LINE'),W/2,H/2+132,TS.LABEL,'#ffd23f','center');
   }
 }
 
@@ -5193,8 +5335,24 @@ function keyCap(x,y,sz,letter,label,fs){
   ctx.shadowColor='#21e6ff'; ctx.shadowBlur=8;
   rr(x,y,sz,sz,sz*0.22); ctx.stroke();
   ctx.shadowBlur=0;
-  glowText(letter,x+sz/2,y+sz*0.72,sz*0.54,'#eaf6ff','center',6);
+  if (letter==='I') serifI(x+sz/2,y+sz/2,sz);
+  else glowText(letter,x+sz/2,y+sz*0.72,sz*0.54,'#eaf6ff','center',6);
   monoText(label,x+sz+sz*0.32,y+sz*0.68,fs,'#cfd6ff');
+}
+/* The I key-cap's glyph, drawn rather than typed (build 64). In the display
+   face an I is a bare vertical bar that reads as a 1 or an l at 26px; the
+   old desktop legend under the stage showed a monospace I with a bar top
+   and bottom, which is what an I key looks like. Drawn from rectangles so it
+   is identical on every device, whatever fonts it has. Near-white with the
+   same cyan glow the legend's CSS text-shadow had. */
+function serifI(cx,cy,sz){
+  var h=sz*0.42, bw=sz*0.32, bt=Math.max(1.5,sz*0.085), sw=Math.max(1.5,sz*0.11);
+  ctx.fillStyle='#eaf6ff';
+  ctx.shadowColor='rgba(33,230,255,.9)'; ctx.shadowBlur=6;
+  ctx.fillRect(cx-sw/2, cy-h/2, sw, h);          /* stem */
+  ctx.fillRect(cx-bw/2, cy-h/2, bw, bt);         /* top bar */
+  ctx.fillRect(cx-bw/2, cy+h/2-bt, bw, bt);      /* bottom bar */
+  ctx.shadowBlur=0;
 }
 
 function infoHead(x,y,head,col,fs){
@@ -5521,16 +5679,19 @@ function drawGroundFog(){
    crossfade. Props are placed on a deterministic grid and coloured at
    draw time, so nothing needs per-prop zone memory.
 --------------------------------------------------------------- */
-function setZone(id){
+function setZone(id, keepSong){
   /* setZone owns `zoneI`. Nothing else may assign it — that split is
-     exactly what let the two drift apart across a reset(). */
+     exactly what let the two drift apart across a reset().
+     keepSong (build 65): the ride swaps the map mid-cutscene but the song
+     only on drop-off (musArrive in endAbduct). Every other caller -- reset()
+     in particular -- swaps both at once. */
   if (!ZONES[id]) id='vapor';
   zoneI = id;
   ZN = ZONES[id];
   GB = ZN.bloom*ZN.bloomMul;
   rebuildRows();
   applyGrade();
-  if (ZN.song) musLoadSong(ZN.song);
+  if (ZN.song && !keepSong) musLoadSong(ZN.song);
   for (var i=0;i<cars.length;i++)
     cars[i].color = cars[i].weaver ? '#ffd23f'
                                    : ZN.traffic[(Math.random()*ZN.traffic.length)|0];
@@ -5588,6 +5749,7 @@ function endAbduct(){
   invT=Math.max(invT,1.2);            /* a beat to read the new road */
   state='playing';
   var zn=ZONES[zoneI];
+  musArrive(zn.song);                           /* the zone's song, from bar 1 */
   msgs.length=0;                                /* drop any stale banner */
   say(T('ZONE_IN')+'  '+zn.name, zn.accent, true, null, 2.6);
   if (zn.mult!==1)
@@ -5605,7 +5767,7 @@ function cutStep(dt){
 
   if (!cut.swapped && p>=CUTS[cut.kind].swapAt){
     cut.swapped=true;
-    setZone(cut.to);
+    setZone(cut.to, true);      /* map now, song on drop-off (endAbduct) */
     /* The road AHEAD of you is already generated, so the new zone's curve
        and len dials arrive with the next section rather than at the seam.
        That is deliberate and it is free: regenerating the centreline here
@@ -5740,7 +5902,7 @@ function render(){
   if (state==='abduct') drawCut();
 
   if (state!=='garage' && state!=='info') drawHUD();
-  if (state==='title')    drawTitle();
+  if (state==='title'){   drawTitle(); drawMessages(); }   /* card on top (build 69) */
   if (state==='paused')   drawPause();
   if (state==='gameover') drawOver();
   if (state==='garage')   drawGarage();
@@ -5757,6 +5919,10 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 loadGame();
+/* Canvas text only switches to a web font once it has loaded, and a canvas
+   request alone does not always start the load — so ask for it up front.
+   It is a data: URL, so this resolves within a frame or two. */
+try{ if (document.fonts && document.fonts.load) document.fonts.load('900 20px "VL Display"'); }catch(_){}
 applyStaticText();
 scheduleCircuit();
 noteLandscape();   /* must follow loadGame(): it can write, and writing
