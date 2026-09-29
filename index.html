@@ -542,6 +542,28 @@ cv.width = W * dpr;
 cv.height = H * dpr;
 ctx.scale(dpr, dpr); // Scale the context so everything draws crisply on high-res screens
 
+/* RENDER SCALE (build 70). `dpr` used to be the screen's full pixel ratio,
+   whatever size the stage ended up on screen. A phone shows the stage at
+   ~536x335 CSS px in landscape (~376x235 upright) but was drawing
+   800x500 x 2.75 = 2200x1375 and throwing most of it away: 2.2x the pixels
+   it shows sideways, 4.5x upright. Now the backing store matches the size
+   the canvas is actually shown at, capped at the pixel ratio (never more
+   pixels than before) and floored at 1x. The Mac in the itch embed
+   (928 CSS px wide) and in fullscreen still lands on exactly 2x, so the
+   desktop picture is unchanged. k is a multiple of 0.01, which makes
+   W*k and H*k whole numbers (8m and 5m). Re-run on resize, rotation and
+   fullscreen through scheduleCircuit(). */
+function fitCanvas(){
+  var d=window.devicePixelRatio||1, r;
+  try{ r=cv.getBoundingClientRect(); }catch(_){ return; }
+  if (!r || !(r.width>50)) return;             /* hidden or not laid out yet */
+  var k=Math.min(d, Math.max(1, r.width*d/W));
+  k=Math.round(k*100)/100;
+  var cw=Math.round(W*k), chh=Math.round(H*k);
+  if (cw===cv.width && chh===cv.height){ dpr=k; return; }
+  dpr=k; cv.width=cw; cv.height=chh;           /* render() sets the transform */
+}
+
 /* ---------------------------------------------------------------
    PROJECTION
 --------------------------------------------------------------- */
@@ -2694,7 +2716,7 @@ function drawCircuit(){
 }
 function scheduleCircuit(){
   if (circuitT) clearTimeout(circuitT);
-  circuitT=setTimeout(function(){ circuitT=null; drawCircuit(); }, 140);
+  circuitT=setTimeout(function(){ circuitT=null; drawCircuit(); fitCanvas(); }, 140);
 }
 
 function toggleFullscreen(){
@@ -3503,10 +3525,106 @@ function hudTag(txt,x,y,size,color,align){
   if (ls) ctx.letterSpacing='0px';
 }
 
+/* ---------------------------------------------------------------
+   PAINT-ONCE LAYERS (build 70)
+   The sky and ground gradients, the sun/moon with its glow, and ALIEN
+   PLAINS' ground fog never change within a zone, but they were being
+   repainted from scratch every frame -- about half the frame when the
+   canvas is drawn on the CPU, which is how Safari draws it. Each is now
+   painted once per zone and render scale into an offscreen canvas, with
+   the exact calls it used before, and copied in with whole-pixel blits.
+   Blits are placed in device pixels and the camera shake is rounded to a
+   whole pixel for them, so a copy is never resampled.
+--------------------------------------------------------------- */
+var shX=0, shY=0;                  /* this frame's camera shake (render) */
+var bdCv=null, bdKey='', orbCv=null, orbKey='', orbHalf=0, fogCv=null, fogKey='', fogTop=0,
+    hzCv=null, hzKey='', hzTop=0;
+/* opaque: the backdrop covers every pixel, and telling the browser so lets
+   it copy the blit instead of blending it */
+function offCv(c, w, h, opaque){
+  if (!c) c=document.createElement('canvas');
+  if (c.width!==w) c.width=w;
+  if (c.height!==h) c.height=h;
+  var g=c.getContext('2d', opaque ? {alpha:false} : undefined);
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,w,h);
+  return c;
+}
+function blitDev(img, sx0, sy0, sw, sh, dx, dy){
+  if (sw<=0 || sh<=0) return;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  ctx.drawImage(img, sx0, sy0, sw, sh,
+                dx+Math.round(shX*dpr), dy+Math.round(shY*dpr), sw, sh);
+  ctx.restore();
+}
+/* sky over [0, horizonY+1), ground over [horizonY, H) -- the same two fills,
+   in the same order, as drawSky()/drawGround() used to make */
+function backdrop(){
+  var key=zoneI+'|'+dpr+'|'+cv.width+'x'+cv.height;
+  if (bdCv && bdKey===key) return bdCv;
+  bdCv=offCv(bdCv, cv.width, cv.height, true);
+  var g=bdCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  var sg=g.createLinearGradient(0,0,0,horizonY);
+  sg.addColorStop(0,ZN.sky[0]); sg.addColorStop(ZN.skyMid,ZN.sky[1]); sg.addColorStop(1,ZN.sky[2]);
+  g.fillStyle=sg; g.fillRect(0,0,W,horizonY+1);
+  var gg=g.createLinearGradient(0,horizonY,0,H);
+  gg.addColorStop(0,ZN.ground[0]); gg.addColorStop(0.35,ZN.ground[1]); gg.addColorStop(1,ZN.ground[2]);
+  g.fillStyle=gg; g.fillRect(0,horizonY,W,H-horizonY);
+  bdKey=key; return bdCv;
+}
+/* The sun/moon centred on a whole device pixel of its own canvas. Glow
+   margin: a canvas shadow is a gaussian with sigma = shadowBlur/2 DEVICE
+   pixels (shadowBlur ignores the transform), so 2x shadowBlur covers it. */
+function orbSprite(){
+  var o=ZN.orb, gb=blur(50), key=zoneI+'|'+dpr+'|'+gb;
+  if (orbCv && orbKey===key) return orbCv;
+  var half=Math.ceil(o.r*dpr + 2*gb) + 4;
+  orbCv=offCv(orbCv, half*2, half*2);
+  var g=orbCv.getContext('2d'), R=o.r;
+  g.setTransform(dpr,0,0,dpr,half,half);          /* origin = orb centre */
+  var sg=g.createLinearGradient(0,-R,0,R);
+  sg.addColorStop(0,o.cols[0]); sg.addColorStop(0.45,o.cols[1]); sg.addColorStop(1,o.cols[2]);
+  g.shadowColor=o.glow; g.shadowBlur=gb;
+  g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fillStyle=sg; g.fill();
+  g.shadowBlur=0;
+  g.fillStyle=o.slatCol;
+  for (var k=0;k<o.slats;k++){
+    var yy=-R+26+k*10+k*k*1.4;
+    g.fillRect(-R,yy,R*2,2+k*0.9);
+  }
+  orbHalf=half; orbKey=key; return orbCv;
+}
+/* ALIEN PLAINS' low fog band, painted at the same device rows it lands on */
+function fogSprite(){
+  var top=horizonY, h=H-horizonY, F=ZN.fog, key=zoneI+'|'+dpr+'|'+cv.width;
+  if (fogCv && fogKey===key) return fogCv;
+  var y0=Math.floor(top*dpr), y1=Math.ceil((top+h*0.62)*dpr);
+  fogCv=offCv(fogCv, cv.width, Math.max(1,y1-y0));
+  var g=fogCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,-y0);
+  var gr=g.createLinearGradient(0,top,0,top+h*0.62);
+  gr.addColorStop(0,'rgba('+F[0]+','+F[1]+','+F[2]+','+(0.85*ZN.groundFog).toFixed(3)+')');
+  gr.addColorStop(1,'rgba('+F[0]+','+F[1]+','+F[2]+',0)');
+  g.fillStyle=gr; g.fillRect(0,top,W,h*0.62);
+  fogTop=y0; fogKey=key; return fogCv;
+}
+/* ALIEN PLAINS' horizon haze (VAPOR's is off), same treatment */
+function hazeSprite(){
+  var hz=ZN.haze, key=zoneI+'|'+dpr+'|'+cv.width;
+  if (hzCv && hzKey===key) return hzCv;
+  var y0=Math.floor((horizonY-hz.h)*dpr), y1=Math.ceil((horizonY+2)*dpr);
+  hzCv=offCv(hzCv, cv.width, Math.max(1,y1-y0));
+  var g=hzCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,-y0);
+  var gr=g.createLinearGradient(0,horizonY-hz.h,0,horizonY+2);
+  gr.addColorStop(0,hexA(hz.col,0));
+  gr.addColorStop(1,hexA(hz.col,hz.a));
+  g.fillStyle=gr; g.fillRect(0,horizonY-hz.h,W,hz.h+2);
+  hzTop=y0; hzKey=key; return hzCv;
+}
+
 function drawSky(){
-  var g=ctx.createLinearGradient(0,0,0,horizonY);
-  g.addColorStop(0,ZN.sky[0]); g.addColorStop(ZN.skyMid,ZN.sky[1]); g.addColorStop(1,ZN.sky[2]);
-  ctx.fillStyle=g; ctx.fillRect(0,0,W,horizonY+1);
+  /* sky rows only; drawGround() copies the rest after the skyline, which
+     paints a pixel or two below the horizon and must stay covered */
+  var bd=backdrop(), hy=Math.floor(horizonY*dpr);
+  blitDev(bd, 0, 0, bd.width, hy, 0, 0);
 
   var now=performance.now();
   /* Clamped: a zone can push `tw` past 1 to make its sky sparkle harder.
@@ -3525,19 +3643,13 @@ function drawSky(){
      value lifts it clear into the sky, which is how VAPOR (EDIT)'s moon
      sits high while VAPOR's sun is half-swallowed by the skyline. */
   if (ZN.orb.on){
-    var o=ZN.orb, cxs=W/2+bgX*0.6, cys=horizonY+o.y, R=o.r;
+    var o=ZN.orb, cxs=W/2+bgX*0.6, cys=horizonY+o.y;
+    var osp=orbSprite();                         /* build 70: painted once */
     ctx.save();
     ctx.beginPath(); ctx.rect(0,0,W,horizonY); ctx.clip();
-    var sg=ctx.createLinearGradient(0,cys-R,0,cys+R);
-    sg.addColorStop(0,o.cols[0]); sg.addColorStop(0.45,o.cols[1]); sg.addColorStop(1,o.cols[2]);
-    ctx.shadowColor=o.glow; ctx.shadowBlur=blur(50);
-    ctx.beginPath(); ctx.arc(cxs,cys,R,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
-    ctx.shadowBlur=0;
-    ctx.fillStyle=o.slatCol;
-    for (var k=0;k<o.slats;k++){
-      var yy=cys-R+26+k*10+k*k*1.4;
-      ctx.fillRect(cxs-R,yy,R*2,2+k*0.9);
-    }
+    ctx.setTransform(1,0,0,1,0,0);               /* the clip stays put */
+    ctx.drawImage(osp, Math.round((cxs+shX)*dpr)-orbHalf,
+                       Math.round((cys+shY)*dpr)-orbHalf);
     ctx.restore();
   }
 
@@ -3566,17 +3678,14 @@ function drawSky(){
   /* Horizon haze, on top of the skyline so distant buildings sink into it.
      VAPOR ships with a==0, so this is a no-op until a zone asks for it. */
   if (ZN.haze.a>0){
-    var hz=ctx.createLinearGradient(0,horizonY-ZN.haze.h,0,horizonY+2);
-    hz.addColorStop(0,hexA(ZN.haze.col,0));
-    hz.addColorStop(1,hexA(ZN.haze.col,ZN.haze.a));
-    ctx.fillStyle=hz; ctx.fillRect(0,horizonY-ZN.haze.h,W,ZN.haze.h+2);
+    var hzs=hazeSprite();                        /* build 70: painted once */
+    blitDev(hzs, 0, 0, hzs.width, hzs.height, 0, hzTop);
   }
 }
 
 function drawGround(){
-  var g=ctx.createLinearGradient(0,horizonY,0,H);
-  g.addColorStop(0,ZN.ground[0]); g.addColorStop(0.35,ZN.ground[1]); g.addColorStop(1,ZN.ground[2]);
-  ctx.fillStyle=g; ctx.fillRect(0,horizonY,W,H-horizonY);
+  var bd=backdrop(), hy=Math.floor(horizonY*dpr);   /* build 70: painted once */
+  blitDev(bd, 0, hy, bd.width, bd.height-hy, 0, hy);
 
   var grid=1200, i, zRel, p, a;
   var bppu=proj(rowZ[H-1]).ppu;
@@ -5666,11 +5775,8 @@ function drawWeather(dt){
    "this zone feels different" than almost anything else. */
 function drawGroundFog(){
   if (ZN.groundFog<=0.01) return;
-  var top=horizonY, h=H-horizonY, F=ZN.fog;
-  var g=ctx.createLinearGradient(0,top,0,top+h*0.62);
-  g.addColorStop(0,'rgba('+F[0]+','+F[1]+','+F[2]+','+(0.85*ZN.groundFog).toFixed(3)+')');
-  g.addColorStop(1,'rgba('+F[0]+','+F[1]+','+F[2]+',0)');
-  ctx.fillStyle=g; ctx.fillRect(0,top,W,h*0.62);
+  var fg=fogSprite();                            /* build 70: painted once */
+  blitDev(fg, 0, 0, fg.width, fg.height, 0, fogTop);
 }
 
 /* ---------------------------------------------------------------
@@ -5858,12 +5964,19 @@ function drawCut(){
 }
 
 function render(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,W*dpr,H*dpr); // Clear taking scaling into account
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-
   var sx=0, sy=0;
   if (shake>0.3){ sx=(Math.random()*2-1)*shake; sy=(Math.random()*2-1)*shake*0.6; }
+  shX=sx; shY=sy;
+
+  /* The sky and ground blits cover every pixel, opaque, so the old
+     full-canvas clear only matters for the strip a camera shake uncovers
+     (build 70). The blits land on whole pixels, so the strip is exact. */
+  ctx.setTransform(1,0,0,1,0,0);
+  var ox=Math.round(sx*dpr), oy=Math.round(sy*dpr), CWd=cv.width, CHd=cv.height;
+  if (ox>0) ctx.clearRect(0,0,ox,CHd); else if (ox<0) ctx.clearRect(CWd+ox,0,-ox,CHd);
+  if (oy>0) ctx.clearRect(0,0,CWd,oy); else if (oy<0) ctx.clearRect(0,CHd+oy,CWd,-oy);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
   ctx.save();
   ctx.translate(sx,sy);
 
@@ -5924,6 +6037,7 @@ loadGame();
    It is a data: URL, so this resolves within a frame or two. */
 try{ if (document.fonts && document.fonts.load) document.fonts.load('900 20px "VL Display"'); }catch(_){}
 applyStaticText();
+fitCanvas();       /* build 70: backing store = the size it is shown at */
 scheduleCircuit();
 noteLandscape();   /* must follow loadGame(): it can write, and writing
                       before the read would clobber the saved record */
