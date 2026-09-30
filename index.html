@@ -85,7 +85,9 @@
     background:
       repeating-linear-gradient(to bottom, rgba(0,0,0,.22) 0 1px, rgba(0,0,0,0) 1px 3px),
       radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);
-    mix-blend-mode:multiply;
+    /* build 71: no mix-blend-mode. Both layers are pure black with alpha, and
+       multiplying by black is the same as laying black over it, so multiply
+       only cost the browser a full re-blend every frame. */
   }
   
 
@@ -734,7 +736,12 @@ var ZN = ZONES.vapor;             /* the live zone */
 function Z(){ return ZN; }        /* physics dials read through here */
 
 var GB = 1;                       /* bloom multiplier for the world layer */
-function blur(v){ return v*GB; }
+/* Build 71: the automatic glow step. GQ scales the world's glows, HQ the
+   HUD's; both are 1 (full) unless govFrame() sees frames keep arriving late,
+   and then they fade to 0 over 1.2 s, world first. */
+var GQ = 1, HQ = 1;
+function blur(v){ return v*GB*GQ; }
+function hb(v){ return v*HQ; }
 
 /* The lab does its grade as a CSS filter on the canvas element rather
    than a per-frame ctx.filter, so it costs nothing to draw and the
@@ -1013,6 +1020,7 @@ var STR={
     PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
     PAUSE_SOUND:'M \u2014 MUSIC / SOUND',
     MENU_LINE:'ESC \u2014 MAIN MENU',
+    PAUSE_FPS:'F \u2014 FPS METER', FPS_TAP:'TAP HERE \u2014 FPS METER', FPS_ON:'ON', FPS_OFF:'OFF',
     HAIL_CALL:'SIGNAL SENT \u2014 LOOK UP', BEAM_HOLD:'HOLD THE BEAM',
     BEAM_SEEN:'IT SAW YOU', T_REAR:'REAR-ENDED \u2014 NO PENALTY',
     BEAM_GONE:'IT GAVE UP', CLOCK_HELD:'CLOCK HELD',
@@ -1117,6 +1125,7 @@ var STR={
     PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
     PAUSE_SOUND:'M \u2014 M\u00daSICA / SONIDO',
     MENU_LINE:'ESC \u2014 MEN\u00da PRINCIPAL',
+    PAUSE_FPS:'F \u2014 MEDIDOR DE FPS', FPS_TAP:'TOCA AQU\u00cd \u2014 MEDIDOR DE FPS', FPS_ON:'S\u00cd', FPS_OFF:'NO',
     HAIL_CALL:'SE\u00d1AL ENVIADA \u2014 MIRA ARRIBA', BEAM_HOLD:'QU\u00c9DATE EN EL HAZ',
     BEAM_SEEN:'TE VIO', T_REAR:'GOLPE TRASERO \u2014 SIN CASTIGO',
     BEAM_GONE:'SE RINDI\u00d3', CLOCK_HELD:'RELOJ EN PAUSA',
@@ -1281,6 +1290,10 @@ var position=0, playerX=0, speed=0, steerVel=0;
 var health=MAX_HULL, lap=1, timeLeft=45, score=0, best=0, overtakes=0;
 var bestAtStart=0;   // the record this run is chasing
 var spinT=0, invT=0, shake=0, spinAng=0;
+/* Build 71: shT is game time for the shake and the drift rumble; carRum eases
+   the rumble in and out (0..1). RUMBLE_* are its size in logical px/radians. */
+var shT=0, carRum=0;
+var RUMBLE_X=1.3, RUMBLE_Y=0.8, RUMBLE_ROLL=0.015;
 var cars=[], spawnT=0, cpStart=0, cpLen=lapLength(1), nextCP=cpLen, endReason='';
 var msgs=[], flash=0, hitFlash=0, bgX=0, curSlope=0, warnSlope=0;
 var pickups=[], dinoT=0, taughtWeavers=false;
@@ -1380,7 +1393,7 @@ function reset(){
   trackReset();
   position=0; playerX=0; speed=0; steerVel=0;
   health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0;
-  spinT=0; invT=0; shake=0; spinAng=0; bgX=0; curSlope=0;
+  spinT=0; invT=0; shake=0; spinAng=0; bgX=0; curSlope=0; carRum=0;
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
   dBank=0; dPot=0; drifting=false;
@@ -1595,11 +1608,16 @@ function engSnapHz(f){
   return 440*Math.pow(2,(best-69)/12);
 }
 
+/* Build 71: write an audio setting only when its number changes. Each
+   `.value=` is a scheduled event in Chromium, and engine() used to write four
+   of them every frame whether anything had moved or not. */
+var engLastP=[NaN,NaN,NaN,NaN];
+function setP(p,i,v){ if (v!==engLastP[i]){ engLastP[i]=v; p.value=v; } }
 function engine(rev,on){
   if (!A) return;
   try{
     var off=(muted||!on);
-    A.g.gain.value=off?0:(0.05+Math.min(1,rev)*0.075)*ENG_VOL;
+    setP(A.g.gain, 0, off?0:(0.05+Math.min(1,rev)*0.075)*ENG_VOL);
     /* o2 has always sat exactly an octave under o1, so snapping o1 tunes the
        whole stack. The glide keeps the step from clicking. */
     var f=46+rev*128;
@@ -1613,10 +1631,10 @@ function engine(rev,on){
     }
     /* darker ceiling than before: the saw's bright upper harmonics were
        sitting right on top of the music. Still opens with speed, just less. */
-    A.lp.frequency.value=380+Math.min(ENG_WMAX,rev)*920;
+    setP(A.lp.frequency, 1, 380+Math.min(ENG_WMAX,rev)*920);
     var w=clamp((rev-ENG_WIND)/(ENG_WMAX-ENG_WIND),0,1);
-    A.wg.gain.value=off?0:w*w*ENG_WVOL;
-    A.wf.frequency.value=900+rev*1500;
+    setP(A.wg.gain, 2, off?0:w*w*ENG_WVOL);
+    setP(A.wf.frequency, 3, 900+rev*1500);
   }catch(e){}
 }
 /* `pan` is -1 left .. 1 right, `slide` a frequency ratio to glide to over the
@@ -1686,14 +1704,16 @@ function crashSfx(){
   if (!A||muted) return;
   try{
     var t=A.ctx.currentTime, len=0.45;
-    var buf=A.ctx.createBuffer(1, Math.floor(A.ctx.sampleRate*len), A.ctx.sampleRate);
-    var d=buf.getChannelData(0);
-    for (var i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
-    var src=A.ctx.createBufferSource(); src.buffer=buf;
+    /* Build 71: the shared 2 s noise bed instead of a new buffer filled
+       sample by sample on every crash. The straight-line fade that loop baked
+       into the samples is now a linear gain ramp: the same shape. */
+    var src=A.ctx.createBufferSource(); src.buffer=A.noise;
+    var tp=A.ctx.createGain(); tp.gain.setValueAtTime(1,t); tp.gain.linearRampToValueAtTime(0,t+len);
     var f=A.ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=420; f.Q.value=0.7;
     var g=A.ctx.createGain(); g.gain.setValueAtTime(0.5,t);
     g.gain.exponentialRampToValueAtTime(0.0001,t+len);
-    src.connect(f); f.connect(g); g.connect(A.master); src.start(t);
+    src.connect(tp); tp.connect(f); f.connect(g); g.connect(A.master);
+    src.start(t, Math.random()*1.4); src.stop(t+len+0.02);
   }catch(e){}
   blip(120,0.3,'sawtooth',0.2);
 }
@@ -2073,6 +2093,13 @@ function musNote(ch,pitch,dur,when){
     if (V.vib>0 && A.vib){ /* shared LFO -> detune, in cents */
       var vG=A.ctx.createGain(); vG.gain.value=V.vib; A.vib.connect(vG);
       for (k=0;k<oscs.length;k++) vG.connect(oscs[k].detune);
+      /* Build 71: unhook it when the note ends. Left connected, every note's
+         vibrato gain, and the two oscillators it feeds, stayed wired to the
+         always-running LFO for the life of the page: ~145 notes a minute,
+         about 15 KB each (measured in Chromium, 3,000 notes: +58 MB vs +12). */
+      oscs[0].onended=function(){
+        try{ A.vib.disconnect(vG); }catch(e){ try{ vG.disconnect(); }catch(_){} }
+      };
     }
     for (k=0;k<oscs.length;k++){ oscs[k].connect(g); oscs[k].start(when); oscs[k].stop(end+V.rel+0.02); }
   }catch(e){}
@@ -2213,6 +2240,7 @@ window.addEventListener('keydown', function(e){
     else if (state==='paused') state='playing';
   }
   if (c==='KeyM'){ cycleAudio(); }
+  if (c==='KeyF'){ toggleFps(); }                 /* build 71: FPS METER */
   /* ESC — back to the main menu: the desktop twin of the mobile MAIN MENU
      slab, and offered on exactly the same two screens it is. Not while
      playing, where one stray keypress would bin a live run, and not on the
@@ -2255,7 +2283,8 @@ window.addEventListener('blur', leaveGame);
 window.addEventListener('pagehide', leaveGame);
 document.addEventListener('visibilitychange', function(){
   if (document.hidden) leaveGame();
-  else audioResume();               /* back in front: wake the graph up again */
+  else { audioResume(); dropCaches(); }  /* back in front: wake the graph up again,
+                                            and repaint the cached layers (build 71) */
 });
 function el(id){ return document.getElementById(id); }
 function bindHold(node,on,off){
@@ -2531,6 +2560,9 @@ var CIRCUIT={
 };
 
 var circuitCv=el('circuit'), circuitT=null;
+/* build 71: the chip veins are drawn once too, so a GPU reset used to leave
+   the page background empty for good */
+try{ if (circuitCv) circuitCv.addEventListener('contextrestored', function(){ drawCircuit(); }); }catch(_){}
 
 function rrOn(g,x,y,w,h,r){
   g.beginPath();
@@ -2849,10 +2881,20 @@ function syncPad(){
   });
 }
 
-cv.addEventListener('pointerdown', function(){
+cv.addEventListener('pointerdown', function(e){
   audioInit();
   if (state==='title'||state==='gameover'){ reset(); state='playing'; }
+  else if (state==='paused' && e){
+    /* build 71: the FPS METER line on the pause screen is a button */
+    var r=cv.getBoundingClientRect();
+    if (r.width>0 && r.height>0){
+      var lx=(e.clientX-r.left)*W/r.width, ly=(e.clientY-r.top)*H/r.height;
+      if (Math.abs(ly-fpsLineY())<20 && Math.abs(lx-W/2)<250) toggleFps();
+    }
+  }
 });
+/* build 71: repaint the painted-once layers after a GPU reset */
+try{ cv.addEventListener('contextrestored', dropCaches); }catch(_){}
 
 /* ---------------------------------------------------------------
    TRAFFIC
@@ -2992,6 +3034,8 @@ function update(dt){
   var i,c,dz;
 
   shake *= Math.pow(0.02,dt);
+  shT += dt;
+  carRum += (((drifting && state==='playing')?1:0) - carRum)*Math.min(1,dt*14);
   hitFlash=Math.max(0,hitFlash-dt*2.6);
   flash   =Math.max(0,flash-dt*1.8);
   for (i=msgs.length-1;i>=0;i--){ msgs[i].life-=dt; if (msgs[i].life<=0) msgs.splice(i,1); }
@@ -3062,7 +3106,7 @@ function update(dt){
     if (isDrifting) {
       agility *= 1.85; // Significantly sharper turning radius
       resp *= 1.4;     // Faster response snapping into the turn
-      shake = Math.max(shake, 1.2); // Add a subtle rumble to the camera
+      /* build 71: the drift rumble is on the car now (drawPlayer), not the camera */
       
 
       /* charge the pot — bend and speed gates, see the DR_ block */
@@ -3499,7 +3543,7 @@ function rr(x,y,w,h,r){
 function glowText(txt,x,y,size,color,align,blur,weight){
   ctx.font=(weight||'700')+' '+size+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor=color; ctx.shadowBlur=(blur===undefined?14:blur);
+  ctx.shadowColor=color; ctx.shadowBlur=hb(blur===undefined?14:blur);
   ctx.fillStyle=color; ctx.fillText(txt,x,y);
   ctx.shadowBlur=0;
 }
@@ -3512,14 +3556,55 @@ function monoText(txt,x,y,size,color,align){
    dark outline. The outline is what makes them readable over a bright road --
    that job belongs to contrast, never to size. Their SIZE is set by BTAG at
    the top of the bottom row: HERO on desktop, LABEL * UI on touch. */
+/* Build 71: the four bottom tags never change while you drive, but each one
+   was a stroked outline plus a blurred glow, every frame. They are painted
+   once (per text, size, colour, scale and font load) into a small sprite and
+   copied in at whole device pixels. While the HUD glow is mid-fade they are
+   drawn live, so the cache never churns. */
+var tagCache={}, tagN=0;
+try{ if (document.fonts && document.fonts.addEventListener)
+       document.fonts.addEventListener('loadingdone', function(){ tagCache={}; tagN=0; }); }catch(_){}
 function hudTag(txt,x,y,size,color,align){
+  if (HQ===1 || HQ===0){
+    var key=txt+'|'+size+'|'+color+'|'+(align||'left')+'|'+dpr+'|'+HQ, e=tagCache[key];
+    if (!e){
+      if (tagN>=40){ tagCache={}; tagN=0; }
+      e=tagCache[key]=tagSprite(txt,size,color,align); tagN++;
+    }
+    if (e){
+      ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+      ctx.drawImage(e.c, Math.round(x*dpr)-e.ax, Math.round(y*dpr)-e.ay);
+      ctx.restore();
+      return;
+    }
+  }
+  hudTagLive(ctx,txt,x,y,size,color,align);
+}
+function tagSprite(txt,size,color,align){
+  try{
+    var c=document.createElement('canvas'), g=c.getContext('2d');
+    if (!g || !g.measureText) return null;
+    c.addEventListener('contextrestored', dropCaches);
+    g.font='900 '+size+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
+    if ('letterSpacing' in g) g.letterSpacing='1.5px';
+    var tw=g.measureText(txt).width + size*0.3, m=6+24/dpr;   /* glow + outline room */
+    var lw=tw+2*m, lh=size*1.5+2*m;
+    var ax0 = align==='right' ? m+tw : (align==='center' ? m+tw/2 : m);
+    c.width=Math.ceil(lw*dpr); c.height=Math.ceil(lh*dpr);
+    var ax=Math.round(ax0*dpr), ay=Math.round((m+size*1.12)*dpr);
+    g.setTransform(dpr,0,0,dpr,ax,ay);
+    hudTagLive(g,txt,0,0,size,color,align);
+    return {c:c, ax:ax, ay:ay};
+  }catch(_){ return null; }
+}
+function hudTagLive(ctx,txt,x,y,size,color,align){
   var ls = ('letterSpacing' in ctx);
   ctx.font='900 '+size+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
   if (ls) ctx.letterSpacing='1.5px';
   ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic';
   ctx.lineJoin='round'; ctx.lineWidth=4.5;
   ctx.strokeStyle='rgba(4,2,12,.88)'; ctx.strokeText(txt,x,y);
-  ctx.shadowColor=color; ctx.shadowBlur=10;
+  ctx.shadowColor=color; ctx.shadowBlur=hb(10);
   ctx.fillStyle=color; ctx.fillText(txt,x,y);
   ctx.shadowBlur=0; ctx.lineWidth=1; ctx.lineJoin='miter';
   if (ls) ctx.letterSpacing='0px';
@@ -3541,8 +3626,17 @@ var bdCv=null, bdKey='', orbCv=null, orbKey='', orbHalf=0, fogCv=null, fogKey=''
     hzCv=null, hzKey='', hzTop=0;
 /* opaque: the backdrop covers every pixel, and telling the browser so lets
    it copy the blit instead of blending it */
+/* Build 71. A phone that runs short of graphics memory, or whose graphics
+   driver hiccups, wipes every canvas and asks the page to redraw
+   (`contextrestored`). The main picture redraws every frame anyway; these
+   cached layers are painted once, so they have to be told. Without this the
+   sun, fog, haze and sky stayed blank for the rest of the zone. */
+function dropCaches(){ bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; }
 function offCv(c, w, h, opaque){
-  if (!c) c=document.createElement('canvas');
+  if (!c){
+    c=document.createElement('canvas');
+    try{ c.addEventListener('contextrestored', dropCaches); }catch(_){}
+  }
   if (c.width!==w) c.width=w;
   if (c.height!==h) c.height=h;
   var g=c.getContext('2d', opaque ? {alpha:false} : undefined);
@@ -3575,7 +3669,7 @@ function backdrop(){
    margin: a canvas shadow is a gaussian with sigma = shadowBlur/2 DEVICE
    pixels (shadowBlur ignores the transform), so 2x shadowBlur covers it. */
 function orbSprite(){
-  var o=ZN.orb, gb=blur(50), key=zoneI+'|'+dpr+'|'+gb;
+  var o=ZN.orb, gb=50*GB, key=zoneI+'|'+dpr+'|'+gb;   /* not blur(): see GQ */
   if (orbCv && orbKey===key) return orbCv;
   var half=Math.ceil(o.r*dpr + 2*gb) + 4;
   orbCv=offCv(orbCv, half*2, half*2);
@@ -4775,7 +4869,8 @@ function drawPlayerDino(lean){
   var t=performance.now();
   var fade = (dinoT<=DINO_WARN && (Math.floor(dinoT*8)%2===0)) ? 0.40 : 1;
   ctx.save();
-  ctx.translate(W/2+lean*9, PLAYER_Y+(frame===1?-h*0.03:0));
+  ctx.translate(W/2+lean*9 + carRum*RUMBLE_X*Math.sin(shT*71.3),
+                PLAYER_Y+(frame===1?-h*0.03:0) + carRum*RUMBLE_Y*Math.sin(shT*103.7+1.9));
   ctx.rotate(spinT>0?spinAng:(-lean*0.05-curSlope*92));
   ctx.globalAlpha=fade*0.30;
   ctx.fillStyle='hsl('+((t/6)%360)+',100%,60%)';
@@ -4797,9 +4892,13 @@ function drawPlayer(){
 
   if (cutCar.alpha<=0.01) return;
   ctx.save();
-  ctx.translate(W/2 + lean*9 + cutCar.x, PLAYER_Y + cutCar.y);
+  /* Build 71: the drift rumble shakes the car, not the world. About a pixel
+     each way at 11-17 Hz while the tyres scream; the road stays still. */
+  var rmX=carRum*RUMBLE_X*Math.sin(shT*71.3), rmY=carRum*RUMBLE_Y*Math.sin(shT*103.7+1.9),
+      rmR=carRum*RUMBLE_ROLL*Math.sin(shT*83.0+0.4);
+  ctx.translate(W/2 + lean*9 + cutCar.x + rmX, PLAYER_Y + cutCar.y + rmY);
   if (cutCar.sc!==1) ctx.scale(cutCar.sc, cutCar.sc);
-  ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92)) + cutCar.tilt + cutCar.spin);
+  ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92)) + cutCar.tilt + cutCar.spin + rmR);
   ctx.globalAlpha=(blink?0.42:1)*cutCar.alpha;
   var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
   paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn});
@@ -4821,7 +4920,7 @@ function drawBendWarning(){
   ctx.globalAlpha=0.45+0.55*mag;
   ctx.strokeStyle=col; ctx.lineWidth=3;
   ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.shadowColor=col; ctx.shadowBlur=10;
+  ctx.shadowColor=col; ctx.shadowBlur=hb(10);
   for (var i=0;i<n;i++){
     var cx=W/2 + dir*(i*14) - dir*((n-1)*14)/2;
     ctx.beginPath();
@@ -4885,7 +4984,7 @@ function drawHUD(){
     monoText(T('RAMPAGE'),W-226,slot+23,TS.MICRO*UI,ending?(beat?'#ffd23f':'#ff4d6d'):'#7cff4f');
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-108,slot+12,84,11);
     ctx.fillStyle = ending ? (beat?'#ffd23f':'#ff4d6d') : rainbowFill(W-108,slot+12,W-24,slot+23,6);
-    if (ending){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=12; }
+    if (ending){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=hb(12); }
     ctx.fillRect(W-108,slot+12,84*(dinoT/DINO_TIME),11);
     ctx.shadowBlur=0;
     monoText(dinoT.toFixed(1)+'s',W-118,slot+23,TS.MICRO*UI,ending?'#ffd23f':'#eaf6ff','right');
@@ -4897,7 +4996,7 @@ function drawHUD(){
     monoText(T('OVERDRIVE'),W-226,slot+23,TS.MICRO*UI,oEnd?(oBeat?'#ffd23f':'#ff4d6d'):'#ffd23f');
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(W-98,slot+12,74,11);
     ctx.fillStyle = oEnd&&!oBeat ? '#ff4d6d' : OD_COLS[(Math.floor(performance.now()/110))%OD_COLS.length];
-    ctx.shadowColor='#ffd23f'; ctx.shadowBlur=oEnd?14:8;
+    ctx.shadowColor='#ffd23f'; ctx.shadowBlur=hb(oEnd?14:8);
     ctx.fillRect(W-98,slot+12,74*(odT/OD_TIME),11);
     ctx.shadowBlur=0;
     monoText(odT.toFixed(1)+'s',W-108,slot+23,TS.MICRO*UI,oEnd?'#ffd23f':'#eaf6ff','right');
@@ -4920,7 +5019,7 @@ function drawHUD(){
     monoText(T('NEARMISS'),26,137,TS.LABEL*UI,'#8a7ec4');
     glowText('x'+chain,212,147,TS.HERO,ccol,'right',12);
     ctx.fillStyle='rgba(255,255,255,.10)'; ctx.fillRect(26,150,120,5);
-    ctx.fillStyle=ccol; ctx.shadowColor=ccol; ctx.shadowBlur=8;
+    ctx.fillStyle=ccol; ctx.shadowColor=ccol; ctx.shadowBlur=hb(8);
     ctx.fillRect(26,150,120*cf,5); ctx.shadowBlur=0;
   }
 
@@ -4951,7 +5050,7 @@ function drawHUD(){
     ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(16,400,200,13);
     var wB=200*clamp(dBank,0,1), wP=200*clamp(dPot,0,1-dBank);
     if (wB>0){
-      ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
+      ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(10);
       ctx.fillRect(16,400,wB,13); ctx.shadowBlur=0;
     }
     if (wP>0){ ctx.fillStyle='#ffd23f'; ctx.fillRect(16+wB,400,wP,13); }
@@ -4965,7 +5064,7 @@ function drawHUD(){
       var kx=16+k*30;
       if (odT>0 || k<shots){
         var gc = odT>0 ? OD_COLS[(k+Math.floor(performance.now()/110))%OD_COLS.length] : '#21e6ff';
-        ctx.shadowColor=gc; ctx.shadowBlur=12; ctx.fillStyle=gc;
+        ctx.shadowColor=gc; ctx.shadowBlur=hb(12); ctx.fillStyle=gc;
         ctx.beginPath();
         ctx.moveTo(kx+9*BS,ky);        ctx.lineTo(kx+15*BS,ky);
         ctx.lineTo(kx+10*BS,ky+7*BS);  ctx.lineTo(kx+14*BS,ky+7*BS);
@@ -4990,7 +5089,7 @@ function drawHUD(){
         var bx=hx0+i*34;
         if (i<health){
           var col=health===1?'#ff4d6d':(health===2?'#ffd23f':'#7cff4f');
-          ctx.shadowColor=col; ctx.shadowBlur=14; ctx.fillStyle=col;
+          ctx.shadowColor=col; ctx.shadowBlur=hb(14); ctx.fillStyle=col;
           ctx.fillRect(bx,400,28,15); ctx.shadowBlur=0;
         } else {
           ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.lineWidth=1.5;
@@ -5003,7 +5102,7 @@ function drawHUD(){
     var barW=200, bx2=W-barW-16, by=452;
     hudTag(T('NEXT_CP'),W-16,444,BTAG,'#b9aef0','right');
     ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(bx2,by,barW,13);
-    ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
+    ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(8);
     ctx.fillRect(bx2,by,barW*clamp((position+Z_CAR-cpStart)/cpLen,0,1),13);
     ctx.shadowBlur=0;
     ctx.strokeStyle='rgba(124,255,79,.65)'; ctx.lineWidth=1;
@@ -5030,7 +5129,7 @@ function iconHeart(cx,cy,sz){
   var t=performance.now(), hue=(t/9)%360, i;
   var g=ctx.createLinearGradient(cx-sz,cy-sz,cx+sz,cy+sz);
   for (i=0;i<=4;i++) g.addColorStop(i/4,'hsl('+((hue+i*72)%360)+',100%,64%)');
-  ctx.shadowColor='hsl('+((hue+180)%360)+',100%,60%)'; ctx.shadowBlur=10;
+  ctx.shadowColor='hsl('+((hue+180)%360)+',100%,60%)'; ctx.shadowBlur=hb(10);
   heartPath(cx, cy+sz*0.45, sz*0.60);
   ctx.fillStyle=g; ctx.fill();
   ctx.shadowBlur=0;
@@ -5038,14 +5137,14 @@ function iconHeart(cx,cy,sz){
 function iconDino(cx,cy,sz){
   var w=sz*2.0, h=w*0.72;
   dinoPath(cx-w/2, cy-h/2, w/24, h/17, 0);
-  ctx.shadowColor='hsl('+(((performance.now()/9)+180)%360)+',100%,60%)'; ctx.shadowBlur=8;
+  ctx.shadowColor='hsl('+(((performance.now()/9)+180)%360)+',100%,60%)'; ctx.shadowBlur=hb(8);
   ctx.fillStyle=rainbowFill(cx-w/2,cy-h/2,cx+w/2,cy+h/2);
   ctx.fill(); ctx.shadowBlur=0;
 }
 function iconBolt(cx,cy,sz){
   var g=ctx.createLinearGradient(cx,cy-sz,cx,cy+sz);
   g.addColorStop(0,'#ffffff'); g.addColorStop(0.5,'#8ef4ff'); g.addColorStop(1,'#21e6ff');
-  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=10;
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(10);
   ctx.beginPath();
   for (var i=0;i<BOLT.length;i++){
     var px=cx+BOLT[i][0]*sz*0.78, py=cy+BOLT[i][1]*sz*0.62;
@@ -5059,7 +5158,7 @@ function iconBolt(cx,cy,sz){
    be longer than two. */
 function iconWarn(cx,cy,sz){
   var r=sz*0.66;
-  ctx.shadowColor='#ffd23f'; ctx.shadowBlur=10;
+  ctx.shadowColor='#ffd23f'; ctx.shadowBlur=hb(10);
   ctx.beginPath();
   ctx.moveTo(cx, cy-r);
   ctx.lineTo(cx+r*0.98, cy+r*0.74);
@@ -5075,7 +5174,7 @@ function iconWarn(cx,cy,sz){
    banner for one bit of information. */
 function iconSpd(cx,cy,sz){
   var r=sz*0.62;
-  ctx.shadowColor='#7cff4f'; ctx.shadowBlur=8;
+  ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(8);
   ctx.beginPath();
   ctx.moveTo(cx, cy-r);
   ctx.lineTo(cx+r*0.86, cy+r*0.26);
@@ -5186,7 +5285,7 @@ function drawMessages(){
   ctx.fillStyle='rgba(8,4,18,.86)';
   rr(bx,by,bw,bh,10); ctx.fill();
   ctx.lineWidth=3.5; ctx.strokeStyle=msgs[0].c;
-  ctx.shadowColor=msgs[0].c; ctx.shadowBlur=18;
+  ctx.shadowColor=msgs[0].c; ctx.shadowBlur=hb(18);
   rr(bx,by,bw,bh,10); ctx.stroke();
   ctx.shadowBlur=0;
   ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,.16)';
@@ -5370,6 +5469,7 @@ function drawPause(){
   glowText(T('PAUSED'),W/2,H/2-26,TS.TITLE,'#21e6ff','center',26);
   if (TOUCH){
     monoText(T('PAUSE_TOUCH'),W/2,H/2+16,TS.LABEL,'#a99fdc','center');
+    monoText(T('FPS_TAP')+'  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'),W/2,fpsLineY(),TS.LABEL,'#8a7ec4','center');
   } else {
     monoText(T('PAUSE_RESUME'),W/2,H/2+12,TS.LABEL,'#a99fdc','center');
     monoText(T('PAUSE_GARAGE'),W/2,H/2+36,TS.LABEL,'#21e6ff','center');
@@ -5380,6 +5480,7 @@ function drawPause(){
     monoText(T('PAUSE_SOUND')+'  \u00b7  '+T(AUD_MSG[audioMode]),W/2,H/2+84,TS.LABEL,'#b06cff','center');
     monoText(T('PAUSE_LANG'),W/2,H/2+108,TS.LABEL,'#ff2fbe','center');
     monoText(T('MENU_LINE'),W/2,H/2+132,TS.LABEL,'#ffd23f','center');
+    monoText(T('PAUSE_FPS')+'  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'),W/2,fpsLineY(),TS.LABEL,'#8a7ec4','center');
   }
 }
 
@@ -5965,7 +6066,19 @@ function drawCut(){
 
 function render(){
   var sx=0, sy=0;
-  if (shake>0.3){ sx=(Math.random()*2-1)*shake; sy=(Math.random()*2-1)*shake*0.6; }
+  if (shake>0.3){
+    /* Build 71: a smooth shake. Two sines per axis at 8-14 Hz (under half of
+       30 fps, so a capped browser shows the same motion), on game time. The
+       old one jumped to a new random spot every frame, which made its rhythm
+       the frame rhythm: any uneven frame read as stutter. Peak = shake and
+       y = 0.6 of x, as before. */
+    sx=shake*(0.62*Math.sin(shT*50.3+1.3)+0.38*Math.sin(shT*77.1+4.1));
+    sy=shake*0.6*(0.62*Math.sin(shT*61.0+2.2)+0.38*Math.sin(shT*89.2+0.7));
+    /* whole device pixels for EVERYTHING: the road's one-pixel rows never
+       smear across two screen rows, and the cached sky and sun move with
+       the rest instead of half a pixel apart */
+    sx=Math.round(sx*dpr)/dpr; sy=Math.round(sy*dpr)/dpr;
+  }
   shX=sx; shY=sy;
 
   /* The sky and ground blits cover every pixel, opaque, so the old
@@ -6022,13 +6135,85 @@ function render(){
   if (state==='info')     drawInfo();
 }
 
+/* ---------------------------------------------------------------
+   FRAME GOVERNOR + FPS METER (build 71)
+   Every frame's interval goes into a 2-second window. The window's 25th
+   percentile is the screen's own rhythm (16.7 ms at 60 Hz, 33 ms under a
+   30 fps cap, 8.3 at 120 Hz), and a frame is LATE when it takes over 1.5x
+   that (and over 20 ms). If more than 5% of frames are late in two windows
+   in a row while you drive, the glows step down one tier: 1 fades the
+   world's glows out, 2 the HUD's. It only steps down, and it waits 3 s after
+   any start, screen change, zone change or step before judging again. A
+   steady capped browser is never "late", so it never triggers. Per frame
+   this is a few comparisons; the window sort happens every 2 s.
+--------------------------------------------------------------- */
+var GOV_WIN=2000, GOV_LATE=0.05, GOV_HOLD=3;
+var gov={tier:0, n:0, t:0, work:0, worst:0, bad:0, hold:GOV_HOLD, dirty:true,
+         st:'', zone:-1, buf:new Float32Array(512),
+         fps:0, hz:0, worstShow:0, workShow:0, lateShow:0};
+var fpsOn=false;
+try{ fpsOn = localStorage.getItem('vaporlane.fps')==='1'; }catch(_){}
+function toggleFps(){
+  fpsOn=!fpsOn;
+  try{ localStorage.setItem('vaporlane.fps', fpsOn?'1':'0'); }catch(_){}
+}
+function govFrame(raw, work, dt){
+  /* the fades: 1.2 s either way, so a step never pops */
+  var gq=gov.tier>=1?0:1, hq=gov.tier>=2?0:1, sp=dt/1.2;
+  if (GQ!==gq) GQ = GQ<gq ? Math.min(gq,GQ+sp) : Math.max(gq,GQ-sp);
+  if (HQ!==hq) HQ = HQ<hq ? Math.min(hq,HQ+sp) : Math.max(hq,HQ-sp);
+
+  if (raw>250 || document.hidden){          /* a stall or a tab switch: start over */
+    gov.n=0; gov.t=0; gov.work=0; gov.worst=0; gov.hold=GOV_HOLD; gov.dirty=true; return;
+  }
+  if (state!==gov.st || zoneI!==gov.zone){ gov.st=state; gov.zone=zoneI; gov.hold=GOV_HOLD; }
+  if (gov.hold>0){ gov.hold-=raw/1000; gov.dirty=true; }
+  if (gov.n<gov.buf.length) gov.buf[gov.n++]=raw;
+  gov.t+=raw; gov.work+=work; if (raw>gov.worst) gov.worst=raw;
+  if (gov.t<GOV_WIN) return;
+
+  var n=gov.n, v=gov.buf.subarray(0,n), i, late=0;
+  v.sort();
+  var base=v[(n*0.25)|0], thr=Math.max(base*1.5, 20);
+  for (i=n-1; i>=0 && v[i]>thr; i--) late++;
+  gov.fps=Math.round(n*1000/gov.t); gov.hz=Math.round(1000/base);
+  gov.worstShow=gov.worst; gov.workShow=gov.work/n; gov.lateShow=late;
+  if (state==='playing' && !gov.dirty && gov.tier<2){
+    if (late > n*GOV_LATE){
+      if (++gov.bad>=2){ gov.tier++; gov.bad=0; gov.hold=GOV_HOLD; }
+    } else gov.bad=0;
+  }
+  gov.n=0; gov.t=0; gov.work=0; gov.worst=0; gov.dirty=false;
+}
+function drawFps(){
+  var g=gov, tier=g.tier===0?'FULL':(g.tier===1?'LITE':'LITE+');
+  var txt=(g.fps||'--')+' FPS \u00b7 '+(g.hz||'--')+' HZ \u00b7 WORST '+Math.round(g.worstShow)+
+          ' MS \u00b7 JS '+g.workShow.toFixed(1)+' MS \u00b7 GLOW '+tier;
+  var fs=10*UI;
+  ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.globalCompositeOperation='source-over';
+  ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  var w=ctx.measureText(txt).width+14;
+  ctx.fillStyle='rgba(6,2,14,.80)'; ctx.fillRect(W/2-w/2,H-fs-9,w,fs+7);
+  ctx.fillStyle = g.lateShow===0 ? '#7cff4f' : (g.lateShow<=g.fps*0.1 ? '#ffd23f' : '#ff4d6d');
+  ctx.fillText(txt,W/2,H-6);
+  ctx.restore();
+}
+/* where the FPS METER line sits on the pause screen, so a tap can find it */
+function fpsLineY(){ return TOUCH ? H/2+50 : H/2+156; }
+
 var last=performance.now(), lastDt=0.016;
 function loop(now){
-  var dt=Math.min(0.05,(now-last)/1000); last=now;
+  var raw=now-last;
+  var dt=Math.min(0.05,raw/1000); last=now;
   lastDt=dt;
+  var w0=performance.now();
   update(dt);
   syncPad();
   render();
+  govFrame(raw, performance.now()-w0, dt);
+  if (fpsOn) drawFps();
   requestAnimationFrame(loop);
 }
 loadGame();
