@@ -185,6 +185,20 @@
   #padMenu .tbtn.slab.big::before{
     background:#ff2fbe; box-shadow:0 0 15px rgba(255,47,190,.95);
   }
+  /* build 74: the TUTORIAL slab and its NEW HERE? badge */
+  #padMenu .tbtn.slab.tut::before{ background:#7cff4f; box-shadow:0 0 14px rgba(124,255,79,.95) }
+  #padMenu.slabs .col.l{ position:relative }
+  #padMenu .newHere{ position:absolute; left:8px; top:100%; margin-top:8px;
+    display:flex; align-items:center; gap:7px; pointer-events:none; white-space:nowrap;
+    padding:4px 10px 4px 8px; border-radius:6px; background:rgba(8,3,20,.82);
+    border:1px solid rgba(124,255,79,.55); box-shadow:0 0 10px rgba(124,255,79,.35);
+    font:900 13px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif;
+    letter-spacing:.06em; color:#7cff4f; text-shadow:0 0 8px rgba(124,255,79,.95), 0 0 2px #0a0418;
+    animation:vlNewHere 1.04s ease-in-out infinite alternate }
+  #padMenu .newHere svg{ width:14px; height:11px; fill:#7cff4f;
+    filter:drop-shadow(0 0 4px rgba(124,255,79,.95)); animation:vlNewArrow .52s ease-in-out infinite alternate }
+  @keyframes vlNewHere{ from{ opacity:.7 } to{ opacity:1 } }
+  @keyframes vlNewArrow{ from{ transform:translateY(2px) } to{ transform:translateY(-2px) } }
   #padMenu .tbtn.slab.on::before, #padMenu .tbtn.slab:active::before{
     background:#ffffff; box-shadow:0 0 18px rgba(255,255,255,.9);
   }
@@ -363,6 +377,8 @@
     #padMenu .tbtn.slab::before{ width:6px }
     #padMenu .tbtn.tile{ font-size:8.5px; gap:3px; padding:4px 2px }
     #padMenu .tbtn.tile svg{ width:22px; height:22px }
+    #padMenu .newHere{ left:4px; font-size:11px; letter-spacing:.03em; gap:5px; padding:3px 7px 3px 6px }
+    #padMenu .newHere svg{ width:12px; height:9px }
     /* The garage cross moves out of the middle and into the steering pad's
        column, which is empty on that screen anyway — padDrive is hidden
        whenever you are not driving. Centred, it sat on top of the car you
@@ -408,6 +424,8 @@
                          padding:0 6px 0 13px }
     #padMenu .tbtn.slab::before{ width:5px }
     #padMenu .tbtn.tile{ font-size:7.5px; gap:2px; padding:3px 1px }
+    #padMenu .newHere{ left:2px; font-size:9.5px; letter-spacing:.02em; gap:4px; padding:3px 6px 3px 5px }
+    #padMenu .newHere svg{ width:10px; height:8px }
     #padMenu .tbtn.tile svg{ width:17px; height:17px }
     /* Small screens reserve only 118px for the steering column, so the
        cross has to come down with it or it would reach onto the stage. */
@@ -444,6 +462,48 @@
     body:not(.touch) #stage{
       max-width:min(calc(940px + 4.8cm), calc((100vh - 20px) * 1.6)) }
   }
+
+  /* ------------------------------------------------------------------
+     BUILD 72 - GUIDED LEARN RUN (test). The overlay exists only while a card
+     is up in style A or B; the world is frozen behind it. Style C uses the
+     canvas message card and, on a phone, pulses the control it names.
+     ------------------------------------------------------------------ */
+  #tut{ display:none; position:fixed; inset:0; z-index:40; cursor:pointer;
+        touch-action:none; -webkit-user-select:none; user-select:none }
+  #tut.on{ display:block }
+  #tutSvg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none }
+  #tutSvg .ring, #tutFx .ring{ fill:none; stroke:#21e6ff; stroke-width:3; animation:tutPulse 1.1s ease-in-out infinite }
+  @keyframes tutPulse{ 0%,100%{ opacity:.55 } 50%{ opacity:1 } }
+  @keyframes tutGlow{ 0%,100%{ filter:drop-shadow(0 0 2px #21e6ff) }
+                      50%{ filter:drop-shadow(0 0 12px #21e6ff) drop-shadow(0 0 5px #21e6ff) } }
+  .tutHint{ animation:tutGlow .9s ease-in-out infinite }
+  #tutCard{ position:absolute; box-sizing:border-box; padding:.8em 1em .9em; border-radius:12px;
+            background:rgba(8,4,18,.93); border:2px solid #21e6ff; color:#cfd6ff; text-align:center;
+            box-shadow:0 0 22px rgba(33,230,255,.5), inset 0 0 0 1px rgba(255,255,255,.14);
+            font-family:"Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif; line-height:1.3 }
+  #tutCard .tTag{ font:700 .62em ui-monospace,Menlo,"Courier New",monospace; letter-spacing:.12em;
+                  color:#8a7ec4; margin-bottom:.35em }
+  #tutCard .tHead{ font-size:1.45em; color:#7cff4f; letter-spacing:.02em;
+                   text-shadow:0 0 12px rgba(124,255,79,.55) }
+  #tutCard .tBody{ margin:.45em 0 .1em; font:700 1em/1.35 ui-monospace,Menlo,"Courier New",monospace;
+                   color:#eaf0ff }
+  #tutCard .tIcons{ display:flex; justify-content:center; gap:1.6em; margin:.6em 0 .1em; font-size:1.15em }
+  #tutCard .tIcons span{ display:inline-flex; align-items:center; gap:.4em; color:#ff6ad5 }
+  #tutCard .tIcons span.t2{ color:#21e6ff }
+  #tutCard .tIcons svg{ width:1.5em; height:1.5em; fill:currentColor }
+  /* build 78: each button sits above its own key cap, so it is clear which key does what */
+  #tutCard .tBtns{ display:flex; gap:1.1em; justify-content:center; align-items:flex-start; margin-top:.8em; flex-wrap:wrap }
+  #tutCard .tOpt{ display:flex; flex-direction:column; align-items:center; gap:.5em }
+  #tutCard .tGo{ font:800 .72em ui-monospace,Menlo,"Courier New",monospace; color:#7cff4f; letter-spacing:.1em;
+                 padding:.25em .8em; border:1.5px solid rgba(124,255,79,.75); border-radius:6px;
+                 background:rgba(124,255,79,.08); box-shadow:0 2px 0 rgba(124,255,79,.35) }
+  #tutCard .tOpt.main .tGo{ animation:tutPulse 1.2s ease-in-out infinite }
+  #tutCard button{ pointer-events:auto; cursor:pointer; font:800 .8em ui-monospace,Menlo,"Courier New",monospace;
+                   color:#eaf6ff; background:rgba(33,230,255,.14); border:2px solid #21e6ff;
+                   border-radius:9px; padding:.55em 1.1em; letter-spacing:.06em }
+  #tutCard button.skip{ border-color:#8a7ec4; color:#a99fdc; background:rgba(138,126,196,.10) }
+  /* build 73: the live boxes and the fading dim over the moving road. It never takes a touch. */
+  #tutFx{ display:none; position:fixed; inset:0; width:100%; height:100%; z-index:40; pointer-events:none }
 </style>
 </head>
 <body>
@@ -500,6 +560,8 @@
   </div>
   <div id="padMenu"></div>
 </div>
+<div id="tut"><svg id="tutSvg" aria-hidden="true"></svg><div id="tutCard"></div></div>
+<svg id="tutFx" aria-hidden="true"></svg>
 
 <script>
 (function(){
@@ -698,7 +760,8 @@ vapor: {
   posts:['#21e6ff','#ff2fbe'],
   props:['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'],
   propStruct:'138,104,206', propWarm:'#ffb15a', gate:'#7cff4f',
-  traffic:['#ff2fbe','#21e6ff','#ffd23f','#7cff4f','#ff6a3d','#b06cff'],
+  lamp:'#21e6ff',   /* build 76: swan-neck lamps, one colour */
+  traffic:['#f2f6ff','#ffd23f','#7cff4f','#ff6a3d','#3dffc0'],   /* build 76: no hot pink (Carlos); build 75: ice white for cyan, mint for violet */
   weather:'none', wcol:'#ffffff', wamt:0.5,
   bloom:1, grade:{bri:1, con:1, sat:1, hue:0},
   propMask:127, propDens:1, groundFog:0, fogMul:1, bloomMul:1, weatherAmt:1,
@@ -724,7 +787,8 @@ vaporEdit: {
   posts:['#21e6ff','#ff2fbe'],
   props:['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'],
   propStruct:'138,104,206', propWarm:'#ffb15a', gate:'#7cff4f',
-  traffic:['#ff5f8a','#5fd0ff','#c78bff','#ffd05f','#7cff9a'],
+  lamp:'#c27857',   /* build 76: RAW value; through the grade filter it shows azure (58,177,248), the nearest cyan the filter can reach */
+  traffic:['#ff5f8a','#c78bff','#c8c3b4','#af7d82'],   /* build 76: raw values; the salmon-pink one (raw #5fd0ff) is gone; through the grade the rest show as green, light green, white, teal */
   weather:'rain', wcol:'#b8ff8a', wamt:0.8,
   bloom:1.05, grade:{bri:1.23, con:1.09, sat:1.65, hue:180},
   propMask:106, propDens:1.65, groundFog:0.44, fogMul:1.15, bloomMul:1.25, weatherAmt:0.4,
@@ -812,6 +876,11 @@ function trackReset(){
 }
 function newSection(){
   secPos=0;
+  if (learn){                           /* build 72: a scripted road */
+    if (tut && tut.wantBend){ tut.wantBend=false; tutBendSection(); return; }
+    secLen=20; secAmp=0; slA[genN]=0;   /* short flat sections: a requested bend is never far off */
+    return;
+  }
   if (Math.random() < P_STRAIGHT){
     secLen=(50+Math.random()*100)|0;  // 20k–60k units of open road
     secAmp=0;
@@ -878,20 +947,28 @@ function bend(zRel){ return curveAt(position+zRel)-cAnchor; }
    are inside the rampage and overdrive windows. At lap 12 the leg takes ~44s
    against a 35s flat-out time. Every constant here is set from the measured
    time, not the divided one. */
-function maxSpeedFor(l){ return Math.min(14800, 11500 + (l-1)*640) * CH_().spd; }
+function maxSpeedFor(l){
+  /* build 72: the learn run has its own top speed, and laps 1-3 start gentler */
+  if (learn) return 11500*LEARN_SPEED*CH_().spd;
+  var e = (EASY_ON && l>=1 && l<=3) ? EASY_SPD[l-1] : 1;
+  return Math.min(14800, 11500 + (l-1)*640) * CH_().spd * e;
+}
 /* What one wrecked car is worth. Doubled while you are the dinosaur: rampage
    is short, it ends whether you used it well or not, and paying flat made it
    a survival break rather than a scoring window. Both kill sites read this,
    so ramming and shooting can never drift apart. */
 /* Every point in the game goes through here, so a zone multiplier is one
    line instead of seven. */
-function addScore(n){ score += n*ZN.mult; }
+function addScore(n){ if (learn) return; score += n*ZN.mult; }   /* build 72: a lesson scores nothing */
 function killScore(){ return 300*(1+0.2*(lap-1))*(dinoT>0?2:1); }
 /* Shorter than before at the start — the first checkpoint now lands at ~17s
    instead of 21s — and longer than before at the end. 520k rather than 620k:
    a 620k leg runs ~57s, and dying 50 seconds from the nearest checkpoint
    reads as unfair rather than tense. */
-function lapLength(l){   return Math.min(520000, 190000 + (l-1)*41000); }
+function lapLength(l){
+  var n = Math.min(520000, 190000 + (l-1)*41000);
+  return (EASY_ON && l>=1 && l<=3) ? Math.round(n*EASY_LEN) : n;     /* build 73: laps 1-3 are 75 % of their old length */
+}
 /* THE CLOCK. The award used to be a flat 1.28 x the flat-out leg time, which
    means it was DEFINED as 28% more time than the leg costs — so a clean lap
    banked ~+9s at every lap, forever, and by lap 12 you were carrying 140s and
@@ -925,8 +1002,11 @@ function trafficTop(l){  return l<=6 ? Math.min(6600, 3800 + (l-1)*560)
    bite (3-4% at lap 16) — that is the practical ceiling of a four-lane road,
    and going past it means raising maxCluster to 4, which throws away the
    guarantee that a gap exists at all. Do not. */
-function spawnGap(l){    return l<=7 ? Math.max(0.36, 0.83 - (l-1)*0.078)
-                                     : Math.max(0.20, 0.36 - (l-7)*0.020); }
+function spawnGap(l){
+  var g = l<=7 ? Math.max(0.36, 0.83 - (l-1)*0.078)
+               : Math.max(0.20, 0.36 - (l-7)*0.020);
+  return (EASY_ON && l>=1 && l<=3) ? g*EASY_GAP[l-1] : g;     /* build 72 */
+}
 function clusterWin(l){  return Math.max(2600, 4600 - (l-1)*260); }
 function maxCluster(l){  return l<2 ? 2 : 3; }
 /* Vans from lap 5 instead of lap 8 — three and a half minutes of waiting for
@@ -1104,10 +1184,61 @@ var STR={
        text changed to match: the legend now says "how it works", matching
        HOW_IT_WORKS, instead of the old bare "info". */
     K_GARAGE:'garage', K_INFO:'how it works',
-    K_PAUSE:'pause', K_SOUND:'audio', K_LANG:'language'
+    K_PAUSE:'pause', K_SOUND:'audio', K_LANG:'language',
+    /* ---- build 73: the tutorial (one style, steps that unlock) ---- */
+    TF_LEARN:'TUTORIAL', MOB_LEARN:'Tutorial',
+    NEW1:'PRESS T FOR THE TUTORIAL', NEW1_TOUCH:'START WITH THE TUTORIAL',
+    NEW_HERE:'NEW HERE?',
+    NEW2:'OR PRESS C FOR CRUISE: NO CLOCK, NO DAMAGE', NEW2_TOUCH:'OR TRY CRUISE: NO CLOCK, NO DAMAGE',
+    OVER_LEARN:'NEED A HAND?  T — TUTORIAL', OVER_LEARN_TOUCH:'NEED A HAND?  TAP TUTORIAL',
+    LEARN_TAG:'TUTORIAL', LEARN_STEP:'STEP ',
+    T_LEARN_CRASH:'CRASH — COSTS HEALTH AND TIME IN A RUN',
+    TUT_GO:'DRIVE', TUT_AGAIN:'AGAIN', TUT_MENU:'MENU',
+    TUT_READY_KEYS:'ENTER — DRIVE    T — AGAIN    ESC — MENU',
+    TUT_EXIT:'P TO PAUSE, THEN ESC TO LEAVE',
+    TUT_EXIT_T:'TAP PAUSE, THEN MAIN MENU TO LEAVE',
+    TUT_DRIVE_H:'LET’S DRIVE',
+    TUT_DRIVE_B:'Hold ↑ or W to speed up. Steer with ← → or A D.',
+    TUT_DRIVE_BT:'Hold GAS to speed up. Slide the left pad to steer.',
+    TUT_DRIVE_R_H:'SPEED UP AND STEER',
+    TUT_DRIVE_R_B:'Hold ↑ or W to speed up, then steer left and right with ← → or A D.',
+    TUT_DRIVE_R_BT:'Hold GAS to speed up, then slide the left pad to steer left and right.',
+    TUT_BRAKE_H:'SLOW CAR AHEAD',
+    TUT_BRAKE_B:'Press ↓ or S to brake before you reach it.',
+    TUT_BRAKE_BT:'Hold the BRAKE button to slow down before you reach it.',
+    TUT_BRAKE_R_H:'USE THE BRAKE',
+    TUT_BRAKE_R_B:'Press ↓ or S to slow down before you reach the car.',
+    TUT_BRAKE_R_BT:'Hold the BRAKE button to slow down before you reach the car.',
+    TUT_CRASH_H:'CRASHES COST',
+    TUT_CRASH_B:'Hit a car and you lose speed. In a TIMED RUN it also costs 1 HEALTH and 2 SECONDS.',
+    TUT_CRASH2_H:'THAT WAS A CRASH',
+    TUT_CRASH2_B:'You lost speed. In a TIMED RUN it also costs 1 HEALTH and 2 SECONDS.',
+    TUT_NEARMISS_H:'NEAR MISS',
+    TUT_NEARMISS_B:'Squeeze past cars, close but never touching. Two close passes in a row make an x2 multiplier.',
+    TUT_NEARMISS_R_H:'GET CLOSER',
+    TUT_NEARMISS_R_B:'Try passing by a car even closer to feel the multiplier. Two close passes in a row make x2.',
+    TUT_PICKUPS_H:'PICK THESE UP',
+    TUT_PICKUPS_B:'Hearts restore 1 HEALTH. Bolts load a SHOT; three make OVERDRIVE. Grab both!',
+    TUT_PICKUPS_R_H:'DON’T MISS THEM',
+    TUT_PICKUPS_R_B:'Don’t miss the power-ups, they’re vital to win! Grab the heart and the bolt.',
+    TUT_DRIFT_H:'DRIFT THE BEND',
+    TUT_DRIFT_B:'Hold ↑ and ↓ together and steer into the curve. Stay in the drift for 3 seconds: a full bar loads a shot.',
+    TUT_DRIFT_BT:'Slide onto DRIFT and steer into the curve. Stay in the drift for 3 seconds: a full bar loads a shot.',
+    TUT_DRIFT_R_H:'DRIFT IN THE CURVE',
+    TUT_DRIFT_R_B:'Drifting gives you great handling and charges your BOLTS when used in curves.',
+    TUT_FIRE_H:'FIRE!',
+    TUT_FIRE_B:'Press SPACE to fire a loaded shot. It pierces every car in the lane.',
+    TUT_FIRE_BT:'Tap the BOLT button to fire a loaded shot. It pierces every car in the lane.',
+    TUT_FIRE_R_H:'TAKE AIM',
+    TUT_FIRE_R_B:'Line up with the car and press SPACE to shoot it. Every kill scores in a real run.',
+    TUT_FIRE_R_BT:'Line up with the car and tap the BOLT button to shoot it. Every kill scores in a real run.',
+    TUT_GATE_H:'CHECKPOINT',
+    TUT_GATE_B:'Cross the gate to start the next LAP. In a TIMED RUN it also adds TIME to the clock.',
+    TUT_READY_H:'YOU’RE READY',
+    TUT_READY_B:'In a TIMED RUN the clock is on: reach every gate in time, and mind your health.'
   },
   es:{
-    SCORE:'PUNTOS', BEST:'R\u00c9CORD', NEW:'NUEVO', LAP:'VUELTA', TIME:'TIEMPO', SPEED:'VELOCIDAD',
+    SCORE:'PUNTOS', BEST:'R\u00c9CORD', NEW:'', LAP:'VUELTA', TIME:'TIEMPO', SPEED:'VELOCIDAD',
     HULL:'SALUD', SHOTS:'DISPAROS', UNLIMITED:'ILIMITADO', RAMPAGE:'ARRASE',
     DRIFTM:'DERRAPE',
     OVERDRIVE:'SOBRECARGA', NEXT_CP:'PR\u00d3X. VUELTA', OFF_ROAD:'FUERA DE PISTA',
@@ -1197,7 +1328,58 @@ var STR={
     ROTATE_HINT:'\u21BB  GIRA EL TEL\u00c9FONO PARA VER M\u00c1S CARRETERA',
     K_THROTTLE:'acelerar', K_BRAKEDRIFT:'frenar/derrape', K_STEER:'girar',
     K_GARAGE:'garaje', K_INFO:'cómo funciona',
-    K_PAUSE:'pausa', K_SOUND:'audio', K_LANG:'idioma'
+    K_PAUSE:'pausa', K_SOUND:'audio', K_LANG:'idioma',
+    /* ---- build 73: the tutorial (one style, steps that unlock) ---- */
+    TF_LEARN:'TUTORIAL', MOB_LEARN:'Tutorial',
+    NEW1:'PULSA T PARA EL TUTORIAL', NEW1_TOUCH:'EMPIEZA CON EL TUTORIAL',
+    NEW_HERE:'\u00bfERES NUEVO?',
+    NEW2:'O PULSA C PARA PASEO: SIN RELOJ NI DAÑO', NEW2_TOUCH:'O PRUEBA PASEO: SIN RELOJ NI DAÑO',
+    OVER_LEARN:'¿NECESITAS AYUDA?  T — TUTORIAL', OVER_LEARN_TOUCH:'¿NECESITAS AYUDA?  TOCA TUTORIAL',
+    LEARN_TAG:'TUTORIAL', LEARN_STEP:'PASO ',
+    T_LEARN_CRASH:'CHOQUE — CUESTA SALUD Y TIEMPO EN CARRERA',
+    TUT_GO:'CONDUCIR', TUT_AGAIN:'OTRA VEZ', TUT_MENU:'MENÚ',
+    TUT_READY_KEYS:'ENTER — CONDUCIR    T — OTRA VEZ    ESC — MENÚ',
+    TUT_EXIT:'P PAUSA, LUEGO ESC PARA SALIR',
+    TUT_EXIT_T:'TOCA PAUSA, LUEGO MENÚ PARA SALIR',
+    TUT_DRIVE_H:'A CONDUCIR',
+    TUT_DRIVE_B:'Mantén ↑ o W para acelerar. Gira con ← → o A D.',
+    TUT_DRIVE_BT:'Mantén GAS para acelerar. Desliza el pad izquierdo para girar.',
+    TUT_DRIVE_R_H:'ACELERA Y GIRA',
+    TUT_DRIVE_R_B:'Mantén ↑ o W para acelerar y gira a izquierda y derecha con ← → o A D.',
+    TUT_DRIVE_R_BT:'Mantén GAS para acelerar y desliza el pad izquierdo para girar a los lados.',
+    TUT_BRAKE_H:'COCHE LENTO ADELANTE',
+    TUT_BRAKE_B:'Pulsa ↓ o S para frenar antes de llegar a él.',
+    TUT_BRAKE_BT:'Mantén el botón FRENO para frenar antes de llegar a él.',
+    TUT_BRAKE_R_H:'USA EL FRENO',
+    TUT_BRAKE_R_B:'Pulsa ↓ o S para frenar antes de llegar al coche.',
+    TUT_BRAKE_R_BT:'Mantén el botón FRENO para frenar antes de llegar al coche.',
+    TUT_CRASH_H:'LOS CHOQUES CUESTAN',
+    TUT_CRASH_B:'Si chocas pierdes velocidad. En CONTRARRELOJ también cuesta 1 SALUD y 2 SEGUNDOS.',
+    TUT_CRASH2_H:'ESO FUE UN CHOQUE',
+    TUT_CRASH2_B:'Perdiste velocidad. En CONTRARRELOJ también cuesta 1 SALUD y 2 SEGUNDOS.',
+    TUT_NEARMISS_H:'ROCE',
+    TUT_NEARMISS_B:'Pásales cerca a los coches, sin tocarlos. Dos roces seguidos dan un multiplicador x2.',
+    TUT_NEARMISS_R_H:'ACÉRCATE MÁS',
+    TUT_NEARMISS_R_B:'Pasa aún más cerca de un coche para sentir el multiplicador. Dos roces seguidos dan x2.',
+    TUT_PICKUPS_H:'RECOGE ESTO',
+    TUT_PICKUPS_B:'Los corazones dan 1 SALUD. Los rayos cargan un DISPARO; tres dan SOBRECARGA. ¡Recoge los dos!',
+    TUT_PICKUPS_R_H:'NO LOS PIERDAS',
+    TUT_PICKUPS_R_B:'¡No te pierdas los potenciadores, son vitales para ganar! Recoge el corazón y el rayo.',
+    TUT_DRIFT_H:'DERRAPA EN LA CURVA',
+    TUT_DRIFT_B:'Mantén ↑ y ↓ a la vez y gira hacia la curva. Aguanta 3 segundos: la barra llena carga un disparo.',
+    TUT_DRIFT_BT:'Desliza a DERRAPE y gira hacia la curva. Aguanta 3 segundos: la barra llena carga un disparo.',
+    TUT_DRIFT_R_H:'DERRAPA EN LA CURVA',
+    TUT_DRIFT_R_B:'El derrape te da gran control y carga tus RAYOS cuando lo usas en las curvas.',
+    TUT_FIRE_H:'¡DISPARA!',
+    TUT_FIRE_B:'Pulsa ESPACIO para disparar. Atraviesa todos los coches del carril.',
+    TUT_FIRE_BT:'Toca el botón del rayo para disparar. Atraviesa todos los coches del carril.',
+    TUT_FIRE_R_H:'APUNTA',
+    TUT_FIRE_R_B:'Aliníate con el coche y pulsa ESPACIO para dispararle. Cada coche destruido suma puntos.',
+    TUT_FIRE_R_BT:'Aliníate con el coche y toca el botón del rayo para dispararle. Cada coche destruido suma puntos.',
+    TUT_GATE_H:'CONTROL',
+    TUT_GATE_B:'Cruza la meta para empezar la siguiente VUELTA. En CONTRARRELOJ también suma TIEMPO.',
+    TUT_READY_H:'¡LISTO!',
+    TUT_READY_B:'En CONTRARRELOJ corre el reloj: llega a cada meta a tiempo y cuida tu salud.'
   }
 };
 function T(key){ return (STR[lang]&&STR[lang][key]!==undefined) ? STR[lang][key] : STR.en[key]; }
@@ -1361,6 +1543,33 @@ function isHailer(idx){
   }
   return type===6 && hashAt(idx,10)<HAIL_ODDS;
 }
+
+/* Build 77: THE HAILER'S LAMP. A hailer stands beside a broken swan-neck lamp whose head hangs over the
+   outer lane. Drive under it while it flickers and the saucer is called, no need to leave the road.
+   `hailLive()` is the ONE test for "a call can really be made right now": the alien waves and the lamp
+   flickers only while it is true, so nothing waves at you that would then ignore you. */
+var HAIL_HEAD_X = 0.78;   /* the lamp head's lateral (road lamps use the same), over the outer lane at 0.75 */
+var HAIL_LAMP_R = 0.38;   /* pass within this of the head, along the road, to be "under" it */
+var hailPrevZ   = -1;     /* the car's z last frame; -1 = no previous frame (a new run) */
+function hailLive(){
+  return !learn && lap>=HAIL_LAP && hailCool<=0 && !(ufo && (ufo.hunt||ufo.cutting));
+}
+/* Erratic and deterministic in time: a new mood about every 1.25 s, and inside it 60 ms cells of on/off. */
+function hailFlick(t,idx){
+  var mood=hashAt(idx*31+Math.floor(t*0.8+hashAt(idx,21)*50),22);
+  var cell=Math.floor(t*17), r=hashAt(idx*7919+cell,23);
+  if (mood<0.22) return 1;                                   /* a spell of steady light */
+  if (mood<0.55) return r>0.42?1:0;                          /* stuttering */
+  if (mood<0.85) return r>0.90?1:0;                          /* mostly dark, a rare spark */
+  return r>0.25 ? 0.55+0.45*hashAt(idx*7919+cell,24) : 0.1;  /* a weak buzz */
+}
+/* Is a hailer's slot within `win` units of world z? Returns its side (-1/+1) or 0. Used to make room. */
+function hailerAt(z,win){
+  if (lap<HAIL_LAP) return 0;
+  var i=Math.round(z/DECO_SPACE);
+  if (Math.abs(z-i*DECO_SPACE)>=win || !isHailer(i)) return 0;
+  return hashAt(i,2)<0.5?-1:1;
+}
 var keys={};
 /* The keyboard and the on-screen pad can each be holding a direction, so
    they are tracked apart and merged. Otherwise letting go of DRIFT would
@@ -1397,11 +1606,13 @@ function reset(){
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
   dBank=0; dPot=0; drifting=false;
-  ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5;
+  ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5; hailPrevZ=-1;
   cut=null; cutCarRest(); setZone('vapor');
   cpStart=0; cpLen=lapLength(1); nextCP=cpLen;
   taughtWeavers=false; taughtSpace=false; endReason='';
   chain=0; chainT=0; chainBest=0; nmPops=[];
+  learn=learnPending;                   /* build 72 */
+  if (learn) tutInit(); else tutClean();   /* build 73: nothing of the tutorial survives into another run */
   bestAtStart=best;
   ensure(MAXZ+Z_CAR+CH); cAnchor=curveAt(Z_CAR);
 }
@@ -2164,7 +2375,7 @@ function drumHit(type, when){
    a layer actually changes, so it costs nothing on a steady state. */
 function musMix(){
   if (!A || !A.mus) return;
-  var live = musicOn && (state==='playing' || state==='title');
+  var live = musicOn && (state==='playing' || state==='title' || state==='tutorial');
   /* All three lines are always audible: they were composed to be heard
      together, and gating one to a rare game state hid a whole melody. The
      adaptive part is now a swell on the lead rather than an on/off switch. */
@@ -2219,6 +2430,7 @@ window.addEventListener('keydown', function(e){
   if (c.indexOf('Arrow')===0 || c==='Space') e.preventDefault();
 
   if (state==='garage'){ garageKey(c); return; }
+  if (state==='tutorial'){ tutKey(c); return; }     /* build 72 */
   if (state==='info'){
     if (TOUCH && c==='ArrowLeft')  infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES;
     if (TOUCH && c==='ArrowRight') infoPage=(infoPage+1)%INFO_PAGES;
@@ -2230,7 +2442,7 @@ window.addEventListener('keydown', function(e){
 
   if (c==='Space' && state==='playing') fire();
   if (c==='Enter'){
-    if (state==='title'||state==='gameover'){ reset(); state='playing'; }
+    if (state==='title'||state==='gameover'){ beginRun(); }
     else if (state==='paused'){ state='playing'; }
   }
   if (c==='KeyG' && state!=='playing'){ garFrom=state; garRow=0; state='garage'; }
@@ -2246,11 +2458,13 @@ window.addEventListener('keydown', function(e){
      playing, where one stray keypress would bin a live run, and not on the
      title screen, where there is nowhere to go. Garage and info intercept
      Escape earlier as their own "back", so they never reach this. */
-  if (c==='Escape' && (state==='paused'||state==='gameover')){ saveGame(); state='title'; }
+  if (c==='Escape' && (state==='paused'||state==='gameover')){ saveGame(); learn=false; state='title'; }
   if (c==='KeyL' && (state==='title'||state==='paused')){ toggleLang(); }
   /* Title only: switching mode mid-run would mean deciding what happens to a
      clock and a health bar that the other mode doesn't have. */
   if (c==='KeyC' && state==='title'){ toggleMode(); }
+  /* build 73: the tutorial. T on the title always; on game over only while it is being offered. */
+  if (c==='KeyT' && (state==='title' || (state==='gameover' && tutOffer()))){ startLearn(); }
 });
 window.addEventListener('keyup', function(e){
   if (MAP[e.code]){ kbd[MAP[e.code]]=false; applyKeys(); e.preventDefault(); }
@@ -2773,14 +2987,15 @@ function noteLandscape(){
 /* The menu strip swaps its buttons to match whatever screen is showing. */
 var padDrive=el('padDrive'), padMenu=el('padMenu'), padState=null, padAudio=null, padLang=null, padMode=null, padFull=null;
 var PAD_ACTS={
-  start:  function(){ reset(); state='playing'; },
+  start:  function(){ beginRun(); },
+  learn:  function(){ startLearn(); },
   resume: function(){ state='playing'; },
   garage: function(){ garFrom=state; garRow=0; state='garage'; },
   info:   function(){ infoFrom=state; infoPage=0; state='info'; },
   infoPrev: function(){ infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES; },
   infoNext: function(){ infoPage=(infoPage+1)%INFO_PAGES; },
   back:   function(){ state = (state==='garage') ? garFrom : infoFrom; },
-  menu:   function(){ saveGame(); state='title'; },
+  menu:   function(){ saveGame(); learn=false; state='title'; },
   sound:  function(){ cycleAudio(); },
   lang:   function(){ toggleLang(); padState=null; },
   mode:   function(){ toggleMode(); padState=null; },
@@ -2830,7 +3045,7 @@ function syncPad(){
   if (state===padState && audioMode===padAudio && lang===padLang &&
       mode===padMode && fsNow===padFull) return;
   padState=state; padAudio=audioMode; padLang=lang; padMode=mode; padFull=fsNow;
-  var driving = (state==='playing');
+  var driving = (state==='playing' || state==='tutorial');
   padDrive.style.display = driving ? 'flex' : 'none';
   /* The garage lays its arrows out as a cross, which needs grid rather than
      the wrapping row the remaining screens use. */
@@ -2847,16 +3062,30 @@ function syncPad(){
     var L = state==='title' ?
               [[T('MOB_DRIVE'),'start'],
                [mode==='cruise'?T('MODE_RUN'):T('MODE_CRUISE'),'mode'],
-               [T('MOB_GARAGE'),'garage']] :
+               [T('MOB_GARAGE'),'garage'],
+               [T('MOB_LEARN'),'learn']] :
             state==='paused' ?
               [[T('MOB_RESUME'),'resume'],
                [T('MOB_MAIN_MENU'),'menu'],
                [T('MOB_GARAGE'),'garage']] :
+              (tutOffer() ?
               [[T('MOB_RACE_AGAIN'),'start'],
                [T('MOB_MAIN_MENU'),'menu'],
-               [T('MOB_GARAGE'),'garage']];
+               [T('MOB_GARAGE'),'garage'],
+               [T('MOB_LEARN'),'learn']] :
+              [[T('MOB_RACE_AGAIN'),'start'],
+               [T('MOB_MAIN_MENU'),'menu'],
+               [T('MOB_GARAGE'),'garage']]);
     var cl=document.createElement('div'); cl.className='col l';
-    L.forEach(function(d,i){ cl.appendChild(padBtn(d[0],d[1],'slab'+(i?'':' big'))); });
+    L.forEach(function(d,i){ cl.appendChild(padBtn(d[0],d[1],'slab'+(i?'':' big')+(d[1]==='learn'?' tut':''))); });
+    /* build 74: NEW HERE? under the TUTORIAL slab on the title, arrow pointing up.
+       Absolutely placed below the column, so the slabs and tiles do not move. */
+    if (state==='title'){
+      var nh=document.createElement('div'); nh.className='newHere';
+      nh.innerHTML='<svg viewBox="0 0 16 12" aria-hidden="true"><path d="M8 0 L16 12 L0 12 Z"/></svg><span></span>';
+      nh.lastChild.textContent=T('NEW_HERE');
+      cl.appendChild(nh);
+    }
 
     var cr=document.createElement('div'); cr.className='col r';
     cr.appendChild(padBtn(T('MOB_INFO'),'info','tile',ICONS.info));
@@ -2883,7 +3112,7 @@ function syncPad(){
 
 cv.addEventListener('pointerdown', function(e){
   audioInit();
-  if (state==='title'||state==='gameover'){ reset(); state='playing'; }
+  if (state==='title'||state==='gameover'){ beginRun(); }
   else if (state==='paused' && e){
     /* build 71: the FPS METER line on the pause screen is a button */
     var r=cv.getBoundingClientRect();
@@ -3014,6 +3243,11 @@ function crash(rear){
   /* In cruise the impact still costs you momentum and the chain — it should
      sting — but health and the clock are not in play at all, so there is
      nothing to lose and nothing to end. */
+  if (learn){                       /* build 72: the lesson only says what it would have cost */
+    if (tut) tut.crashed=true;
+    say(T('T_LEARN_CRASH'),'#ff5d5d',true,null,2.2);
+    return;
+  }
   if (mode==='cruise') return;
 
   health--;
@@ -3046,7 +3280,7 @@ function update(dt){
   if (state==='abduct'){ cutStep(dt); return; }
 
   if (state!=='playing'){
-    if (state!=='garage' && state!=='info' && state!=='paused') position += 2400*dt;
+    if (state!=='garage' && state!=='info' && state!=='paused' && state!=='tutorial') position += 2400*dt;
     ensure(position+MAXZ+Z_CAR+CH);
     cAnchor=curveAt(position+Z_CAR);
     curSlope=slopeAt(position+Z_CAR);
@@ -3111,9 +3345,12 @@ function update(dt){
 
       /* charge the pot — bend and speed gates, see the DR_ block */
       drifting = true;
-      if (speed >= maxS*DR_MIN_SPD){
+      if (speed >= maxS*(learn?LEARN_DRIFT_SPD:DR_MIN_SPD)){    /* build 73: a slower learner still gets credit */
         var bendF = Math.abs(curSlope)/S_PEAK;
-        if (bendF > DR_MIN_BEND) dPot += Math.min(1,bendF)*DR_RATE*dt;
+        if (bendF > DR_MIN_BEND){
+          dPot += Math.min(1,bendF)*DR_RATE*(learn?LEARN_DRIFT:1)*dt;
+          if (learn && tut) tut.driftT += dt;     /* build 73: seconds of drift inside a curve */
+        }
       }
     }
 
@@ -3177,15 +3414,18 @@ function update(dt){
   warnSlope=slopeAt(position+Z_CAR+17000);
   bgX += (-curSlope*108000 - bgX)*Math.min(1,3*dt);
 
-  if (mode==='run'){
+  if (mode==='run' && !learn){
     timeLeft-=dt;
     if (timeLeft<=0){
       timeLeft=0; endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
     }
   }
 
-  if (position+Z_CAR >= nextCP){
+  if (learn && position+Z_CAR >= nextCP){
+    tutGate();                          /* build 72: the lesson's gate: no lap, no award */
+  } else if (position+Z_CAR >= nextCP){
     lap++;
+    if (lap>=5) tutSkill();                      /* build 73: reaching lap 5 once ends the game-over offer */
     cpStart=nextCP; cpLen=lapLength(lap); nextCP=cpStart+cpLen;
     var award=cpBonus(lap);
     timeLeft += award;
@@ -3358,8 +3598,11 @@ function update(dt){
   }
   if (fireHeld && odT>0) fire();      /* held trigger only runs in overdrive */
 
-  spawnT-=dt;
-  if (spawnT<=0){ spawnT=spawnGap(lap)*(0.7+Math.random()*0.7); trySpawn(); }
+  if (learn) tutStep(dt);               /* build 72: scripted scenes instead of random traffic */
+  else {
+    spawnT-=dt;
+    if (spawnT<=0){ spawnT=spawnGap(lap)*(0.7+Math.random()*0.7); trySpawn(); }
+  }
 
   for (i=pickups.length-1;i>=0;i--){
     var pk=pickups[i];
@@ -3369,6 +3612,7 @@ function update(dt){
     if (Math.min(pdz,pdzPrev)<HIT_FRONT && Math.max(pdz,pdzPrev)>-HIT_BACK &&
         Math.abs(pk.x-playerX)<reach){
       pickups.splice(i,1); flash=1;
+      if (learn) tutGot(pk.kind);                /* build 73 */
       if (pk.kind==='heart'){
         if (health<CH_().hp){ health++; say(T('T_HULL_UP'),'#ff6ad5',true,'heart'); }
         else { addScore(10000); say(T('T_HULL_FULL'),'#ff6ad5',true,'heart'); }
@@ -3390,12 +3634,17 @@ function update(dt){
      Props sit on a fixed grid, so "passing one" is the frame in which the
      car's own z crosses a slot boundary. One test a frame, no scanning. */
   hailCool=Math.max(0,hailCool-dt);
-  if (!ufo && hailCool<=0 && lap>=HAIL_LAP){
-    var zcNow=position+Z_CAR, zcPrev=zcNow-speed*dt;
+  /* build 77: the previous z is STORED (crash() changes `speed` after the car has moved, so rebuilding it as
+     now - speed*dt could step over a slot), the test is hailLive() (a wandering saucer no longer blocks it),
+     and there are two ways in: drive under the broken lamp (on the road) or, as before, right beside the alien. */
+  var zcNow=position+Z_CAR, zcPrev=hailPrevZ;
+  hailPrevZ=zcNow;
+  if (zcPrev>=0 && zcNow>zcPrev && zcNow-zcPrev<DECO_SPACE && hailLive()){
     var iNow=Math.floor(zcNow/DECO_SPACE);
     if (iNow>Math.floor(zcPrev/DECO_SPACE) && isHailer(iNow)){
       var hSide=hashAt(iNow,2)<0.5?-1:1;
-      if (Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R) callUfo();
+      if (Math.abs(hSide*HAIL_HEAD_X - playerX) < HAIL_LAMP_R ||
+          Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R) callUfo();
     }
   }
 
@@ -3477,7 +3726,7 @@ function update(dt){
 
   /* Cruise has no fail state, so its score is unbounded — a long enough
      session would beat any legitimate run. It never touches `best`. */
-  if (mode==='run' && (score|0)>best) best=score|0;
+  if (mode==='run' && !learn && (score|0)>best) best=score|0;
   if (fireCd>0) fireCd=Math.max(0,fireCd-dt);
   if (odT>0){
     var wasO=odT;
@@ -3512,6 +3761,7 @@ function update(dt){
       if (Math.abs(tc.x-sh.x)<0.22 && tc.z>sh.prevZ-340 && tc.z<=sh.z+340){
         blasts.push({z:tc.z, x:tc.x, t:0, isBlast:true});
         addScore(killScore());
+        if (learn) tutShot(tc);                  /* build 73: a bolt destroyed this car */
         cars.splice(j,1);
         blip(150,0.20,'sawtooth',0.16);
       }
@@ -4210,8 +4460,14 @@ function drawDecor(){
        it is both closer to you and visibly out of line with its kin. The
        same hash decides it here and in isHailer(); HAIL_LAT is pinned so
        the pass distance is one number rather than a range. */
-    var hail = (type===6) && hashAt(idx,10)<HAIL_ODDS && lap>=HAIL_LAP;
-    if (hail) lat = side*HAIL_LAT;
+    var hailer = (type===6) && hashAt(idx,10)<HAIL_ODDS && lap>=HAIL_LAP;
+    if (hailer) lat = side*HAIL_LAT;
+    /* build 77: it waves, and its lamp flickers, only while a call can really be made */
+    var hail = hailer && hailLive();
+    if (hailer){
+      drawLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1);
+      ctx.globalAlpha=a;
+    }
     var x=W/2+p.ppu*(bend(zRel)+lat-playerX);
     if (x<-p.ppu*7||x>W+p.ppu*7) continue;
     ctx.globalAlpha=a;
@@ -4230,28 +4486,134 @@ function drawDecor(){
   }
 }
 
+/* ---------------------------------------------------------------
+   ROADSIDE LIGHTS (build 76). Replaces build 1's placeholder posts.
+   Two things, never both at the same stretch of road:
+   - CURVE CHEVRONS where the road bends: a sign plate on each side with an
+     amber chevron pair pointing the way the road turns, lit in sequence toward
+     the bend. Spaced 1,500 units apart (the mockup used 1,200: 20 % fewer).
+   - SWAN-NECK LAMPS everywhere else: a tall dark lamp whose arm curves over
+     the lane, a white-hot head and a pool of light on the asphalt. One colour
+     only (the zone's first post colour, cyan in VAPOR), sides alternating.
+     Spaced 3,430 units apart (the mockup used 2,400: 30 % fewer).
+   Bend or straight is read from the road's slope, the same quantity the HUD's
+   bend arrow uses, so a chevron appears exactly where the arrow would.
+   Only rects, arcs and alpha halos: no shadowBlur.
+--------------------------------------------------------------- */
+var CHEV_SPACE = 1500;               /* mockup 1200 -> 20 % fewer */
+var LAMP_SPACE = 3430;               /* mockup 2400 -> 30 % fewer (2400/0.7) */
+var CHEV_S     = 0.10*S_PEAK;        /* |slope| at or above this counts as a bend */
+
 function drawPosts(){
-  var space=1200, start=Math.floor(position/space)+1;
-  for (var i=47;i>=0;i--){
-    var zRel=(start+i)*space-position;
-    if (zRel<=200||zRel>MAXZ) continue;
-    var p=proj(zRel);
-    if (p.y<=horizonY||p.y>H) continue;
-    var a=1-fogAt(zRel);
-    var col=(((start+i)&1)===1)?ZN.posts[0]:ZN.posts[1];
-    var w=Math.max(1,p.ppu*0.03), h=p.ppu*0.46;
-    var cRoad=bend(zRel);
-    for (var s=-1;s<=1;s+=2){
-      var x=W/2+p.ppu*(cRoad+s*1.22-playerX);
-      if (x<-40||x>W+40) continue;
-      ctx.globalAlpha=a*0.18; ctx.fillStyle=col;
-      ctx.fillRect(x-w*2,p.y-h,w*4,h);
-      ctx.globalAlpha=a*0.95;
-      ctx.fillRect(x-w/2,p.y-h,w,h);
-      ctx.fillRect(x-w*1.6,p.y-h,w*3.2,Math.max(1,w));
-    }
+  var t=performance.now()/1000;
+  var cs=Math.floor(position/CHEV_SPACE)+1, ls=Math.floor(position/LAMP_SPACE)+1;
+  var ci=Math.ceil(MAXZ/CHEV_SPACE)+1, li=Math.ceil(MAXZ/LAMP_SPACE)+1;
+  /* far to near across both kinds, so a near lamp always paints over a far plate */
+  while (ci>=0 || li>=0){
+    var zc = ci>=0 ? (cs+ci)*CHEV_SPACE-position : -1;
+    var zl = li>=0 ? (ls+li)*LAMP_SPACE-position : -1;
+    if (zc>=zl){ postChevron(cs+ci,zc,t); ci--; }
+    else       { postLamp(ls+li,zl); li--; }
   }
   ctx.globalAlpha=1;
+}
+
+function postChevron(n,zRel,t){
+  if (zRel<=200||zRel>MAXZ) return;
+  var p=proj(zRel); if (p.y<=horizonY||p.y>H) return;
+  var sl=slopeAt(n*CHEV_SPACE);                          /* after the screen test, as the old posts did: no extra road generated */
+  if (Math.abs(sl)<CHEV_S) return;                       /* straight road: a lamp's job */
+  var dir=sl>0?1:-1, a=1-fogAt(zRel), cRoad=bend(zRel), col='#ffd23f', hs=hailerAt(n*CHEV_SPACE,750);
+  var pw=p.ppu*0.24, ph=p.ppu*0.15, stem=p.ppu*0.32, w=Math.max(1,p.ppu*0.022);
+  var top=p.y-stem-ph;
+  /* sequential: the lit chevron walks toward the bend */
+  var ph8=((t*2.2 - n*0.35)%1+1)%1, lit=0.35+0.65*Math.max(0,1-ph8*2.2);
+  for (var s=-1;s<=1;s+=2){
+    if (s===hs) continue;                                /* build 77: the hailer's lamp stands on this side here */
+    var x=W/2+p.ppu*(cRoad+s*1.24-playerX);
+    if (x<-60||x>W+60) continue;
+    ctx.globalAlpha=a*0.95; ctx.fillStyle='#120a22';
+    ctx.fillRect(x-w/2,p.y-stem,w,stem);                 /* stem */
+    if (p.ppu<12){ ctx.fillStyle=col; ctx.globalAlpha=a*lit; ctx.fillRect(x-pw*0.35,top+ph*0.2,pw*0.7,ph*0.6); continue; }   /* far: a lit block */
+    if (p.ppu<40){                                       /* mid: flat plate and border, no rounded paths, no halo */
+      ctx.fillStyle='#0b0616'; ctx.fillRect(x-pw/2,top,pw,ph);
+      ctx.lineWidth=1; ctx.strokeStyle=hexA(col,0.75); ctx.strokeRect(x-pw/2+0.5,top+0.5,pw-1,ph-1);
+    } else {                                             /* near: the full sign */
+      ctx.fillStyle='#0b0616'; rr(x-pw/2,top,pw,ph,ph*0.18); ctx.fill();
+      ctx.lineWidth=Math.max(1,ph*0.08); ctx.strokeStyle=hexA(col,0.75); ctx.stroke();
+      ctx.globalAlpha=a*0.16; ctx.fillStyle=col;         /* halo */
+      rr(x-pw*0.75,top-ph*0.25,pw*1.5,ph*1.5,ph*0.4); ctx.fill();
+    }
+    ctx.globalAlpha=a*lit; ctx.fillStyle=col;
+    var cy=top+ph/2, cw=pw*0.30, chh=ph*0.34, th=Math.max(1.2,pw*0.09);
+    ctx.beginPath();                                     /* both chevrons in one path */
+    for (var c=-1;c<=1;c+=2){
+      var ox=x+c*cw*0.55, x0=ox-dir*cw*0.45;
+      ctx.moveTo(x0,cy-chh); ctx.lineTo(x0+th*dir,cy-chh);
+      ctx.lineTo(ox+dir*cw*0.45+th*dir,cy); ctx.lineTo(x0+th*dir,cy+chh);
+      ctx.lineTo(x0,cy+chh); ctx.lineTo(ox+dir*cw*0.45,cy); ctx.closePath();
+    }
+    ctx.fill();
+  }
+}
+
+function postLamp(n,zRel){
+  if (zRel<=220||zRel>MAXZ) return;
+  var p=proj(zRel); if (p.y<=horizonY||p.y>H) return;
+  if (Math.abs(slopeAt(n*LAMP_SPACE))>=CHEV_S) return;   /* in a bend: chevrons instead */
+  if (hailerAt(n*LAMP_SPACE,LAMP_SPACE*0.5)) return;     /* build 77: a hailer's own lamp stands here instead */
+  drawLampAt(zRel,p,(n&1)?-1:1,1);
+}
+
+/* One swan-neck lamp. s = side, k = how lit it is: 1 is the normal steady lamp (identical to build 76),
+   0 is a dead one (dark head, no halo or pool, only a faint lit edge). */
+function drawLampAt(zRel,p,s,k){
+  var a=1-fogAt(zRel), cRoad=bend(zRel), col=ZN.lamp||ZN.posts[0], m=0.45+0.55*k;
+  var x=W/2+p.ppu*(cRoad+s*1.30-playerX), hx=W/2+p.ppu*(cRoad+s*HAIL_HEAD_X-playerX);
+  if (Math.max(x,hx)<-80||Math.min(x,hx)>W+80) return;
+  var h=p.ppu*0.80, w=Math.max(1,p.ppu*0.028), top=p.y-h;
+  if (p.ppu<7){                                          /* far lamp: a pole, a lit edge, a head dot, one pool */
+    if (k>0){ ctx.globalAlpha=a*0.13*k; ctx.fillStyle=col; ctx.fillRect(hx-p.ppu*0.3,p.y-1,p.ppu*0.6,1); }
+    ctx.globalAlpha=a*0.9; ctx.fillStyle='#140a26'; ctx.fillRect(x-w,top,w*2,h);
+    ctx.globalAlpha=a*0.9*m; ctx.fillStyle=col; ctx.fillRect(s<0?x+w*0.4:x-w,top,w*0.6,h);
+    ctx.fillRect(Math.min(x,hx),top,Math.abs(hx-x)+1,1);
+    ctx.globalAlpha=a*(0.12+0.88*k); ctx.fillStyle='#fff6e6'; ctx.fillRect(hx-1,top,2,2);
+    return;
+  }
+  var near=p.ppu>=16;
+  /* pool of light on the road under the head (drawn first, under the pole) */
+  if (k>0){
+    ctx.globalAlpha=a*0.13*k; ctx.fillStyle=col;
+    ctx.beginPath(); ctx.ellipse(hx,p.y,p.ppu*0.34,Math.max(1,p.ppu*0.07),0,0,Math.PI*2); ctx.fill();
+    if (near){
+      ctx.globalAlpha=a*0.10*k;
+      ctx.beginPath(); ctx.ellipse(hx,p.y,p.ppu*0.18,Math.max(1,p.ppu*0.035),0,0,Math.PI*2); ctx.fill();
+    }
+  }
+  /* no light cone: a cone over the road reads as the UFO's abduction beam */
+  /* pole and swan-neck arm */
+  ctx.globalAlpha=a*0.95; ctx.fillStyle='#140a26';
+  ctx.fillRect(x-w,top+p.ppu*0.06,w*2,h-p.ppu*0.06);
+  ctx.globalAlpha=a*0.95*m; ctx.fillStyle=col; ctx.fillRect(s<0?x+w*0.4:x-w,top+p.ppu*0.06,w*0.6,h-p.ppu*0.06);   /* lit edge facing the road */
+  ctx.globalAlpha=a*0.95;
+  ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x,top+p.ppu*0.08);
+  ctx.quadraticCurveTo(x,top-p.ppu*0.02,(x+hx)/2,top-p.ppu*0.01);
+  ctx.lineTo(hx,top+p.ppu*0.01);
+  if (near){                                             /* dark arm, then the lit line on top */
+    ctx.strokeStyle='#140a26'; ctx.lineWidth=w*1.6; ctx.stroke();
+    ctx.globalAlpha=a*0.95*m;
+    ctx.strokeStyle=hexA(col,0.8); ctx.lineWidth=Math.max(1,w*0.5); ctx.stroke();
+  } else { ctx.globalAlpha=a*0.95*m; ctx.strokeStyle=hexA(col,0.85); ctx.lineWidth=Math.max(1,w*1.1); ctx.stroke(); }
+  ctx.lineCap='butt';
+  /* lamp head */
+  var hw=p.ppu*0.14, hh=Math.max(2,p.ppu*0.035);
+  if (k>0){
+    ctx.globalAlpha=a*0.22*k; ctx.fillStyle=col;
+    ctx.beginPath(); ctx.ellipse(hx,top+hh*2,hw*1.3,hh*3.2,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=a; ctx.fillStyle='#140a26'; ctx.fillRect(hx-hw/2,top,hw,hh);
+  ctx.globalAlpha=a*(0.12+0.88*k); ctx.fillStyle='#fff6e6'; ctx.fillRect(hx-hw*0.4,top+hh,hw*0.8,Math.max(1,hh*0.7));
 }
 
 function drawGate(){
@@ -4947,24 +5309,29 @@ function drawHUD(){
      place in the HUD where a label shares its row with a live countdown,
      and at LABEL the Spanish SOBRECARGA runs straight into its own
      seconds. Widening those two panels would let them join the rest. */
+  if (learn) drawLearnPanel();          /* build 72: step counter instead of SCORE / BEST */
+  else {
   panel(12,12,224,62);
   monoText(T('SCORE'),24,34,TS.LABEL*UI,'#8a7ec4');
   glowText(pad(score|0,7),24,63,TS.HERO,'#ffffff','left',10);
 
   var beating = bestAtStart>0 && (score|0)>bestAtStart;
   panel(12,80,224,34);
-  monoText(T('BEST'),24,103,TS.LABEL*UI,beating?'#7cff4f':'#8a7ec4');
+  /* build 74: a new record turns the whole readout YELLOW. Spanish says only
+     RECORD (RECORD + NUEVO collided with the number at the phone's label size). */
+  monoText(T('BEST'),24,103,TS.LABEL*UI,beating?'#ffd23f':'#8a7ec4');
   if (beating){
-    monoText(T('NEW'),84,103,TS.LABEL*UI,'#7cff4f');
+    if (T('NEW')) monoText(T('NEW'),84,103,TS.LABEL*UI,'#ffd23f');
     ctx.globalAlpha=0.74+0.26*Math.abs(Math.sin(performance.now()/300));
-    glowText(pad(best,7),226,103,TS.BODY,'#7cff4f','right',15);
+    glowText(pad(best,7),226,103,TS.BODY,'#ffd23f','right',15);
     ctx.globalAlpha=1;
   } else {
     glowText(pad(best,7),226,103,TS.BODY,'#a99fdc','right',7);
   }
 
+  }
   panel(W/2-94,12,188,62);
-  if (mode==='cruise'){
+  if (mode==='cruise' || learn){
     monoText(T('LAP'),W/2,34,TS.LABEL*UI,'#8a7ec4','center');
     glowText(String(lap),W/2,63,TS.HERO,'#21e6ff','center',12);
   } else {
@@ -5082,7 +5449,7 @@ function drawHUD(){
        left. In cruise there is no hull, and nothing takes its place: what
        cruise means is explained on the title screen, and repeating it as a
        standing caption over live gameplay was noise, not information. */
-    if (mode!=='cruise'){
+    if (mode!=='cruise' && !learn){
       hudTag(T('HULL'),W-16,394,BTAG,'#b9aef0','right');
       var hpMax=CH_().hp, hx0=W-16-(hpMax*34-6);
       for (var i=0;i<hpMax;i++){
@@ -5355,11 +5722,18 @@ function drawTitle(){
 
   /* The two lines you actually read on this screen, so they sit at BODY --
      the step above every label -- rather than at caption size. */
-  monoText(T('HINT2'),W/2,336,TS.BODY,'#cfd6ff','center');
-  monoText(T('HINT3'),W/2,360,TS.BODY,'#cfd6ff','center');
+  if (firstLaunch && !tutSeen){
+    /* build 72: nothing is saved yet, so this is somebody's first look. The two
+       things that make the game easier are named instead of the usual tips. */
+    monoText(T(TOUCH?'NEW1_TOUCH':'NEW1'),W/2,336,TS.BODY*UI,'#7cff4f','center');
+    monoText(T(TOUCH?'NEW2_TOUCH':'NEW2'),W/2,360,TS.BODY*UI,'#cfd6ff','center');
+  } else {
+    monoText(T('HINT2'),W/2,336,TS.BODY,'#cfd6ff','center');
+    monoText(T('HINT3'),W/2,360,TS.BODY,'#cfd6ff','center');
+  }
   if (Math.floor(performance.now()/420)%2===0)
     glowText(TOUCH?T('PRESS_DRIVE_TOUCH'):T('PRESS_DRIVE_KEY'),W/2,404,TS.HERO,'#7cff4f','center',18);
-  if (!TOUCH) titleKeys(cru);
+  if (!TOUCH){ titleKeys(cru); newHereDesk(); }
   /* Portrait phones only, and only until you have tried it sideways once.
      Sized for a phone, not a desktop: the canvas is 800 logical px wide but
      lands on ~374 physical ones, so anything under ~20px here arrives
@@ -5438,30 +5812,43 @@ function titleFooter(){
    length between English and Spanish, and hard-coded x positions drifted
    apart the moment either string changed. */
 function titleKeys(cru){
-  var sz=26, fs=TS.LABEL, gap=30, pad=sz*0.32, i, x;
-  var items=[['G',T('TF_GARAGE')],['I',T('TF_INFO')],['M',T('TF_SOUND')],
-             ['L',T('TF_LANG')],['C',cru?T('MODE_RUN'):T('MODE_CRUISE')]];
+  /* build 75 (Carlos's pick B): two side columns instead of one row of six.
+     Play keys bottom-left, TUTORIAL on top; settings bottom-right. Mirrors the
+     phone, where the run actions are slabs on the left and settings are tiles
+     on the right. The centre (hints, PRESS ENTER, record plate) is untouched. */
+  var sz=26, fs=TS.LABEL, pad=sz*0.32, i, rw=0, ROW=34, Y0=376, EDGE=22;
+  var play=[['T',T('TF_LEARN')],['C',cru?T('MODE_RUN'):T('MODE_CRUISE')],['G',T('TF_GARAGE')]];
+  var sets=[['I',T('TF_INFO')],['M',T('TF_SOUND')],['L',T('TF_LANG')]];
   ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
-  var total=0, ws=[], lw=0;
-  for (i=0;i<items.length;i++){
-    ws[i]=sz+pad+ctx.measureText(items[i][1]).width;
-    total+=ws[i];
+  function wOf(it){ return sz+pad+ctx.measureText(it[1]).width; }
+  for (i=0;i<sets.length;i++) rw=Math.max(rw,wOf(sets[i]));
+  var tw=wOf(play[0]);
+  for (i=0;i<3;i++){
+    keyCap(EDGE,Y0+i*ROW,sz,play[i][0],play[i][1],fs);
+    keyCap(W-EDGE-rw,Y0+i*ROW,sz,sets[i][0],sets[i][1],fs);
+    ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
   }
-  /* Five caps can outgrow the stage (Spanish is the long one): close the gaps
-     first, down to 16, and only then shrink the whole row to fit 760 px. */
-  var MAXW=W-40, n=items.length;
-  if (total+gap*(n-1)>MAXW) gap=Math.max(16,(MAXW-total)/(n-1));
-  if (total+gap*(n-1)>MAXW){
-    var k=(MAXW-gap*(n-1))/total;
-    sz*=k; fs*=k; pad*=k; total*=k;
-    for (i=0;i<n;i++) ws[i]*=k;
-  }
-  total+=gap*(n-1);
-  x=W/2-total/2;
-  for (i=0;i<items.length;i++){
-    keyCap(x,422,sz,items[i][0],items[i][1],fs);
-    x+=ws[i]+gap;
-  }
+  tutKeyBox={x:EDGE, y:Y0, w:tw, sz:sz};
+}
+
+/* build 74 (75: above the left column): NEW HERE? over the T TUTORIAL key, with a bobbing arrow pointing
+   down at it. Anchored to the key's measured box, so it follows any footer
+   layout. Kept inside the stage at both ends. */
+var tutKeyBox=null;
+function newHereDesk(){
+  var b=tutKeyBox; if (!b) return;
+  var t=performance.now(), cx=b.x+b.w/2;
+  var fs=TS.LABEL, txt=T('NEW_HERE');
+  ctx.font='900 '+fs+'px "Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif';
+  var tw=ctx.measureText(txt).width;
+  cx=Math.max(10+tw/2, Math.min(W-10-tw/2, cx));
+  var bob=Math.sin(t/260)*2.2, pulse=0.72+0.28*Math.abs(Math.sin(t/520));
+  var ay=b.y-4+bob;                      /* arrow tip, just above the key */
+  ctx.globalAlpha=pulse;
+  glowText(txt,cx,ay-15,fs,'#7cff4f','center',16,'900');
+  ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(12);
+  ctx.beginPath(); ctx.moveTo(cx-8,ay-10); ctx.lineTo(cx+8,ay-10); ctx.lineTo(cx,ay); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
 }
 
 function drawPause(){
@@ -5711,6 +6098,8 @@ function drawOver(){
     glowText(T('OVER_AGAIN'),W/2,362,TS.HERO,'#7cff4f','center',18);
   monoText(T('OVER_GARAGE'),W/2,394,TS.LABEL,'#21e6ff','center');
   monoText(T('MENU_LINE'),W/2,418,TS.LABEL,'#ffd23f','center');
+  /* build 74: a run that ended on lap 4 or earlier offers the tutorial, always */
+  if (tutOffer()) monoText(T(TOUCH?'OVER_LEARN_TOUCH':'OVER_LEARN'),W/2,442,TS.LABEL,'#7cff4f','center');
 }
 
 function swatchRow(label,yy,list,sel,active,paintSw){
@@ -5918,6 +6307,13 @@ function setZone(id, keepSong){
    did not choose to stop driving, the saucer stopped you.
 --------------------------------------------------------------- */
 function callUfo(){
+  /* build 77: a wandering saucer already ahead and within the hunter's start distance ANSWERS the call where
+     it hangs (no pop); one out of reach is replaced by a fresh hunter, as before. */
+  var wdz = ufo ? ufo.z-(position+Z_CAR) : 0;
+  if (ufo && !ufo.hunt && !ufo.cutting && wdz>0 && wdz<=22000){
+    ufo.hunt=true; ufo.lock=0; ufo.told=false; ufo.beamOn=true; ufo.beamT=99; ufo.beamK=1;
+    ufo.v=speed*0.8; ufo.life=UFO_HUNT_T; ufo.fade=1; ufo.color=ZN.accent; ufo.amp=0; ufo.rate=0;
+  } else
   ufo = { z: position+Z_CAR+22000, x: playerX*0.4, amp:0, rate:0, phase:0,
           hover: 1.15, bob: Math.random()*6, spin: 0,
           color: ZN.accent, beamOn: true, beamT: 99, beamK: 1,
@@ -6133,6 +6529,8 @@ function render(){
   if (state==='gameover') drawOver();
   if (state==='garage')   drawGarage();
   if (state==='info')     drawInfo();
+  if (state==='tutorial') tutLayout();   /* build 72/73: keep the closing card where it belongs */
+  tutFxVis();                            /* build 73: the boxes and the dim only while driving */
 }
 
 /* ---------------------------------------------------------------
@@ -6216,6 +6614,514 @@ function loop(now){
   if (fpsOn) drawFps();
   requestAnimationFrame(loop);
 }
+/* ---------------------------------------------------------------
+   BUILD 73 - THE TUTORIAL (style C, steps that unlock) + GENTLER OPENING LAPS
+   Build 72 was a test of three presentation styles. Carlos picked C (the car keeps
+   driving, a banner on the road, nothing freezes) and added two things from B:
+   a glowing BOX around the HUD part or touch control being explained, and a dim
+   that fades in for about a second to draw the eye and then eases off.
+
+   The tutorial is nine steps on a scripted road at CRUISE rules (no clock, no
+   hull, no score, no record) at 55 % of the old lap-1 top speed. Each step now
+   UNLOCKS only when the player actually does the thing:
+     1 DRIVE      speed over half + a real steer. A reminder every 10 s.
+     2 BRAKE      one slow car at a time; brake held 0.3 s. Else message + next car.
+     3 CRASH      information only (a 5 s banner).
+     4 NEAR MISS  the chain reaches x2 (a convoy of 4 beside you). Else message + 4 more cars.
+     5 POWER-UPS  a heart AND a bolt collected. Else message + a new pair.
+     6 DRIFT      3 s of drifting inside the curve. Else message + another curve.
+     7 FIRE       a bolt destroys the target. Else message + a new car.
+     8 CHECKPOINT cross the gate.
+     9 READY      the only freeze: DRIVE / AGAIN / MENU. Reaching it = finished.
+   A round that has not ended by itself after TUT_MAXROUND seconds counts as missed,
+   so a parked player cannot dead-lock a step. After TUT_EXIT_AT misses on one step
+   a small line says how to leave (pause, then the main menu); it never skips.
+
+   OFFER RULES: the title always offers it (T on a desktop, a TUTORIAL slab last
+   on the phone). The game-over offer shows only if the run ended on lap 4 or
+   earlier, the tutorial is not finished and no run has ever reached lap 5.
+
+   THE OPENING LAPS are gentler for everyone: a lower top speed, a longer gap
+   between cars and, from build 73, 75 % of the old length on laps 1-3 (EASY_*).
+   The checkpoint award divides the lap by top speed, so it scales with both.
+
+   Test switches: ?tutorial=1 starts the tutorial on load, ?fresh=1 pretends it is a
+   first launch, ?easy=0 puts laps 1-3 back to build 71.
+--------------------------------------------------------------- */
+var LEARN_SPEED = 0.55;                  /* tutorial top speed: share of the old lap-1 11500 */
+var LEARN_DRIFT = 2.4;                   /* the DRIFT bar fills this much faster in the tutorial */
+var LEARN_DRIFT_SPD = 0.60;              /* ...and pays out from this share of top speed (a normal run: DR_MIN_SPD 0.78) */
+var EASY_ON  = true;
+var EASY_SPD = [0.80, 0.88, 0.95];       /* laps 1, 2, 3: share of the old top speed */
+var EASY_GAP = [1.35, 1.20, 1.08];       /* laps 1, 2, 3: spawn gap multiplier (bigger = emptier) */
+var EASY_LEN = 0.75;                     /* laps 1, 2, 3: share of the old lap length (build 73) */
+var learn = false, learnPending = false; /* learn = THIS run is the tutorial */
+var tut = null;
+var tutSeen = false, tutDone = false, tutSkilled = false, firstLaunch = false;
+var TUT_KEY = 'vaporlane.tut', TUT_BAN = 5.5;
+var TUT_DIM = 0.60, TUT_FADE_IN = 1.0, TUT_HOLD = 0.3, TUT_FADE_OUT = 1.2;   /* the dim: peak and timing, seconds */
+var TUT_GAP = 1.2;                       /* pause between a miss and the next scene */
+var TUT_MAXROUND = 26;                   /* a scene not finished by itself after this long counts as missed */
+var TUT_BRAKE_S = 0.3;                   /* BRAKE: seconds of brake that count */
+var TUT_DRIFT_S = 3;                     /* DRIFT: seconds of drift inside the curve that count */
+var TUT_REMIND = 10;                     /* DRIVE: seconds between reminders */
+var TUT_EXIT_AT = 4;                     /* misses on one step before the "how to leave" line */
+var QS = ''; try{ QS = location.search || ''; }catch(_){}
+function qs(k){ var m = new RegExp('[?&]'+k+'=([^&#]*)').exec(QS); return m ? decodeURIComponent(m[1]) : null; }
+
+/* what a box can surround: HUD parts are rects in the 800x500 canvas, touch
+   controls are DOM nodes (on a desktop they do not exist, so they are skipped) */
+var HUDR = { speed:[W-240,10,232,68], lap:[W/2-98,10,196,68], drifthud:[10,368,214,50],
+             shots:[10,420,214,64], nextcp:[W-232,420,222,50], chain:[10,116,214,50] };
+var DOMR = { steer:'fanL', gas:'wGas', brake:'wBrake', drift:'wDrift', fire:'bFire' };
+var tutEl = el('tut'), tutCardEl = el('tutCard'), tutSvgEl = el('tutSvg'), tutFxEl = el('tutFx');
+var tutPulsed = [], tutFxKey = '', tutFxShown = false;
+
+/* ---- the saved flags: their own key, so the main save is untouched ---- */
+function tutLoad(){
+  try{
+    var d = JSON.parse(store.getItem(TUT_KEY) || 'null');
+    if (d && typeof d === 'object'){ tutSeen = !!d.seen; tutDone = !!d.done; tutSkilled = !!d.skill; }
+  }catch(_){}
+}
+function tutSave(){
+  if (!saveOK) return;
+  try{ store.setItem(TUT_KEY, JSON.stringify({v:1, seen:tutSeen?1:0, done:tutDone?1:0, skill:tutSkilled?1:0})); }catch(_){ }
+}
+/* Runs before loadGame(): "first launch" means nothing has ever been saved. */
+function tutBoot(){
+  var had = false;
+  if (saveOK){
+    try{ had = !!(store.getItem(SAVE_KEY) || store.getItem(SAVE_KEY_OLD)); }catch(_){}
+    tutLoad();
+  }
+  firstLaunch = !had;
+  if (qs('fresh') === '1'){ firstLaunch = true; tutSeen = false; tutDone = false; tutSkilled = false; }
+  if (qs('easy') === '0') EASY_ON = false;
+}
+/* a run the player started themselves counts as having seen the offer */
+function beginRun(){
+  reset(); state = 'playing';
+  if (!tutSeen){ tutSeen = true; tutSave(); }
+}
+/* the game-over offer: an early loss, not finished, never got to lap 5 */
+function tutOffer(){ return lap <= 4; }   /* build 74: Carlos's rule only (was also: not finished, never reached lap 5) */
+/* reaching lap 5 once is proof enough: the game-over offer stops for good */
+function tutSkill(){ if (!tutSkilled){ tutSkilled = true; tutSave(); } }
+
+/* ---- scene helpers ---- */
+function tutLane(){
+  var b = 0, d = 9, i, e;
+  for (i = 0; i < LANES.length; i++){ e = Math.abs(LANES[i] - playerX); if (e < d){ d = e; b = i; } }
+  return b;
+}
+function tutCar(lane, dz, spd){
+  var c = { z:position + Z_CAR + dz, lane:lane, x:LANES[lane], speed:spd,
+            color:ZN.traffic[(Math.random()*ZN.traffic.length)|0], passed:false,
+            weaver:false, phase:null, sigT:0, moveT:0, sigDir:0, fromX:0, toLane:0,
+            changeT:99, scripted:true };
+  cars.push(c);
+  return c;
+}
+function tutDz(o){ return o.z - (position + Z_CAR); }
+/* FIRE: there is always something to shoot with while the target is still ahead. Overdrive can run
+   out before the car arrives and a missed shot is gone. Quiet on purpose: a "BOLT LOADED" card would
+   push the lesson's own banner off the screen. The HUD shot counter shows it. */
+function tutAmmo(){ if (shots <= 0 && odT <= 0) shots = 1; }
+function tutGoneCar(c){ return !c || c.passed || cars.indexOf(c) < 0; }
+/* The tutorial road is flat except for the bends it asks for. Sections are short
+   so a requested bend is never far behind the request. */
+function tutBendSection(){
+  secLen = 130;                                   /* 52k units of sweeper */
+  var dir = lastDir > 0 ? -1 : 1; lastDir = dir;
+  secAmp = dir * S_PEAK * Z().curve * Math.PI / (secLen*CH);   /* a full-strength bend */
+  tut.bendZ = genN*CH; tut.bendEnd = (genN + secLen)*CH;
+}
+
+/* ---- the nine steps ----
+   enter()  runs once as the step starts (set up its counters)
+   round()  puts the scene on the road: at the start and again after every miss
+   trig()   true when the first message should come up (the thing is near enough to see)
+   watch()  runs every frame; sets tut.ok when the action has been done
+   gone()   true when the scene is over (cars passed, pickups gone, bend behind you)
+   now      advance the moment tut.ok is set, without waiting for gone()
+   info     a step with no action: advance after this many seconds
+   nudge    seconds between reminders for a step with no scene (DRIVE)
+   r        has retry texts (TUT_<ID>_R_H / _R_B / _R_BT)
+   max      this step's own limit for a scene (default TUT_MAXROUND)
+   hard     freeze the game (the closing card) */
+var TUT = [
+  { id:'DRIVE', spot:['speed','gas','steer'], after:0.3, now:true, nudge:TUT_REMIND, r:true,
+    enter:function(){ tut.steerMax = 0; },
+    trig:function(){ return true; },
+    watch:function(dt){
+      tut.steerMax = Math.max(tut.steerMax, Math.abs(playerX));
+      if (speed > maxSpeedFor(lap)*0.5 && tut.steerMax > 0.3) tut.ok = true;
+    } },
+  { id:'BRAKE', spot:['brake','speed'], r:true,
+    enter:function(){ tut.brakeT = 0; },
+    round:function(){ tut.obj = tutCar(tutLane(), 30000, 1400); },
+    trig:function(){ return tutDz(tut.obj) <= 14000; },
+    watch:function(dt){
+      if (tut.obj && keys.down && tutDz(tut.obj) > -2000) tut.brakeT += dt;
+      if (tut.brakeT >= TUT_BRAKE_S) tut.ok = true;
+    },
+    gone:function(){ return tutGoneCar(tut.obj); } },
+  { id:'CRASH', spot:[], after:0.6, info:5.0,
+    trig:function(){ return true; } },
+  { id:'NEARMISS', spot:['chain'], r:true,
+    round:function(){
+      /* four slow cars in a row in the lane next to yours. 3200 apart at this speed keeps the
+         passes inside the chain window (NM_CHAIN_T 1.6 s) even at half of top speed, so shaving
+         two of them reaches x2 and shaving all four reaches x4. */
+      var k, l = tutLane(), cl = l < 3 ? l + 1 : l - 1; tut.slal = [];
+      for (k = 0; k < 4; k++) tut.slal.push(tutCar(cl, 26000 + k*3200, 1000));
+    },
+    trig:function(){ return tutDz(tut.slal[0]) <= 14000; },
+    watch:function(dt){ if (chain >= 2) tut.ok = true; },
+    gone:function(){
+      for (var k = 0; k < tut.slal.length; k++) if (!tutGoneCar(tut.slal[k])) return false;
+      return true;
+    } },
+  { id:'PICKUPS', spot:['shots'], r:true,
+    enter:function(){ tut.got = { heart:false, bolt:false }; },
+    round:function(){
+      var l = tutLane(), zc = position + Z_CAR;
+      if (health >= CH_().hp) health = Math.max(1, CH_().hp - 1);   /* so the heart has something to do */
+      tut.pk = [ {kind:'heart', z:zc + 24000, x:LANES[l < 3 ? l + 1 : l - 1]},
+                 {kind:'bolt',  z:zc + 33000, x:LANES[l > 0 ? l - 1 : l + 1]} ];
+      pickups.push(tut.pk[0], tut.pk[1]);
+    },
+    trig:function(){ return tut.pk[0].z - (position + Z_CAR) <= 13000; },
+    gone:function(){ return pickups.indexOf(tut.pk[0]) < 0 && pickups.indexOf(tut.pk[1]) < 0; } },
+  { id:'DRIFT', spot:['drifthud','drift'], wait:45, max:70, r:true,
+    enter:function(){ tut.driftT = 0; },
+    round:function(){ tut.wantBend = true; tut.bendZ = undefined; tut.bendEnd = undefined; },
+    trig:function(){ return tut.bendZ !== undefined && tut.bendZ - (position + Z_CAR) <= 26000; },
+    watch:function(dt){ if (tut.driftT >= TUT_DRIFT_S) tut.ok = true; },
+    gone:function(){ return tut.bendEnd !== undefined && position + Z_CAR > tut.bendEnd - 3000; } },
+  { id:'FIRE', spot:['fire','shots'], now:true, r:true,
+    round:function(){
+      tutAmmo();
+      tut.obj = tutCar(tutLane(), 24000, 1500);
+    },
+    watch:function(dt){ if (tut.obj && !tutGoneCar(tut.obj) && tutDz(tut.obj) > 2500) tutAmmo(); },
+    trig:function(){ return tutDz(tut.obj) <= 15000; },
+    gone:function(){ return tutGoneCar(tut.obj); } },
+  { id:'GATE', spot:['nextcp','lap'], now:true,
+    enter:function(){ var zc = position + Z_CAR; cpStart = zc; cpLen = 36000; nextCP = zc + cpLen; },
+    trig:function(){ return nextCP - (position + Z_CAR) <= 18000; },
+    watch:function(dt){ if (tut.gate) tut.ok = true; } },
+  { id:'READY', spot:[], hard:true, final:true,
+    enter:function(){ tutDone = true; tutSave(); },       /* reaching the end is finishing */
+    trig:function(){ return true; } }
+];
+
+function tutInit(){
+  tut = { i:-1, sub:0, t:0, t0:0, rt:0, sinceMsg:0, fails:0, ok:false, okT:0, boxOn:false, fxT:99, fxA:-1,
+          crashed:false, wantBend:false, gate:false, shownAt:0, obj:null, slal:null, pk:null, got:null,
+          steerMax:0, brakeT:0, driftT:0, bendZ:undefined, bendEnd:undefined, layKey:'' };
+  cpStart = 0; cpLen = 1e9; nextCP = 1e9;      /* the gate is placed by its step */
+  ufoT = 1e9; hailCool = 1e9;                  /* no saucers in a lesson */
+  tutEnter(0);
+}
+/* Any other run: take down whatever the tutorial left up (a glowing touch control,
+   the dim, the card). Quitting through the pause menu skips tutExit(). */
+function tutClean(){
+  if (!tutEl) return;
+  tutPulse(null); tutFxClear(); tutHide();
+}
+function tutEnter(i){
+  var b = TUT[i];
+  tut.i = i; tut.sub = 1; tut.t = 0; tut.t0 = 0; tut.rt = 0; tut.sinceMsg = 0;
+  tut.fails = 0; tut.ok = false; tut.okT = 0; tut.boxOn = false;
+  if (b.enter) b.enter();
+  if (b.round) b.round();
+}
+function tutAdvance(){
+  tutPulse(null); tut.boxOn = false; tutFxClear();
+  if (tut.i + 1 < TUT.length) tutEnter(tut.i + 1);
+}
+/* A missed scene: say why, wait a moment, then send the scene again. */
+function tutFail(b){
+  tut.fails++;
+  tutMsg(b, 'R');
+  tut.sub = 3; tut.t0 = 0;
+}
+function tutRoundStart(b){
+  tut.rt = 0; tut.sub = 2; tut.sinceMsg = 0;      /* the message is already up: no trigger to wait for */
+  if (b.round) b.round();
+}
+/* called every frame of a playing tutorial, in place of the traffic spawner */
+function tutStep(dt){
+  var b = TUT[tut.i]; if (!b) return;
+  if (b.watch) b.watch(dt);
+  tut.rt += dt;
+  if (tut.sub === 1){                              /* waiting for the thing to come into view */
+    tut.t0 += dt;
+    if (tut.ok){ tut.sub = 2; tut.t = 0; tut.sinceMsg = 0; }     /* done before the message came up */
+    else if (tut.t0 >= (b.after || 0) && (b.trig() || tut.t0 > (b.wait || 40))) tutShow(b);
+  } else if (tut.sub === 2){                       /* the message is up: watching for the action */
+    tut.t += dt; tut.sinceMsg += dt;
+    if (b.info){
+      if (tut.t >= b.info) tutAdvance();
+    } else if (tut.ok){
+      tut.okT += dt;
+      if (b.now || !b.gone || b.gone() || tut.okT > 4) tutAdvance();
+    } else if (b.gone && (b.gone() || tut.rt > (b.max || TUT_MAXROUND))){
+      tutFail(b);
+    } else if (b.nudge && tut.sinceMsg > b.nudge){
+      tut.fails++; tutMsg(b, 'R');
+    }
+  } else if (tut.sub === 3){                       /* a breath before the next try */
+    tut.t0 += dt;
+    if (tut.t0 >= TUT_GAP) tutRoundStart(b);
+  }
+  tutFxFrame(dt);
+}
+function tutShow(b){
+  tut.sub = 2; tut.t = 0; tut.rt = 0; tut.sinceMsg = 0;
+  if (b.hard){
+    tut.boxOn = false; tutFxClear();
+    state = 'tutorial'; fansRelease();
+    tut.shownAt = performance.now();
+    tutRender(b);
+  } else {
+    tutMsg(b, '');
+  }
+  blip(880, 0.07, 'sine', 0.12);
+}
+/* the banner on the road: the same card the game uses for PRESS SPACE TO SHOOT.
+   kind '' is the first explanation, 'R' is the clarifying message after a miss. */
+function tutMsg(b, kind){
+  var ls = tutWrap(tutText(b, 'B', kind), 40), i;
+  msgs.length = 0;
+  say(tutText(b, 'H', kind), '#7cff4f', true, null, TUT_BAN);
+  for (i = 0; i < ls.length && i < 3; i++) say(ls[i], '#cfd6ff', false, null, TUT_BAN);
+  if (kind === 'R' && tut.fails >= TUT_EXIT_AT) say(T(TOUCH ? 'TUT_EXIT_T' : 'TUT_EXIT'), '#8a7ec4', false, null, TUT_BAN);
+  tut.boxOn = !!(b.spot && b.spot.length);
+  tut.fxT = 0; tut.sinceMsg = 0;                   /* the dim fades in again */
+  tutPulse(b.spot);
+}
+/* hooks from the game: a pickup collected, a car shot */
+function tutGot(kind){
+  if (!tut || !tut.got || TUT[tut.i].id !== 'PICKUPS') return;
+  if (kind === 'heart' || kind === 'bolt') tut.got[kind] = true;
+  if (tut.got.heart && tut.got.bolt) tut.ok = true;
+}
+function tutShot(c){
+  if (tut && c === tut.obj && TUT[tut.i].id === 'FIRE') tut.ok = true;
+}
+/* the gate line was crossed in the tutorial: no lap, no award, just the step */
+function tutGate(){
+  tut.gate = true; flash = 1; nextCP = 1e9; cpLen = 1e9;
+  say(T('CHECKPOINT'), '#7cff4f', true, null, 2);
+  blip(660, 0.10, 'square', 0.2);
+  setTimeout(function(){ blip(990, 0.16, 'square', 0.2); }, 110);
+}
+
+/* ---- text ---- */
+function tutText(b, suf, kind){
+  var id = (b.id === 'CRASH' && tut.crashed) ? 'CRASH2' : b.id;
+  if (kind === 'R') id += '_R';
+  var v = (suf === 'B' && TOUCH) ? T('TUT_'+id+'_BT') : undefined;
+  if (v === undefined) v = T('TUT_'+id+'_'+suf);
+  return v;
+}
+function tutWrap(s, n){
+  var w = s.split(' '), out = [], cur = '', i;
+  for (i = 0; i < w.length; i++){
+    if (cur && (cur+' '+w[i]).length > n){ out.push(cur); cur = w[i]; }
+    else cur = cur ? cur+' '+w[i] : w[i];
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function tutBtn(node, fn){
+  if (!node) return;
+  node.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+  node.addEventListener('pointerup', function(e){ e.stopPropagation(); e.preventDefault(); fn(); });
+}
+function tutPulse(spot){
+  var i, n;
+  for (i = 0; i < tutPulsed.length; i++) tutPulsed[i].classList.remove('tutHint');
+  tutPulsed = [];
+  if (!TOUCH || !spot) return;
+  for (i = 0; i < spot.length; i++){
+    if (DOMR[spot[i]]){
+      n = el(DOMR[spot[i]]);
+      if (n){ n.classList.add('tutHint'); tutPulsed.push(n); }
+    }
+  }
+}
+
+/* ---- the boxes and the fading dim (live, over the moving road) ----
+   One fixed SVG that never takes a touch. The dim is a rect with holes cut out
+   around the boxed parts; its opacity is the only thing that changes each frame. */
+function tutFxAlpha(t){
+  var u;
+  if (t < TUT_FADE_IN){ u = t/TUT_FADE_IN; return TUT_DIM*u*u*(3-2*u); }
+  t -= TUT_FADE_IN;
+  if (t < TUT_HOLD) return TUT_DIM;
+  t -= TUT_HOLD;
+  if (t < TUT_FADE_OUT){ u = 1 - t/TUT_FADE_OUT; return TUT_DIM*u*u*(3-2*u); }
+  return 0;
+}
+/* spotlight targets in viewport pixels */
+function tutRects(spot){
+  var out = [], i, id, r, n;
+  var cr = cv.getBoundingClientRect(); if (!cr.width) return out;
+  var sx = cr.width/W, sy = cr.height/H;
+  for (i = 0; i < spot.length; i++){
+    id = spot[i];
+    if (HUDR[id]){
+      r = HUDR[id];
+      out.push([cr.left + r[0]*sx, cr.top + r[1]*sy, r[2]*sx, r[3]*sy]);
+    } else if (DOMR[id] && TOUCH){
+      n = el(DOMR[id]); if (!n || !n.getBoundingClientRect) continue;
+      r = n.getBoundingClientRect();
+      if (r.width > 0) out.push([r.left, r.top, r.width, r.height]);
+    }
+  }
+  return out;
+}
+function tutFxClear(){
+  if (tutFxEl) tutFxEl.innerHTML = '';
+  tutFxKey = ''; if (tut) tut.fxA = -1;
+}
+function tutFxFrame(dt){
+  if (!tutFxEl || !tut) return;
+  var b = TUT[tut.i];
+  if (!tut.boxOn || !b || !b.spot || !b.spot.length){ if (tutFxKey) tutFxClear(); return; }
+  tut.fxT += dt;
+  var rects = tutRects(b.spot);
+  if (!rects.length){ if (tutFxKey) tutFxClear(); return; }
+  var vw = window.innerWidth || document.documentElement.clientWidth || 800;
+  var vh = window.innerHeight || document.documentElement.clientHeight || 600;
+  var key = vw+'x'+vh+'|'+tut.i+'|'+rects.join(';');
+  if (key !== tutFxKey){
+    tutFxKey = key;
+    var holes = '', rings = '', i, r, p = 7, a;
+    for (i = 0; i < rects.length; i++){
+      r = rects[i];
+      a = 'x="'+(r[0]-p).toFixed(1)+'" y="'+(r[1]-p).toFixed(1)+'" width="'+(r[2]+2*p).toFixed(1)+
+          '" height="'+(r[3]+2*p).toFixed(1)+'" rx="12"';
+      holes += '<rect '+a+' fill="#000"/>';
+      rings += '<rect class="ring" '+a+'/>';
+    }
+    tutFxEl.setAttribute('viewBox', '0 0 '+vw+' '+vh);
+    tutFxEl.innerHTML = '<defs><mask id="tutFxM" maskUnits="userSpaceOnUse" x="0" y="0" width="'+vw+'" height="'+vh+'">'+
+      '<rect x="0" y="0" width="'+vw+'" height="'+vh+'" fill="#fff"/>'+holes+'</mask></defs>'+
+      '<rect id="tutFxDim" x="0" y="0" width="'+vw+'" height="'+vh+'" fill="rgb(5,2,12)" fill-opacity="0" mask="url(#tutFxM)"/>'+rings;
+    tut.fxA = -1;
+  }
+  var al = tutFxAlpha(tut.fxT);
+  if (al !== tut.fxA){
+    var dimEl = document.getElementById('tutFxDim');
+    if (dimEl) dimEl.setAttribute('fill-opacity', al.toFixed(3));
+    tut.fxA = al;
+  }
+}
+/* called from render(): show the layer only while the tutorial is being driven */
+function tutFxVis(){
+  if (!tutFxEl) return;
+  var on = !!(learn && state === 'playing' && tut && tut.boxOn);
+  if (on !== tutFxShown){ tutFxShown = on; tutFxEl.style.display = on ? 'block' : 'none'; }
+}
+
+/* ---- the closing card (the only freeze) ---- */
+/* build 78: one option = its button with (on desktop) its key cap right under it */
+function tutOpt(id, label, key, cls, main){
+  return '<div class="tOpt'+(main ? ' main' : '')+'"><button'+(cls ? ' class="'+cls+'"' : '')+' id="'+id+'">'+label+'</button>'+
+         (TOUCH ? '' : '<div class="tGo">'+key+'</div>')+'</div>';
+}
+function tutRender(b){
+  var h = '';
+  h += '<div class="tTag">'+T('LEARN_TAG')+'  ·  '+(tut.i+1)+' / '+TUT.length+'</div>';
+  h += '<div class="tHead">'+tutText(b,'H')+'</div>';
+  h += '<div class="tBody">'+tutText(b,'B')+'</div>';
+  h += '<div class="tBtns">'+
+       tutOpt('tutGo',    T('TUT_GO'),    'ENTER', '',     true)+
+       tutOpt('tutAgain', T('TUT_AGAIN'), 'T',     '',     false)+
+       tutOpt('tutMenu',  T('TUT_MENU'),  'ESC',   'skip', false)+'</div>';
+  tutCardEl.innerHTML = h;
+  tutBtn(el('tutGo'),    function(){ tutExit('run'); });
+  tutBtn(el('tutAgain'), function(){ startLearn(); });
+  tutBtn(el('tutMenu'),  function(){ tutExit('title'); });
+  tutEl.className = 'on';
+  tut.layKey = '';
+  tutLayout();
+}
+/* Called every frame while the card is up, so a rotation or a resize moves it. */
+function tutLayout(){
+  if (!tut || !tutEl || tutEl.className !== 'on') return;
+  var sr = el('stage').getBoundingClientRect();
+  var vw = window.innerWidth || document.documentElement.clientWidth || 800;
+  var vh = window.innerHeight || document.documentElement.clientHeight || 600;
+  var fs = Math.max(TOUCH ? 13 : 12, Math.min(19, sr.width/58));
+  var cw = Math.min(sr.width*0.94, TOUCH ? 460 : 620);
+  tutCardEl.style.fontSize = fs+'px';
+  tutCardEl.style.width = Math.round(cw)+'px';
+  tutCardEl.style.left = Math.round(sr.left + (sr.width - cw)/2)+'px';
+  var chh = tutCardEl.offsetHeight;
+  var yTop = sr.top + sr.height*0.17, yBot = sr.top + sr.height*0.95 - chh;
+  /* A phone held upright shows the stage as a strip at the top with empty space
+     under it: the card goes there first so the road stays visible. */
+  var upright = TOUCH && sr.height < vh*0.5;
+  var cands = upright ? [sr.bottom + 10, yTop, yBot, sr.top + 4] : [yTop, yBot];
+  var y = cands[0], k;
+  for (k = 0; k < cands.length; k++){
+    if (cands[k] + chh <= vh - 6 && cands[k] >= 4){ y = cands[k]; break; }
+  }
+  tutCardEl.style.top = Math.round(y)+'px';
+  var key = vw+'x'+vh;
+  if (key === tut.layKey) return;
+  tut.layKey = key;
+  tutSvgEl.setAttribute('viewBox', '0 0 '+vw+' '+vh);
+  tutSvgEl.innerHTML = '<rect x="0" y="0" width="'+vw+'" height="'+vh+'" fill="rgba(5,2,12,0.38)"/>';
+}
+function tutHide(){
+  if (tutEl) tutEl.className = '';
+  if (tutSvgEl) tutSvgEl.innerHTML = '';
+  if (tut) tut.layKey = '';
+}
+function tutExit(where){
+  tutHide(); tutPulse(null); tutFxClear();
+  if (where === 'run'){
+    tutDone = true; tutSave();
+    learn = false; reset(); state = 'playing';
+  } else {
+    learn = false; reset(); state = 'title';
+  }
+}
+/* keys on the closing card */
+function tutKey(c){
+  var b = tut && TUT[tut.i];
+  if (c === 'KeyM'){ cycleAudio(); return; }
+  if (c === 'KeyL'){ toggleLang(); if (b) tutRender(b); return; }
+  if (c === 'Escape'){ tutExit('title'); return; }
+  if (c === 'Enter' || c === 'Space') tutExit('run');
+  else if (c === 'KeyT') startLearn();
+}
+
+/* Start the tutorial. */
+function startLearn(){
+  tutHide(); tutPulse(null); tutFxClear();
+  learnPending = true; reset(); learnPending = false;
+  state = 'playing';
+  tutSeen = true; tutSave();
+  fansRelease();
+  blip(660, 0.09, 'square', 0.14);
+}
+
+/* the top-left HUD panel in the tutorial, in place of SCORE and BEST */
+function drawLearnPanel(){
+  panel(12, 12, 224, 62);
+  monoText(T('LEARN_TAG'), 24, 34, TS.LABEL*UI, '#7cff4f');
+  glowText(T('LEARN_STEP')+((tut ? tut.i : 0) + 1)+' / '+TUT.length, 24, 63, TS.HERO, '#ffffff', 'left', 10);
+}
+
+tutBoot();
 loadGame();
 /* Canvas text only switches to a web font once it has loaded, and a canvas
    request alone does not always start the load — so ask for it up front.
@@ -6228,6 +7134,8 @@ noteLandscape();   /* must follow loadGame(): it can write, and writing
                       before the read would clobber the saved record */
 reset();
 state='title';
+/* build 73: ?tutorial=1 starts the tutorial on load */
+(function(){ var q=qs('tutorial'); if (q && q !== '0') startLearn(); })();
 requestAnimationFrame(loop);
 
 })();
