@@ -792,7 +792,40 @@ vaporEdit: {
   weather:'rain', wcol:'#b8ff8a', wamt:0.8,
   bloom:1.05, grade:{bri:1.23, con:1.09, sat:1.65, hue:180},
   propMask:106, propDens:1.65, groundFog:0.44, fogMul:1.15, bloomMul:1.25, weatherAmt:0.4,
-  curve:1.4, len:0.7, grip:1.1, cf:2, mult:1.3 }
+  curve:1.4, len:0.7, grip:1.1, cf:2, mult:1.3,
+  ufoRate:0.7 },   /* build 85: 30 % fewer wandering saucers (Carlos) */
+
+/* Build 84: HAUNTED HIGHWAY, the Halloween zone (Carlos's picks on the Halloween picker, 10-18): a blood
+   moon over a hill with a haunted mansion, crooked gas lamps with cobwebs, both Halloween looks for every
+   prop type, orange arrow-kerb chevrons, a low mist. Natural colours (no grade). Reached through the
+   Halloween activator in VAPOR; its hitchhikers take you back. The dials sit between VAPOR and ALIEN
+   PLAINS and it pays 1.3x like ALIEN PLAINS (both provisional). Fields new in build 84: moon, ridge,
+   lampKind, webs, chev, look, wisps (absent = the old behaviour). */
+haunted: {
+  id:'haunted', name:'HAUNTED HIGHWAY', accent:'#ff7a1a',
+  sky:['#040208','#16051a','#470c24'], skyMid:0.55,
+  haze:{col:'#ff2a3a', a:0.24, h:80},
+  stars:{n:70, col:'#f2e8ff', tw:0.9},
+  orb:{on:0, r:40, y:-96, cols:['#ff9a7a','#e8323a','#7a0a1a'], glow:'rgba(255,60,60,.5)', slats:0, slatCol:'rgba(0,0,0,0)'},
+  moon:{kind:'blood', x:0.40, y:-96, r:40},
+  ridge:{kind:'mansion', col:'#0b0612'},
+  skyline:{on:0, fill:'#0b0612', edgeA:'255,122,26', edgeB:'110,60,130', win:'255,170,70'},
+  ground:['#1f1226','#120a18','#07040b'],
+  grid:{major:'255,122,26', minor:'110,60,130', ring:'255,150,60'},
+  fog:[40,22,46], fogPow:2.6,
+  road:{a:[26,21,32], b:[18,15,24], rumA:[255,122,26], rumB:[232,222,196], lane:[222,212,190]},
+  posts:['#ff9a2e','#f2ecd8'],
+  props:['#ff7a1a','#9dff6a','#b06cff','#ffd23f','#f2ecd8'],
+  propStruct:'120,90,150', propWarm:'#ffb15a', gate:'#ff9a2e',
+  lamp:'#ff9a2e', lampKind:'gas', webs:1,
+  chev:['#ffa64a','#cf5f14','#7a3608','#ffe6c8'],
+  look:'haunted', wisps:5,
+  traffic:['#f2ecd8','#ff9a2e','#9dff6a','#ffd23f'],
+  weather:'none', wcol:'#ffffff', wamt:0.5,
+  bloom:1, grade:{bri:1, con:1, sat:1, hue:0},
+  propMask:127, propDens:1.25, groundFog:0.42, fogMul:1, bloomMul:1, weatherAmt:1,
+  curve:1.2, len:0.85, grip:1.05, cf:1.5, mult:1.3,
+  ufoRate:0.7 }   /* build 85: 30 % fewer wandering saucers (Carlos) */
 
 };
 
@@ -1104,7 +1137,7 @@ var STR={
     HAIL_CALL:'SIGNAL SENT \u2014 LOOK UP', BEAM_HOLD:'HOLD THE BEAM',
     BEAM_SEEN:'IT SAW YOU', T_REAR:'REAR-ENDED \u2014 NO PENALTY',
     BEAM_GONE:'IT GAVE UP', CLOCK_HELD:'CLOCK HELD',
-    ZONE_IN:'ZONE', ZONE_PAY:'POINTS',
+    ZONE_IN:'ZONE', ZONE_PAY:'POINTS', MIST_TAKE:'THE MIST TAKES YOU',
     HOW_IT_WORKS:'HOW IT WORKS', INFO_BACK:'I OR ENTER \u2014 BACK',
     H_CONTROLS:'CONTROLS', H_DRIVING:'DRIVING', H_SAVED:'SAVED',
     H_RUN:'THE RUN', H_HAZARDS:'HAZARDS', H_PICKUPS:'PICKUPS',
@@ -1260,7 +1293,7 @@ var STR={
     HAIL_CALL:'SE\u00d1AL ENVIADA \u2014 MIRA ARRIBA', BEAM_HOLD:'QU\u00c9DATE EN EL HAZ',
     BEAM_SEEN:'TE VIO', T_REAR:'GOLPE TRASERO \u2014 SIN CASTIGO',
     BEAM_GONE:'SE RINDI\u00d3', CLOCK_HELD:'RELOJ EN PAUSA',
-    ZONE_IN:'ZONA', ZONE_PAY:'PUNTOS',
+    ZONE_IN:'ZONA', ZONE_PAY:'PUNTOS', MIST_TAKE:'LA NIEBLA TE ATRAPA',
     HOW_IT_WORKS:'C\u00d3MO FUNCIONA', INFO_BACK:'I O ENTER \u2014 VOLVER',
     H_CONTROLS:'CONTROLES', H_DRIVING:'CONDUCCI\u00d3N', H_SAVED:'GUARDADO',
     H_RUN:'LA CARRERA', H_HAZARDS:'PELIGROS', H_PICKUPS:'OBJETOS',
@@ -1519,13 +1552,23 @@ var UFO_BEAM_R = 0.46;   /* beam half-width in road units (a car is 0.26)   */
 var UFO_LOCK   = 2.0;    /* seconds inside the beam before it takes you     */
 var UFO_NOTICE = 5400;   /* how close a WANDERING saucer lets you get first  */
 var UFO_HUNT_T = 20;     /* ...and how long it will keep trying             */
+var UFO_UP     = 11;     /* build 85: about how long a wandering saucer is up at racing speed (measured) */
+/* build 85: a zone's ufoRate (absent = 1) thins its WANDERING saucers; 0.7 = 30 % fewer a minute. The
+   wait counts from when the last one has gone, so it is stretched until wait + time up is 1/rate as
+   long. The saucers an alien, a hitchhiker or the Halloween activator calls are not touched. */
+function ufoWait(t){ var k=ZN.ufoRate; return (k && k!==1) ? (t+UFO_UP)/k-UFO_UP : t; }
 var hailCool   = 0;
 var zoneI      = 'vapor';
 
 /* the cutscene writes these; the world renderer never knows */
 var cut=null;
-var cutCar={x:0,y:0,sc:1,tilt:0,alpha:1,spin:0};
-function cutCarRest(){ cutCar.x=0; cutCar.y=0; cutCar.sc=1; cutCar.tilt=0; cutCar.alpha=1; cutCar.spin=0; }
+var cutCar={x:0,y:0,sc:1,tilt:0,alpha:1,spin:0,lit:0};
+function cutCarRest(){ cutCar.x=0; cutCar.y=0; cutCar.sc=1; cutCar.tilt=0; cutCar.alpha=1; cutCar.spin=0; cutCar.lit=0; }
+/* build 83: the lab's landing curves (clamped) */
+function bounceOut(t){ t=clamp(t,0,1); var n=7.5625, d=2.75;
+  if (t<1/d) return n*t*t; if (t<2/d) return n*(t-=1.5/d)*t+0.75; if (t<2.5/d) return n*(t-=2.25/d)*t+0.9375; return n*(t-=2.625/d)*t+0.984375; }
+function easeOut(t){ t=clamp(t,0,1); return 1-(1-t)*(1-t); }
+function easeIn(t){ t=clamp(t,0,1); return t*t; }
 function ease(t){ return t<0?0:(t>1?1:t*t*(3-2*t)); }
 
 /* A prop slot holds a hailer only if it holds an alien at all. The test
@@ -1567,9 +1610,46 @@ function hailFlick(t,idx){
 function hailerAt(z,win){
   if (lap<HAIL_LAP) return 0;
   var i=Math.round(z/DECO_SPACE);
-  if (Math.abs(z-i*DECO_SPACE)>=win || !isHailer(i)) return 0;
+  if (Math.abs(z-i*DECO_SPACE)>=win || !(isHailer(i)||isHwAct(i))) return 0;   /* build 84: the activator's lamp too */
   return hashAt(i,2)<0.5?-1:1;
 }
+/* Build 84: THE HALLOWEEN ACTIVATOR. In VAPOR only, a few prop slots hold a crooked gas lamp with the
+   skeleton and the ghost hitchhikers waving beside it (hwActDraw). Drive under its lantern (or right
+   beside them, like the alien) while it is live and the mist takes you to HAUNTED HIGHWAY.
+   Rate: 1.2x the waving alien (Carlos). A VAPOR prop slot is a hailer 0.06 x 0.34 = 2.04 % of the time;
+   the activator takes 2.50 % of the slots that are NOT hailers, i.e. 2.45 % of all slots = 1.2x. The
+   hailers are untouched (an activator never takes a hailer's slot). Same rules as a hailer: not on lap 1,
+   not in the tutorial, not while a saucer is hunting, not during the cooldown (hailLive()).
+   THE SEASON (Carlos, 10-18): the game reads the date, so no build is needed when Halloween is over.
+   Full rate from Oct 1 to Nov 7, a third of it to Nov 20, then none until next Oct 1 (it comes back by
+   itself). Dates are month, day; each is one number to change. ?halloween=on / off forces it (testing). */
+var HW_ACT_ODDS = 0.0250;
+var HW_SEASON   = { from:[10,1], full:[11,7], fade:[11,20], fadeK:1/3 };
+var HW_SEASON_K = null;   /* tests: a number here overrides the date */
+var hwK = 0;              /* this run's activator rate, set by reset() */
+function hwSeasonK(d){
+  try{
+    var m=/[?&]halloween=(on|off)/.exec(location.search||'');
+    if (m) return m[1]==='on' ? 1 : 0;
+  }catch(_){}
+  var S=HW_SEASON, v=(d.getMonth()+1)*100+d.getDate();
+  var a=S.from[0]*100+S.from[1], b=S.full[0]*100+S.full[1], c=S.fade[0]*100+S.fade[1];
+  if (v>=a && v<=b) return 1;
+  if (v>b && v<=c) return S.fadeK;
+  return 0;
+}
+function isHwAct(idx){
+  if (hwK<=0 || ZN.id!=='vapor') return false;
+  if (hashAt(idx,1) > Math.min(1,0.5*ZN.propDens)) return false;
+  if (isHailer(idx)) return false;
+  return hashAt(idx,52) < HW_ACT_ODDS*hwK;
+}
+/* ?zone=haunted (or alien) starts every run in that zone: a way to look at a zone without hunting
+   for its activator. Without it every run starts in VAPOR, as before. */
+var START_ZONE = (function(){
+  try{ var m=/[?&]zone=([a-z]+)/.exec(location.search||''); var z=m?m[1]:'';
+       return z==='haunted' ? 'haunted' : (z==='alien' ? 'vaporEdit' : 'vapor'); }catch(_){ return 'vapor'; }
+})();
 var keys={};
 /* The keyboard and the on-screen pad can each be holding a direction, so
    they are tracked apart and merged. Otherwise letting go of DRIFT would
@@ -1607,7 +1687,12 @@ function reset(){
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
   dBank=0; dPot=0; drifting=false;
   ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5; hailPrevZ=-1;
-  cut=null; cutCarRest(); setZone('vapor');
+  fxClear();                           /* build 83 */
+  hwSpookClear();                      /* build 87 */
+  cut=null; cutCarRest();
+  hwK=(HW_SEASON_K!==null) ? HW_SEASON_K : hwSeasonK(new Date());   /* build 84: the Halloween season, read once a run */
+  setZone(START_ZONE);                 /* build 84: 'vapor' unless ?zone= says otherwise */
+  ufoT=ufoWait(ufoT);                  /* build 85: the start zone's saucer rate */
   cpStart=0; cpLen=lapLength(1); nextCP=cpLen;
   taughtWeavers=false; taughtSpace=false; endReason='';
   chain=0; chainT=0; chainBest=0; nmPops=[];
@@ -2180,8 +2265,87 @@ var SONG_ALIEN_PLAINS = { bpm:122, tpbar:32, bars:16, key:15, dvol:0.4,
   ],
   dseq:[1,2,1,2,3,3,3,4,3,5,3,5,3,5,3,5]
 };
+/* HAUNTED HIGHWAY's own song (build 86). Carlos's Loop Forge v16 GAME TABLES export of 2026-10-18
+   ("Rescued loops" project: HALLOWEEN INTRO x2, HALLOWEEN INTRO 2 x2, HALLOWEEN CHORUS 2 x4; A minor, DREAD
+   i II, 95 bpm; each loop = 2 game bars of 32 ticks (one tick = a 16th), so INTRO x2 ~20 s, INTRO 2 x2 ~20 s,
+   CHORUS 2 x4 ~40 s: 16 bars = about 81 s, looping whole with the intro every time, as Carlos wants).
+   Source kept as Vapor Lane Music/HALLOWEEN SONG THEME.js (untouched, reopens in Loop Forge) and the game
+   copy Vapor Lane Music/HALLOWEEN SONG THEME - section mutes.js. Pasted verbatim EXCEPT seq: Loop Forge's
+   ARRANGE can't mute one channel for one loop yet, so a 0 there silences that channel for that bar
+   (musSched skips it): bars 1-4 (INTRO) no MEL/lead, bars 5-8 (INTRO 2) no PAD/body, bars 9-16 all on.
+   Voices and dvol = Carlos's MIXER, re-balanced by ear against the main song the same day, after hearing
+   the first 86 ("totally too quiet"): pad 0.50, lead 1.10, bass 0.64, drums 0.64 (was 0.05 / 0.32 / 0.20 /
+   0.06). Then LEAD and DRUMS about 10 % down (Carlos, to ease the limiter in the chorus): lead 0.99,
+   drums 0.58. Then BASS 15 % up (Carlos, 10-19): 0.64 -> 0.736. v = Loop Forge's GAME_BASE x WAVE_BAL x fader, exactly as its GAME TABLES export computes it. */
+var SONG_HAUNTED_HIGHWAY = { bpm:95, tpbar:32, bars:16, key:15, dvol:0.58,
+  voice:[
+    {w:'triangle', v:0.0207, cut:880, rel:0.2, det:16, sub:0, vib:6, rev:0.48},  /* body */
+    {w:'sine', v:0.0487, cut:3880, rel:0.26, det:19, sub:0, vib:0, rev:1},  /* lead */
+    {w:'triangle', v:0.0494, cut:2560, rel:0.15, det:15, sub:0.5, vib:0, rev:0.34}   /* bass */
+  ],
+  pat:[
+    [[[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]],
+     [[0,16,42],[0,16,45],[0,16,49],[16,16,44],[16,16,47],[16,16,50]]],
+    [[[0,2,66],[12,2,62],[16,2,61],[30,2,54]],
+     [[0,2,57],[16,2,56],[22,2,56],[24,2,56],[28,2,56],[30,2,57]],
+     [[0,2,66],[12,2,62],[16,2,61],[30,2,54]],
+     [[0,2,57],[16,2,56],[22,2,56],[24,2,56],[28,2,56],[30,2,57]],
+     [[0,2,66],[12,2,62],[16,2,61],[30,2,54]],
+     [[0,2,57],[16,2,56],[22,2,56],[24,2,56],[28,2,56],[30,2,57]],
+     [[0,2,66],[12,2,62],[16,2,61],[30,2,54]],
+     [[0,2,57],[16,2,56],[22,2,56],[24,2,56],[28,2,56],[30,2,57]],
+     [[0,2,66],[14,2,66],[16,2,69],[22,2,66],[26,2,61],[30,2,54]],
+     [[0,2,57],[10,2,59],[12,2,61],[14,2,62],[16,2,66],[24,2,74],[26,2,73],[28,2,69]],
+     [[0,2,66],[14,2,66],[16,2,69],[22,2,66],[26,2,61],[30,2,54]],
+     [[0,2,57],[10,2,59],[12,2,61],[14,2,62],[16,2,66],[24,2,74],[26,2,73],[28,2,69]],
+     [[0,2,66],[14,2,66],[16,2,69],[22,2,66],[26,2,61],[30,2,54]],
+     [[0,2,57],[10,2,59],[12,2,61],[14,2,62],[16,2,66],[24,2,74],[26,2,73],[28,2,69]],
+     [[0,2,66],[14,2,66],[16,2,69],[22,2,66],[26,2,61],[30,2,54]],
+     [[0,2,57],[10,2,59],[12,2,61],[14,2,62],[16,2,66],[24,2,74],[26,2,73],[28,2,69]]],
+    [[[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,8,30],[8,8,30],[16,8,32],[24,8,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]],
+     [[0,2,30],[2,2,30],[4,2,30],[6,2,30],[8,2,30],[10,2,30],[12,2,30],[14,2,30],[16,2,32],[18,2,32],[20,2,32],[22,2,32],[24,2,32],[26,2,32],[28,2,32],[30,2,32]]]
+  ],
+  seq:[[1,2,3,4,0,0,0,0,9,10,11,12,13,14,15,16],[0,0,0,0,5,6,7,8,9,10,11,12,13,14,15,16],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]],
+  drum:[
+    /* 1 */ [[16,DK],[20,DK],[24,DK],[26,DK],[28,DK],[28,DC],[29,DK],[30,DK],[31,DK]],
+    /* 2 */ [[0,DK],[0,DH],[2,DH],[4,DH],[6,DH],[8,DS],[8,DH],[10,DK],[10,DH],[12,DH],[14,DH],[16,DK],[16,DH],[18,DH],[20,DH],[22,DH],[24,DS],[24,DH],[26,DK],[26,DH],[28,DH],[30,DH]],
+    /* 3 */ [[0,DK],[0,DH],[2,DH],[4,DH],[6,DH],[8,DS],[8,DH],[10,DK],[10,DH],[12,DH],[14,DH],[16,DK],[19,DH],[20,DK],[20,DH],[21,DS],[22,DS],[22,DH],[24,DK],[24,DS],[26,DK],[26,DS],[28,DK],[28,DC],[29,DK],[30,DK],[31,DK]],
+    /* 4 */ [[0,DK],[0,DH],[1,DH],[3,DK],[3,DH],[4,DK],[4,DS],[4,DH],[5,DH],[7,DK],[7,DH],[8,DC],[8,DH],[8,DTH],[9,DS],[9,DH],[10,DK],[10,DH],[10,DTL],[11,DC],[11,DH],[11,DTH],[12,DK],[12,DS],[12,DH],[13,DH],[14,DK],[16,DK],[16,DH],[17,DH],[19,DK],[19,DH],[20,DK],[20,DS],[20,DH],[21,DH],[23,DK],[23,DH],[24,DC],[24,DH],[24,DTH],[25,DS],[25,DH],[26,DK],[26,DH],[26,DTL],[27,DC],[27,DH],[27,DTH],[28,DK],[28,DS],[28,DH],[29,DH],[30,DK]],
+    /* 5 */ [[0,DK],[0,DH],[1,DH],[3,DK],[3,DH],[4,DK],[4,DS],[4,DH],[5,DH],[7,DK],[7,DH],[8,DC],[8,DH],[8,DTH],[9,DS],[9,DH],[10,DK],[10,DH],[10,DTL],[11,DC],[11,DH],[11,DTH],[12,DK],[12,DS],[12,DH],[13,DH],[14,DK],[16,DK],[18,DH],[19,DK],[20,DK],[20,DS],[21,DS],[22,DH],[23,DH],[24,DS],[25,DK],[26,DS],[27,DK],[28,DK],[28,DS],[29,DS],[30,DK],[30,DS],[31,DK],[31,DS]]
+  ],
+  dseq:[0,1,0,1,2,3,2,3,4,5,4,5,4,5,4,5]
+};
 ZONES.vapor.song = MUS_SONG_VAPOR;
 ZONES.vaporEdit.song = SONG_ALIEN_PLAINS;
+ZONES.haunted.song = SONG_HAUNTED_HIGHWAY;   /* build 86: its own song (was the main song in 84-85) */
 
 /* Drop-off after a ride (build 65). The ride fades the music layers out
    (musMix: state 'abduct' is not 'playing'), setZone() swaps the map at the
@@ -3278,6 +3442,7 @@ function update(dt){
   carRum += (((drifting && state==='playing')?1:0) - carRum)*Math.min(1,dt*14);
   hitFlash=Math.max(0,hitFlash-dt*2.6);
   flash   =Math.max(0,flash-dt*1.8);
+  fxStep(dt);                          /* build 83: the screen-effects layer */
   for (i=msgs.length-1;i>=0;i--){ msgs[i].life-=dt; if (msgs[i].life<=0) msgs.splice(i,1); }
 
   /* The cutscene owns the frame. Everything below this line — the clock,
@@ -3647,10 +3812,15 @@ function update(dt){
   hailPrevZ=zcNow;
   if (zcPrev>=0 && zcNow>zcPrev && zcNow-zcPrev<DECO_SPACE && hailLive()){
     var iNow=Math.floor(zcNow/DECO_SPACE);
-    if (iNow>Math.floor(zcPrev/DECO_SPACE) && isHailer(iNow)){
+    var hwAct=isHwAct(iNow);            /* build 84: the Halloween activator, a hailer of its own */
+    if (iNow>Math.floor(zcPrev/DECO_SPACE) && (hwAct || isHailer(iNow))){
       var hSide=hashAt(iNow,2)<0.5?-1:1;
       if (Math.abs(hSide*HAIL_HEAD_X - playerX) < HAIL_LAMP_R ||
-          Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R) callUfo();
+          Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R){
+        if (hwAct){ if (state==='playing'){ startMist('haunted'); return; } }
+        else if (ZN.look==='haunted'){ if (state==='playing'){ startMist('vapor'); return; } }   /* a hitchhiker: back to VAPOR */
+        else callUfo();
+      }
     }
   }
 
@@ -3718,7 +3888,7 @@ function update(dt){
   } else {
     ufoT -= dt;
     if (ufoT<=0){
-      ufoT = 20+Math.random()*14;
+      ufoT = ufoWait(20+Math.random()*14);   /* build 85 */
       ufo = { z: position+44000+Math.random()*6000, x:0, hunt:false, lock:0, beamK:1,
               amp: 1.5+Math.random()*1.0, rate: 0.45+Math.random()*0.60,
               phase: Math.random()*Math.PI*2,
@@ -3779,6 +3949,7 @@ function update(dt){
     if (blasts[i].t>=1 || blasts[i].z<position-3000) blasts.splice(i,1);
   }
 
+  hwSpookStep(dt);                     /* build 87: HAUNTED HIGHWAY's ghost and giant hand */
   engine(speed/SPD_REF,true);
   musMix();
 }
@@ -3887,7 +4058,7 @@ var bdCv=null, bdKey='', orbCv=null, orbKey='', orbHalf=0, fogCv=null, fogKey=''
    (`contextrestored`). The main picture redraws every frame anyway; these
    cached layers are painted once, so they have to be told. Without this the
    sun, fog, haze and sky stayed blank for the rest of the zone. */
-function dropCaches(){ bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; }
+function dropCaches(){ bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; moonKey=''; ridgeKey=''; glowCv={}; wispCv=null; }
 function offCv(c, w, h, opaque){
   if (!c){
     c=document.createElement('canvas');
@@ -3970,6 +4141,194 @@ function hazeSprite(){
   hzTop=y0; hzKey=key; return hzCv;
 }
 
+/* ---------------------------------------------------------------
+   MOON AND RIDGE SKIES (build 84, HAUNTED HIGHWAY; Carlos's pick on the
+   Halloween picker: B "Blood moon hill"). A zone that carries `moon` and
+   `ridge` switches its orb and skyline off and gets these instead. The moon
+   and the ridge are painted once per zone and size, like the orb (build 70);
+   the ridge is a 1,600-wide tile that slides with the bends exactly like the
+   skyline does. Only the bats, the clouds and the mansion's window are drawn
+   each frame. VAPOR and ALIEN PLAINS carry neither field, so nothing here
+   runs for them.
+     moon.kind  'blood'   a small red moon high up, a halo ring, bats circling it
+                'harvest' a big orange cratered moon low, dark clouds drifting over it, a flock of bats
+                'eclipse' the black hole sun (saved by Carlos for a future lava zone)
+     ridge.kind 'mansion' rolling hills, dead trees and a haunted mansion on a hill (its window lights up)
+                'trees'   rolling hills and dead trees
+--------------------------------------------------------------- */
+var moonCv=null, moonKey='', moonHalf=0, ridgeCv=null, ridgeKey='', ridgeWin=[];
+var RIDGE_W=1600, RIDGE_H=200;                    /* the ridge tile, logical px; its horizon line is RIDGE_H-2 */
+/* a deterministic dead tree: a trunk and forked branches (the ridge and the lantern tree's cousins) */
+function deadTree(g,x,y,h,seed,lw){
+  function br(x0,y0,len,ang,w,d){
+    var x1=x0+Math.cos(ang)*len, y1=y0+Math.sin(ang)*len;
+    g.lineWidth=Math.max(0.6,w); g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
+    if (d<=0) return;
+    var n=2+((hashAt(seed+d*13+(x0|0),3)*1.6)|0);
+    for (var i=0;i<n;i++){
+      var r=hashAt(seed*7+d*31+i*17+(y1|0),9);
+      br(x1,y1,len*(0.55+0.2*r),ang+(i-(n-1)/2)*0.62+(r-0.5)*0.5,w*0.62,d-1);
+    }
+  }
+  g.lineCap='round'; br(x,y,h*0.42,-Math.PI/2+(hashAt(seed,1)-0.5)*0.25,lw,3); g.lineCap='butt';
+}
+function moonSprite(){
+  var m=ZN.moon, key=zoneI+'|'+dpr+'|'+m.kind+'|'+m.r;
+  if (moonCv && moonKey===key) return moonCv;
+  var R=m.r, half=Math.ceil(R*3.6*dpr)+4;
+  moonCv=offCv(moonCv, half*2, half*2);
+  var g=moonCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,half,half);   /* origin = the moon's centre */
+  var i;
+  if (m.kind==='harvest'){                       /* big, low, warm, cratered */
+    var hg=g.createRadialGradient(0,0,R*0.8,0,0,R*3.0);
+    hg.addColorStop(0,'rgba(255,150,60,.42)'); hg.addColorStop(0.4,'rgba(255,110,40,.14)'); hg.addColorStop(1,'rgba(255,110,40,0)');
+    g.fillStyle=hg; g.fillRect(-R*3,-R*3,R*6,R*6);
+    var mg=g.createRadialGradient(-R*0.35,-R*0.35,R*0.1,0,0,R);
+    mg.addColorStop(0,'#ffe2a8'); mg.addColorStop(0.55,'#ffab4c'); mg.addColorStop(1,'#d9611c');
+    g.fillStyle=mg; g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fill();
+    var k=R/62, C=[[-20,-14,13],[18,8,10],[-6,24,8],[26,-22,6],[-32,12,6],[4,-30,5],[30,26,5]];
+    g.fillStyle='rgba(150,58,20,.28)';
+    for (i=0;i<C.length;i++){ g.beginPath(); g.arc(C[i][0]*k,C[i][1]*k,C[i][2]*k,0,Math.PI*2); g.fill(); }
+    g.fillStyle='rgba(255,236,190,.20)';
+    g.beginPath(); g.arc(-24*k,-18*k,5*k,0,Math.PI*2); g.fill(); g.beginPath(); g.arc(14*k,4*k,4*k,0,Math.PI*2); g.fill();
+  } else if (m.kind==='eclipse'){                /* the black hole sun: a corona, rays, a black disc with a lit rim */
+    var c1=m.col||'#ff5a1f', c2=m.col2||'#ffd27a';
+    g.globalCompositeOperation='lighter';
+    var cg=g.createRadialGradient(0,0,R*0.9,0,0,R*2.6);
+    cg.addColorStop(0,hexA(c2,0.85)); cg.addColorStop(0.25,hexA(c1,0.45)); cg.addColorStop(1,hexA(c1,0));
+    g.fillStyle=cg; g.fillRect(-R*2.6,-R*2.6,R*5.2,R*5.2);
+    g.globalAlpha=0.5; g.strokeStyle=c2; g.lineWidth=1.2;
+    for (i=0;i<10;i++){ var an=i*0.628, l=R*(1.25+0.35*hashAt(i,4));
+      g.beginPath(); g.moveTo(Math.cos(an)*R*1.02,Math.sin(an)*R*1.02); g.lineTo(Math.cos(an)*l,Math.sin(an)*l); g.stroke(); }
+    g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    g.fillStyle='#060101'; g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fill();
+    g.strokeStyle=hexA(c2,0.9); g.lineWidth=2; g.stroke();
+  } else {                                       /* BLOOD MOON: small, high, a thin halo ring */
+    var bg=g.createRadialGradient(0,0,R*0.8,0,0,R*3.4);
+    bg.addColorStop(0,'rgba(255,60,60,.38)'); bg.addColorStop(1,'rgba(255,40,60,0)');
+    g.fillStyle=bg; g.fillRect(-R*3.4,-R*3.4,R*6.8,R*6.8);
+    g.strokeStyle='rgba(255,120,120,.30)'; g.lineWidth=1.5; g.beginPath(); g.arc(0,0,R*1.55,0,Math.PI*2); g.stroke();
+    g.strokeStyle='rgba(255,120,120,.12)'; g.lineWidth=5; g.beginPath(); g.arc(0,0,R*1.55,0,Math.PI*2); g.stroke();
+    var rg=g.createRadialGradient(-R*0.3,-R*0.3,R*0.1,0,0,R);
+    rg.addColorStop(0,'#ff9a7a'); rg.addColorStop(0.5,'#e8323a'); rg.addColorStop(1,'#7a0a1a');
+    g.fillStyle=rg; g.beginPath(); g.arc(0,0,R,0,Math.PI*2); g.fill();
+    var kb=R/40, D=[[-12,-8,9],[10,6,7],[-4,16,5],[14,-14,4]];
+    g.fillStyle='rgba(60,0,10,.30)';
+    for (i=0;i<D.length;i++){ g.beginPath(); g.arc(D[i][0]*kb,D[i][1]*kb,D[i][2]*kb,0,Math.PI*2); g.fill(); }
+  }
+  moonHalf=half; moonKey=key; return moonCv;
+}
+/* the ridge's height above the horizon at tile x: periodic over RIDGE_W, so the tile repeats without a seam */
+function ridgeH(x,mansion){
+  var w=Math.PI*2/RIDGE_W;
+  var h=12+Math.sin(x*w*3+0.6)*9+Math.sin(x*w*10)*5+Math.sin(x*w+2)*10;
+  if (mansion) h+=Math.max(0,1-Math.abs(x-RIDGE_W*0.80)/150)*58;
+  return Math.max(2,h);
+}
+function ridgeSprite(){
+  var rd=ZN.ridge, mansion=rd.kind==='mansion', key=zoneI+'|'+dpr+'|'+rd.kind+'|'+rd.col;
+  if (ridgeCv && ridgeKey===key) return ridgeCv;
+  ridgeCv=offCv(ridgeCv, Math.ceil(RIDGE_W*dpr), Math.ceil(RIDGE_H*dpr));
+  var g=ridgeCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  var HY=RIDGE_H-2, x, i, col=rd.col||'#0b0612';
+  g.fillStyle=col; g.beginPath(); g.moveTo(0,RIDGE_H);
+  for (x=0;x<=RIDGE_W;x+=10) g.lineTo(x,HY+1-ridgeH(x,mansion));
+  g.lineTo(RIDGE_W,RIDGE_H); g.closePath(); g.fill();
+  g.strokeStyle=col;
+  for (i=0;i<16;i++){                            /* dead trees along the ridge, none on the mansion's hill */
+    var tx=(i+0.5)*RIDGE_W/16+(hashAt(i,31)-0.5)*60;
+    if (mansion && Math.abs(tx-RIDGE_W*0.80)<175) continue;
+    deadTree(g,tx,HY+3-ridgeH(tx,mansion),(0.7+0.6*hashAt(i,32))*30,i*11+3,2.2);
+  }
+  ridgeWin=[];
+  if (mansion){                                  /* the mansion on the hill */
+    var hx=RIDGE_W*0.80, hy=HY+1-70;
+    g.fillStyle=col;
+    g.fillRect(hx-46,hy-34,92,36);
+    g.beginPath(); g.moveTo(hx-52,hy-34); g.lineTo(hx,hy-62); g.lineTo(hx+52,hy-34); g.closePath(); g.fill();
+    g.fillRect(hx-40,hy-80,22,48);
+    g.beginPath(); g.moveTo(hx-44,hy-80); g.lineTo(hx-29,hy-112); g.lineTo(hx-14,hy-80); g.closePath(); g.fill();
+    g.fillRect(hx+22,hy-58,14,26);
+    g.beginPath(); g.moveTo(hx+20,hy-60); g.lineTo(hx+40,hy-62); g.lineTo(hx+38,hy-56); g.lineTo(hx+22,hy-55); g.closePath(); g.fill();
+    g.fillRect(hx-30,hy-118,2,8);
+    var wins=[[-36,-72,6,9],[-26,-72,6,9],[-34,-24,7,10],[-16,-24,7,10],[6,-24,7,10],[24,-24,7,10],[-4,-46,8,8]];
+    g.fillStyle='rgba(40,20,50,1)';
+    for (i=0;i<wins.length;i++){ g.fillRect(hx+wins[i][0],hy+wins[i][1],wins[i][2],wins[i][3]); ridgeWin.push([hx+wins[i][0],hy+wins[i][1],wins[i][2],wins[i][3]]); }
+  }
+  ridgeKey=key; return ridgeCv;
+}
+function batShape(x,y,s,f){
+  ctx.beginPath(); ctx.moveTo(x-s, y-f*s*0.6);
+  ctx.quadraticCurveTo(x-s*0.55, y-s*0.05, x-s*0.25, y+s*0.12);
+  ctx.lineTo(x-s*0.08,y-s*0.10); ctx.lineTo(x,y+s*0.05); ctx.lineTo(x+s*0.08,y-s*0.10);
+  ctx.lineTo(x+s*0.25,y+s*0.12);
+  ctx.quadraticCurveTo(x+s*0.55, y-s*0.05, x+s, y-f*s*0.6);
+  ctx.quadraticCurveTo(x+s*0.4, y+s*0.05, x, y+s*0.25);
+  ctx.quadraticCurveTo(x-s*0.4, y+s*0.05, x-s, y-f*s*0.6); ctx.closePath(); ctx.fill();
+}
+/* drawSky() calls this for a zone with a moon, after the stars and before the haze */
+function drawMoonSky(){
+  var m=ZN.moon, t=performance.now()/1000, i;
+  var mx=W*m.x+bgX*0.6, my=horizonY+m.y, R=m.r;  /* the moon slides with the bends like the orb */
+  var ms=moonSprite();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,W,horizonY); ctx.clip();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.drawImage(ms, Math.round((mx+shX)*dpr)-moonHalf, Math.round((my+shY)*dpr)-moonHalf);
+  ctx.restore();
+  if (m.kind==='harvest'){
+    for (i=0;i<3;i++){                           /* soft dark clouds drifting across the moon */
+      var cw=110+i*40, cx=((t*(7+i*3)+i*300)%(W+cw*2))-cw, cy=my-26+i*26, ch=12+i*3;
+      ctx.save(); ctx.translate(cx,cy); ctx.scale(1,ch/cw);
+      var cg=ctx.createRadialGradient(0,0,0,0,0,cw);
+      cg.addColorStop(0,'rgba(18,7,24,'+(0.62-i*0.12).toFixed(2)+')'); cg.addColorStop(0.6,'rgba(18,7,24,'+(0.30-i*0.06).toFixed(2)+')'); cg.addColorStop(1,'rgba(18,7,24,0)');
+      ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(0,0,cw,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+    ctx.fillStyle='#07030c';                     /* a loose flock crossing */
+    for (i=0;i<5;i++){
+      var bx=((t*34+i*46)%(W+300))-150+Math.sin(t*0.9+i)*14, by=my-70+i*13+Math.sin(t*1.7+i*2)*8;
+      batShape(bx,by,5+(i%3)*1.6,Math.sin(t*14+i*1.7));
+    }
+  } else if (m.kind==='blood'){
+    ctx.fillStyle='#09030a';                     /* bats circling the blood moon */
+    for (i=0;i<4;i++){
+      var an=t*0.55+i*1.57, rr2=R*(1.9+0.4*Math.sin(t*0.4+i));
+      batShape(mx+Math.cos(an)*rr2,my+Math.sin(an)*rr2*0.45,5+(i%2)*2,Math.sin(t*15+i*2.1));
+    }
+  }
+  if (ZN.ridge){
+    var rs=ridgeSprite(), shift=((bgX%RIDGE_W)+RIDGE_W)%RIDGE_W, top=horizonY-(RIDGE_H-2);
+    for (var pass=0;pass<2;pass++){
+      var ox=shift-W*0.8-pass*RIDGE_W;           /* the mansion starts at x = 0.8 W, as on the picker */
+      if (ox>W || ox+RIDGE_W<0) continue;
+      blitDev(rs, 0, 0, rs.width, rs.height, Math.round(ox*dpr), Math.round(top*dpr));
+      if (ridgeWin.length){                      /* one window lights and flickers; a shape walks past it */
+        var w=ridgeWin[(Math.floor(t/7)%3===0)?6:2], fl=0.65+0.35*Math.sin(t*23)*Math.sin(t*7.3);
+        if (Math.sin(t*0.9)>-0.3 && ox+w[0]<W && ox+w[0]+w[2]>0){
+          var wx=ox+w[0], wy=top+w[1];
+          ctx.fillStyle='rgba(255,170,70,'+clamp(fl,0.3,1).toFixed(2)+')'; ctx.fillRect(wx,wy,w[2],w[3]);
+          ctx.globalAlpha=0.35; ctx.fillStyle='#ffb050'; ctx.fillRect(wx-2,wy-2,w[2]+4,w[3]+4); ctx.globalAlpha=1;
+          var sx=wx+((t*0.6)%1.6)/1.6*(w[2]+6)-3;
+          ctx.fillStyle='#120612'; ctx.fillRect(clamp(sx,wx,wx+w[2]-2),wy+2,2,w[3]-2);
+        }
+      }
+    }
+  }
+}
+/* the mist's wisps: slow pale bands drifting across the road, over the ground fog (zones with `wisps`) */
+var wispCv=null;
+function mistWisps(n){
+  if (!wispCv){                                  /* one soft pale blob, painted once and stretched into each wisp */
+    wispCv=offCv(null,128,128); var g=wispCv.getContext('2d'), gr=g.createRadialGradient(64,64,0,64,64,64);
+    gr.addColorStop(0,'rgba(190,170,215,1)'); gr.addColorStop(1,'rgba(190,170,215,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
+  }
+  var t=performance.now()/1000, A0=ctx.globalAlpha;
+  for (var i=0;i<n;i++){
+    var ww=260+i*70, sp=W+ww*2, x=((t*(10+i*5)*(i%2?1:-1)+i*331)%sp+sp)%sp-ww, y=horizonY+10+i*16, hh=8+i*4;
+    ctx.globalAlpha=A0*Math.max(0,0.10-i*0.012); ctx.drawImage(wispCv,x-ww,y-hh,ww*2,hh*2);
+  }
+  ctx.globalAlpha=A0;
+}
 function drawSky(){
   /* sky rows only; drawGround() copies the rest after the skyline, which
      paints a pixel or two below the horizon and must stay covered */
@@ -4024,6 +4383,8 @@ function drawSky(){
       }
     }
   }
+
+  if (ZN.moon) drawMoonSky();          /* build 84: the moon, its bats and clouds, the ridge */
 
   /* Horizon haze, on top of the skyline so distant buildings sink into it.
      VAPOR ships with a==0, so this is a no-op until a zone asks for it. */
@@ -4685,6 +5046,1329 @@ function decoAlien(zRel,lat,u,idx,side,hail){
   ctx.lineCap='butt'; ctx.lineJoin='miter';
   alienBubble(J,u,hail);
 }
+/* ---------------------------------------------------------------
+   HAUNTED HIGHWAY'S ROADSIDE (build 84, Carlos's picks on the Halloween
+   picker: BOTH looks for every prop type, so in this zone each prop tosses
+   build 81's 50/50 coin between its two Halloween looks). Same call shape as
+   the flat deco*() props: x, ground y, ppu, idx, side (+ walk for the dino,
+   hail for the hitchhikers, zRel for the pumpkin stack's monster). Sizes are
+   ppu-relative and detail steps down with distance.
+     mast      A LANTERN TREE           B SCARECROW
+     billboard A JACK-O'-LANTERN STACK  B HAUNTED BILLBOARD
+     kiosk     A WITCH'S CAULDRON STAND B HAUNTED GAS STATION
+     tower     A LEANING CHAPEL         B MANSION TOWER
+     dino      A SKELETON REX           B GHOST REX
+     obelisk   A GRAVEYARD              B RISING HAND
+     alien     A GHOST HITCHHIKER       B SKELETON HITCHHIKER (the hailers)
+   Carlos's three changes (10-18): the haunted billboard shows a MAD SKULL
+   with a grinding grin instead of the ghost face; a big green MONSTER peeks
+   over the jack-o'-lantern stack as you come up to it (and ducks as you pass);
+   the SKELETON REX turns its skull to the camera mid-crossing, opens its jaw
+   wide, then turns back.
+--------------------------------------------------------------- */
+var BONE='#efe6d2', BONE_D='#b9ab8f', INK='#140a14', GOO='#9dff6a';
+function tnow(){ return performance.now()/1000; }
+/* a soft additive glow. Painted once per colour into a small sprite and stretched (build 84: a radial
+   gradient per call cost about twice as much); a = its alpha at the centre, times the current alpha */
+var glowCv={};
+function glowSpr(col){
+  var c=glowCv[col]; if (c) return c;
+  c=offCv(null,64,64); var g=c.getContext('2d'), gr=g.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,hexA(col,1)); gr.addColorStop(1,hexA(col,0)); g.fillStyle=gr; g.fillRect(0,0,64,64);
+  glowCv[col]=c; return c;
+}
+function glowDot(x,y,r,col,a){
+  if (r<=0.5 || a<=0.004) return;
+  var A0=ctx.globalAlpha; ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=clamp(A0*a,0,1);
+  ctx.drawImage(glowSpr(col),x-r,y-r,r*2,r*2); ctx.restore();
+}
+function shadowOn(x,gy,w,u){ var A0=ctx.globalAlpha; ctx.globalAlpha=A0*0.55; ctx.fillStyle='rgba(6,3,10,.9)'; ctx.beginPath(); ctx.ellipse(x,gy,w,Math.max(1,u*0.05),0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=A0; }
+function bone(x0,y0,x1,y1,w){                      /* a bone: dark outline, pale core, knobbed ends */
+  ctx.lineCap='round';
+  ctx.strokeStyle=INK; ctx.lineWidth=w*1.7; ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  ctx.strokeStyle=BONE; ctx.lineWidth=w; ctx.stroke();
+  ctx.fillStyle=BONE; ctx.beginPath(); ctx.arc(x0,y0,w*0.75,0,Math.PI*2); ctx.arc(x1,y1,w*0.75,0,Math.PI*2); ctx.fill();
+}
+function hwBubble(x,y,u,hail){                     /* the hailer's ?/! sign, like the alien's */
+  if (!(hail && u>14)) return;
+  var bt=tnow(); if (Math.sin(bt*7.2)<=-0.55) return;
+  var A0=ctx.globalAlpha, mk=(Math.floor(bt*1.6)%2)?'!':'?', bs=Math.min(52,u*0.46), byy=y-Math.abs(Math.sin(bt*2.6))*u*0.10;
+  ctx.globalAlpha=A0*0.80; ctx.fillStyle='rgba(6,3,14,0.72)'; rr(x-bs*0.46,byy-bs*0.86,bs*0.92,bs*1.06,bs*0.26); ctx.fill();
+  ctx.strokeStyle=hexA('#ffd23f',0.55); ctx.lineWidth=Math.max(1,bs*0.05); ctx.stroke();
+  ctx.globalAlpha=A0; glowText(mk,x,byy,bs*0.80,'#ffd23f','center',blur(Math.min(20,bs*0.45)),'900');
+}
+function pumpkin(x,y,r,k,face,a,seed){             /* x,y = centre; k = candle light 0..1 */
+  ctx.globalAlpha=a;
+  var lobes=[[-0.52,0.86],[0.52,0.86],[-0.22,0.98],[0.22,0.98],[0,1]];
+  for (var i=0;i<lobes.length;i++){
+    var lx=x+lobes[i][0]*r*0.62, rw=r*lobes[i][1]*0.62;
+    var g=ctx.createRadialGradient(lx-rw*0.3,y-r*0.4,rw*0.1,lx,y,r);
+    g.addColorStop(0,'#ffb24a'); g.addColorStop(0.6,'#ef6a12'); g.addColorStop(1,'#8a2a06');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(lx,y,rw,r*0.82,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle='#3a5a1a'; ctx.beginPath(); ctx.moveTo(x-r*0.08,y-r*0.74); ctx.lineTo(x+r*0.10,y-r*0.74); ctx.lineTo(x+r*0.18,y-r*1.02); ctx.lineTo(x+r*0.04,y-r*1.0); ctx.closePath(); ctx.fill();
+  if (!face || r<3) return;
+  var glow='rgba(255,'+Math.round(200+40*k)+','+Math.round(60+80*k)+','+(0.35+0.65*k).toFixed(3)+')';
+  ctx.fillStyle=k>0.05?glow:'#2a0c04';
+  ctx.beginPath();                                   /* eyes */
+  ctx.moveTo(x-r*0.42,y-r*0.06); ctx.lineTo(x-r*0.26,y-r*0.38); ctx.lineTo(x-r*0.10,y-r*0.06); ctx.closePath();
+  ctx.moveTo(x+r*0.10,y-r*0.06); ctx.lineTo(x+r*0.26,y-r*0.38); ctx.lineTo(x+r*0.42,y-r*0.06); ctx.closePath();
+  ctx.moveTo(x-r*0.07,y+r*0.06); ctx.lineTo(x,y-r*0.08); ctx.lineTo(x+r*0.07,y+r*0.06); ctx.closePath();   /* nose */
+  ctx.fill();
+  ctx.beginPath();                                   /* the jagged grin */
+  ctx.moveTo(x-r*0.50,y+r*0.16);
+  var teeth=seed%2?5:4;
+  for (var j=0;j<=teeth*2;j++){ var fx=x-r*0.50+j*(r*1.0/(teeth*2)); ctx.lineTo(fx,y+r*(j%2?0.30:0.20)); }
+  ctx.lineTo(x+r*0.50,y+r*0.16); ctx.quadraticCurveTo(x,y+r*0.66,x-r*0.50,y+r*0.16); ctx.closePath(); ctx.fill();
+  if (k>0.05 && r>6){ ctx.save(); ctx.globalCompositeOperation='lighter';
+    var hg=ctx.createRadialGradient(x,y,r*0.2,x,y,r*2.2);
+    hg.addColorStop(0,'rgba(255,140,40,'+(0.30*k*a).toFixed(3)+')'); hg.addColorStop(1,'rgba(255,90,20,0)');
+    ctx.fillStyle=hg; ctx.fillRect(x-r*2.2,y-r*2.2,r*4.4,r*4.4); ctx.restore(); }
+}
+
+/* ---------------- MAST slot ---------------- */
+/* A: LANTERN TREE. A gnarled dead tree with three lanterns swinging from its branches. */
+function hwMastA(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha, h=u*2.7, sway=Math.sin(t*0.7+idx)*0.04;
+  shadowOn(x,gy,u*0.6,u);
+  ctx.fillStyle='#1a0e1a';
+  ctx.beginPath(); ctx.moveTo(x-u*0.17,gy); ctx.quadraticCurveTo(x-u*0.05,gy-h*0.25,x-u*0.10,gy-h*0.5);
+  ctx.quadraticCurveTo(x-u*0.12,gy-h*0.62,x-u*0.03,gy-h*0.66); ctx.lineTo(x+u*0.05,gy-h*0.64);
+  ctx.quadraticCurveTo(x+u*0.03,gy-h*0.42,x+u*0.09,gy-h*0.22); ctx.quadraticCurveTo(x+u*0.12,gy-h*0.06,x+u*0.22,gy); ctx.closePath(); ctx.fill();
+  if (u>=16){ ctx.globalAlpha=A0*0.6; ctx.strokeStyle='#6b3f8a'; ctx.lineWidth=Math.max(1,u*0.012);
+    ctx.beginPath(); ctx.moveTo(x-u*0.16,gy-u*0.02); ctx.quadraticCurveTo(x-u*0.05,gy-h*0.25,x-u*0.10,gy-h*0.5); ctx.stroke(); ctx.globalAlpha=A0; }
+  var tips=[];
+  function br(x0,y0,len,ang,w,d){
+    var x1=x0+Math.cos(ang)*len, y1=y0+Math.sin(ang)*len;
+    ctx.strokeStyle='#1a0e1a'; ctx.lineWidth=Math.max(0.8,w); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.quadraticCurveTo((x0+x1)/2+Math.sin(d+idx)*len*0.12,(y0+y1)/2,x1,y1); ctx.stroke();
+    if (d===2) tips.push([x1,y1]);
+    if (d<=0 || (u<10 && d<=1)) return;               /* far away: one level less of twigs */
+    for (var i=0;i<2;i++){ var r=hashAt(idx*13+d*7+i,4);
+      br(x1,y1,len*(0.58+0.18*r),ang+(i?0.55:-0.6)+(r-0.5)*0.35+sway*(4-d),w*0.6,d-1); }
+  }
+  br(x,gy-h*0.64,h*0.26,-Math.PI/2-0.75,u*0.07,3);
+  br(x,gy-h*0.64,h*0.24,-Math.PI/2+0.7,u*0.07,3);
+  br(x-u*0.06,gy-h*0.46,h*0.20,Math.PI+0.35,u*0.05,2);
+  ctx.lineCap='butt';
+  if (u<10) return;
+  for (var j=0;j<Math.min(3,tips.length);j++){
+    var tp=tips[(j*2+idx)%tips.length], L=u*(0.22+0.08*j), a=Math.sin(t*1.6+j*2.1+idx)*0.22;
+    var lx=tp[0]+Math.sin(a)*L, ly=tp[1]+Math.cos(a)*L, k=lampFlame(t,j+idx), lw=u*0.07;
+    ctx.strokeStyle='rgba(30,16,30,.9)'; ctx.lineWidth=Math.max(0.6,u*0.006); ctx.beginPath(); ctx.moveTo(tp[0],tp[1]); ctx.lineTo(lx,ly); ctx.stroke();
+    glowDot(lx,ly+lw*0.7,u*0.26,'#ff9a2e',0.45*k*A0);
+    ctx.fillStyle=INK; ctx.fillRect(lx-lw*0.6,ly,lw*1.2,lw*0.25); ctx.fillRect(lx-lw*0.6,ly+lw*1.35,lw*1.2,lw*0.22);
+    ctx.fillStyle='rgba(255,200,110,'+(0.55+0.45*k).toFixed(3)+')'; ctx.fillRect(lx-lw*0.45,ly+lw*0.25,lw*0.9,lw*1.1);
+  }
+}
+/* B: SCARECROW. A burlap head with a glowing stitched grin, a pointed hat, a ragged coat, crows on the arms. */
+function hwMastB(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha, h=u*2.1, sw=Math.sin(t*0.9+idx)*0.035;
+  shadowOn(x,gy,u*0.4,u);
+  ctx.fillStyle='#2a1a12'; ctx.fillRect(x-u*0.035,gy-h,u*0.07,h);
+  ctx.save(); ctx.translate(x,gy-h*0.74); ctx.rotate(sw);
+  var ax=u*0.62;
+  ctx.fillStyle='#2a1a12'; ctx.fillRect(-ax,-u*0.03,ax*2,u*0.06);
+  ctx.fillStyle='#2b1640';
+  ctx.beginPath(); ctx.moveTo(-ax*0.95,-u*0.05); ctx.lineTo(ax*0.95,-u*0.05);
+  ctx.lineTo(ax*0.92,u*0.14); ctx.lineTo(ax*0.78,u*0.08); ctx.lineTo(ax*0.62,u*0.18); ctx.lineTo(u*0.24,u*0.10);
+  ctx.lineTo(u*0.28,u*0.72); ctx.lineTo(u*0.16,u*0.62); ctx.lineTo(u*0.06,u*0.76); ctx.lineTo(-u*0.05,u*0.64); ctx.lineTo(-u*0.16,u*0.78); ctx.lineTo(-u*0.28,u*0.66);
+  ctx.lineTo(-u*0.24,u*0.10); ctx.lineTo(-ax*0.62,u*0.18); ctx.lineTo(-ax*0.78,u*0.08); ctx.lineTo(-ax*0.92,u*0.14); ctx.closePath(); ctx.fill();
+  if (u>=14){ ctx.strokeStyle='#ff7a1a'; ctx.globalAlpha=A0*0.55; ctx.lineWidth=Math.max(1,u*0.01);
+    ctx.strokeRect(-u*0.16,u*0.18,u*0.12,u*0.12); ctx.globalAlpha=A0;
+    ctx.strokeStyle='#d9b35a'; ctx.lineWidth=Math.max(1,u*0.012);
+    for (var s2=-1;s2<=1;s2+=2) for (var q=0;q<4;q++){ ctx.beginPath(); ctx.moveTo(s2*ax*0.92,u*0.02); ctx.lineTo(s2*(ax+u*0.08),u*(-0.04+q*0.05)); ctx.stroke(); } }
+  var hr=u*0.20, hy=-u*0.30;
+  var hg=ctx.createRadialGradient(-hr*0.3,hy-hr*0.3,hr*0.1,0,hy,hr*1.1); hg.addColorStop(0,'#d8b07a'); hg.addColorStop(1,'#7a5530');
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.ellipse(0,hy,hr,hr*1.08,0,0,Math.PI*2); ctx.fill();
+  var k=0.75+0.25*Math.sin(t*6+idx)*Math.sin(t*2.3);
+  if (u>=12){
+    ctx.fillStyle='rgba(255,170,50,'+(0.6+0.4*k).toFixed(3)+')';
+    ctx.beginPath(); ctx.moveTo(-hr*0.55,hy-hr*0.05); ctx.lineTo(-hr*0.30,hy-hr*0.35); ctx.lineTo(-hr*0.12,hy-hr*0.05); ctx.closePath();
+    ctx.moveTo(hr*0.12,hy-hr*0.05); ctx.lineTo(hr*0.30,hy-hr*0.35); ctx.lineTo(hr*0.55,hy-hr*0.05); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(255,170,50,'+(0.6+0.4*k).toFixed(3)+')'; ctx.lineWidth=Math.max(1,u*0.014);
+    ctx.beginPath(); ctx.moveTo(-hr*0.55,hy+hr*0.38); ctx.quadraticCurveTo(0,hy+hr*0.70,hr*0.55,hy+hr*0.38); ctx.stroke();
+    ctx.lineWidth=Math.max(0.8,u*0.008);
+    for (var st=-2;st<=2;st++){ var sx=st*hr*0.22; ctx.beginPath(); ctx.moveTo(sx,hy+hr*0.40+Math.abs(st)*-hr*0.06); ctx.lineTo(sx,hy+hr*0.62-Math.abs(st)*hr*0.08); ctx.stroke(); }
+    glowDot(0,hy,hr*2.2,'#ff8a1f',0.20*k*A0);
+  }
+  ctx.fillStyle='#120812';
+  ctx.beginPath(); ctx.ellipse(0,hy-hr*0.78,hr*1.55,hr*0.26,0.06,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-hr*0.75,hy-hr*0.85); ctx.lineTo(hr*0.75,hy-hr*0.85); ctx.quadraticCurveTo(hr*0.3,hy-hr*1.6,hr*0.62,hy-hr*2.3); ctx.quadraticCurveTo(-hr*0.2,hy-hr*1.7,-hr*0.75,hy-hr*0.85); ctx.fill();
+  if (u>=14){ ctx.fillStyle='#ff7a1a'; ctx.fillRect(-hr*0.72,hy-hr*1.02,hr*1.44,hr*0.14); }
+  if (u>=10) for (var c=0;c<2;c++){
+    var cx=(c?1:-1)*ax*0.72, flap=(c===0 && ((t+idx)%5)<0.8)?Math.sin(t*30):0, cs=u*0.10;
+    ctx.fillStyle='#07030a';
+    ctx.beginPath(); ctx.ellipse(cx,-u*0.10,cs*0.55,cs*0.32,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+(c?-1:1)*cs*0.45,-u*0.17,cs*0.22,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx+(c?-1:1)*cs*0.62,-u*0.18); ctx.lineTo(cx+(c?-1:1)*cs*0.92,-u*0.16); ctx.lineTo(cx+(c?-1:1)*cs*0.62,-u*0.14); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx-(c?-1:1)*cs*0.4,-u*0.10); ctx.lineTo(cx-(c?-1:1)*cs*0.95,-u*0.04); ctx.lineTo(cx-(c?-1:1)*cs*0.45,-u*0.05); ctx.fill();
+    if (flap){ ctx.beginPath(); ctx.moveTo(cx-cs*0.2,-u*0.12); ctx.lineTo(cx-cs*0.1,-u*0.12-cs*0.9*Math.abs(flap)); ctx.lineTo(cx+cs*0.35,-u*0.12); ctx.fill(); }
+    if (u>=20){ ctx.fillStyle='#ffd23f'; ctx.fillRect(cx+(c?-1:1)*cs*0.50-1,-u*0.185,2,2); }
+  }
+  ctx.restore();
+}
+
+/* ---------------- BILLBOARD slot ---------------- */
+/* How far the stack's monster has come up (0 hidden .. 1 peeking): it rises while the stack is
+   34,000-24,000 units ahead, stays up while you approach, and ducks back down as you pass (4,200-2,600
+   ahead, when the stack is at the screen's edge). Distance, not a clock, so every stack you drive up to
+   shows it: about two seconds at racing speed, longer when slower. */
+function peekAt(zRel){
+  return ease((34000-zRel)/10000)*ease((zRel-2600)/1600);
+}
+/* the green monster's head, drawn BEHIND the stack and clipped at the top bale, so only what clears
+   the bales shows: the flat top, the fringe, the stitched brow, the bolts and two yellow eyes */
+function monsterHead(x,gy,u,idx,side,pk,t){
+  var A0=ctx.globalAlpha, hx=x+u*0.02+Math.sin(t*0.7+idx)*u*0.02, top=gy-u*0.66;
+  var y0=top+u*0.06-pk*u*0.78+Math.sin(t*1.6+idx)*u*0.015*pk, hw=u*0.42, hh=u*1.0;
+  ctx.save(); ctx.beginPath(); ctx.rect(x-u*1.2,top-u*2.2,u*2.4,u*2.2+u*0.01); ctx.clip();
+  var sg=ctx.createLinearGradient(0,y0,0,y0+hh); sg.addColorStop(0,'#86d860'); sg.addColorStop(0.5,'#5fae46'); sg.addColorStop(1,'#356b2a');
+  ctx.fillStyle=sg; rr(hx-hw,y0,hw*2,hh,u*0.08); ctx.fill();
+  ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,u*0.018); ctx.stroke();
+  /* the bolts, out of the temples */
+  if (u>=10) for (var b=-1;b<=1;b+=2){
+    var bx=hx+b*hw, by=y0+u*0.40;
+    ctx.fillStyle='#8f949c'; ctx.fillRect(Math.min(bx,bx+b*u*0.09),by-u*0.035,u*0.09,u*0.07);
+    ctx.fillStyle='#55595f'; ctx.fillRect(bx+b*u*0.07-u*0.012,by-u*0.05,u*0.024,u*0.10);
+    if (Math.sin(t*3.1+b*2+idx)>0.97) glowDot(bx+b*u*0.10,by,u*0.09,'#c8ffff',0.9*A0);
+  }
+  /* the black fringe, jagged */
+  ctx.fillStyle='#120e16'; ctx.beginPath(); ctx.moveTo(hx-hw-u*0.01,y0-u*0.04); ctx.lineTo(hx+hw+u*0.01,y0-u*0.04);
+  for (var i=0;i<=8;i++){ var fx=hx+hw-i*hw*2/8; ctx.lineTo(fx,y0+u*(i%2?0.12:0.19)); }
+  ctx.closePath(); ctx.fill();
+  if (u>=12){                                       /* the stitched scar across the brow */
+    ctx.strokeStyle='#1d2a16'; ctx.lineWidth=Math.max(1,u*0.012);
+    ctx.beginPath(); ctx.moveTo(hx-hw*0.62,y0+u*0.25); ctx.lineTo(hx+hw*0.20,y0+u*0.22); ctx.stroke();
+    for (var s=0;s<5;s++){ var sx=hx-hw*0.55+s*hw*0.17; ctx.beginPath(); ctx.moveTo(sx,y0+u*0.20); ctx.lineTo(sx+u*0.01,y0+u*0.28); ctx.stroke(); }
+  }
+  ctx.fillStyle='rgba(30,58,24,.85)'; ctx.fillRect(hx-hw*0.86,y0+u*0.30,hw*1.72,u*0.05);   /* the heavy brow */
+  /* the eyes: sunken, yellow, looking out at the road; a blink now and then */
+  var look=-side*u*0.035, blink=((t*0.42+hashAt(idx,17))%1)<0.05;
+  for (var e=-1;e<=1;e+=2){
+    var ex=hx+e*u*0.17, ey=y0+u*0.42;
+    ctx.fillStyle='#16240f'; ctx.beginPath(); ctx.ellipse(ex,ey,u*0.105,u*0.065,0,0,Math.PI*2); ctx.fill();
+    if (!blink){
+      glowDot(ex+look,ey,u*0.16,'#ffe14a',0.35*A0);
+      ctx.fillStyle='#ffe14a'; ctx.beginPath(); ctx.ellipse(ex+look,ey,u*0.055,u*0.045,0,0,Math.PI*2); ctx.fill();
+      if (u>=12){ ctx.fillStyle='#120a04'; ctx.beginPath(); ctx.arc(ex+look*1.4,ey,Math.max(0.8,u*0.018),0,Math.PI*2); ctx.fill(); }
+    } else { ctx.fillStyle='#4f9a3c'; ctx.fillRect(ex-u*0.10,ey-u*0.012,u*0.20,u*0.024); }
+  }
+  if (u>=12){                                       /* the flat nose and the grim stitched mouth (usually behind the bales) */
+    ctx.fillStyle='#3e7a30'; ctx.beginPath(); ctx.moveTo(hx-u*0.06,y0+u*0.60); ctx.lineTo(hx+u*0.06,y0+u*0.60); ctx.lineTo(hx+u*0.04,y0+u*0.50); ctx.lineTo(hx-u*0.04,y0+u*0.50); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#1d2a16'; ctx.lineWidth=Math.max(1,u*0.014); ctx.beginPath(); ctx.moveTo(hx-hw*0.5,y0+u*0.76); ctx.lineTo(hx+hw*0.5,y0+u*0.74); ctx.stroke();
+  }
+  ctx.restore();
+}
+/* its fingers hooked over the top bale's front edge (drawn in front of the bale) */
+function monsterHands(x,gy,u,pk){
+  var top=gy-u*0.66, k=clamp((pk-0.35)/0.4,0,1); if (k<=0) return;
+  var A0=ctx.globalAlpha; ctx.globalAlpha=A0*k;
+  for (var hnd=0;hnd<2;hnd++){
+    var cx=x+(hnd?0.26:-0.22)*u;
+    ctx.fillStyle='#5fae46'; ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,u*0.01);
+    rr(cx-u*0.11,top-u*0.035,u*0.22,u*0.05,u*0.02); ctx.fill(); ctx.stroke();       /* the knuckles along the edge */
+    for (var f=0;f<4;f++){ var fx=cx-u*0.09+f*u*0.06, fl=u*(0.09+0.02*(f===1||f===2));
+      ctx.fillStyle='#5fae46'; rr(fx-u*0.02,top-u*0.01,u*0.04,fl,u*0.018); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#1d2a16'; ctx.fillRect(fx-u*0.012,top-u*0.01+fl-u*0.025,u*0.024,u*0.018); }   /* dark nails */
+  }
+  ctx.globalAlpha=A0;
+}
+/* A: JACK-O'-LANTERN STACK. Hay bales and four carved pumpkins, each candle flickering on its own;
+   build 84 (Carlos): the top pumpkins sit at the corners and a big green monster peeks between them. */
+function hwBillboardA(x,gy,u,idx,side,zRel){
+  var t=tnow(), A0=ctx.globalAlpha, pk=(u>=8)?peekAt(zRel):0;
+  shadowOn(x,gy,u*0.9,u);
+  if (pk>0.01) monsterHead(x,gy,u,idx,side,pk,t);
+  ctx.globalAlpha=A0;
+  function bale(bx,by,bw,bh){
+    var g=ctx.createLinearGradient(0,by,0,by+bh); g.addColorStop(0,'#9a7a34'); g.addColorStop(1,'#4a3414');
+    ctx.fillStyle=g; rr(bx,by,bw,bh,bh*0.18); ctx.fill();
+    if (u>=16){ ctx.strokeStyle='rgba(30,16,6,.6)'; ctx.lineWidth=Math.max(1,u*0.008);
+      ctx.beginPath(); ctx.moveTo(bx+bw*0.3,by); ctx.lineTo(bx+bw*0.3,by+bh); ctx.moveTo(bx+bw*0.7,by); ctx.lineTo(bx+bw*0.7,by+bh); ctx.stroke();
+      ctx.strokeStyle='rgba(230,200,120,.35)';
+      for (var i=0;i<6;i++){ var sx=bx+hashAt(idx+i,7)*bw; ctx.beginPath(); ctx.moveTo(sx,by+bh*0.2); ctx.lineTo(sx+u*0.03,by+bh*0.55); ctx.stroke(); } }
+  }
+  bale(x-u*0.75,gy-u*0.34,u*0.80,u*0.34); bale(x+u*0.02,gy-u*0.34,u*0.80,u*0.34); bale(x-u*0.38,gy-u*0.66,u*0.80,u*0.32);
+  if (pk>0.01 && u>=10) monsterHands(x,gy,u,pk);
+  var P=[[x-u*0.40,gy-u*0.66-u*0.14,u*0.17,0],[x-u*0.52,gy-u*0.34-u*0.19,u*0.21,1],[x+u*0.50,gy-u*0.34-u*0.23,u*0.25,2],[x+u*0.42,gy-u*0.66-u*0.12,u*0.15,3]];
+  for (var p=0;p<P.length;p++){ var k=lampFlame(t*1.1,p+idx); pumpkin(P[p][0],P[p][1],P[p][2],k,u>=8,A0,p+idx); }
+  if (u>=20){ ctx.globalAlpha=A0; ctx.fillStyle='#2a0c04';
+    ctx.fillRect(x-u*0.62,gy-u*0.40,u*0.04,u*0.06); glowDot(x-u*0.60,gy-u*0.43,u*0.08,'#ffd27a',0.8*A0); }
+  ctx.globalAlpha=A0;
+}
+/* the mad skull (origin = its centre, r = its half height): cracked cranium, slanted sockets with tiny
+   jittering red pupils, and a grin from cheek to cheek whose lower teeth grind side to side */
+function madSkull(r,t,idx,u){
+  var A0=ctx.globalAlpha, i;
+  var sg=ctx.createRadialGradient(-r*0.25,-r*0.45,r*0.1,0,-r*0.1,r*1.15); sg.addColorStop(0,'#fbf5e6'); sg.addColorStop(1,BONE_D);
+  ctx.fillStyle=sg; ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,r*0.05); ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(-r*0.70,r*0.16);
+  ctx.bezierCurveTo(-r*0.98,-r*0.32,-r*0.72,-r*0.98,0,-r*0.98);
+  ctx.bezierCurveTo(r*0.72,-r*0.98,r*0.98,-r*0.32,r*0.70,r*0.16);
+  ctx.lineTo(r*0.64,r*0.40); ctx.lineTo(r*0.40,r*0.50); ctx.lineTo(-r*0.40,r*0.50); ctx.lineTo(-r*0.64,r*0.40); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  /* the lower jaw: chattering and grinding */
+  var gx=Math.sin(t*22+idx)*r*0.05, gy=Math.max(0,Math.sin(t*9+idx))*r*0.06;
+  ctx.save(); ctx.translate(gx,gy);
+  ctx.fillStyle=BONE; ctx.beginPath(); ctx.moveTo(-r*0.58,r*0.40); ctx.lineTo(r*0.58,r*0.40); ctx.lineTo(r*0.48,r*0.80); ctx.quadraticCurveTo(0,r*1.02,-r*0.48,r*0.80); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  /* the grin: a wide black crescent, its corners slit up toward the cheekbones */
+  ctx.fillStyle='#0b0510';
+  ctx.beginPath(); ctx.moveTo(-r*0.64,r*0.18); ctx.quadraticCurveTo(0,r*0.44,r*0.64,r*0.18); ctx.quadraticCurveTo(0,r*0.86+gy,-r*0.64,r*0.18); ctx.closePath(); ctx.fill();
+  ctx.lineWidth=Math.max(1,r*0.035);
+  ctx.beginPath(); ctx.moveTo(-r*0.62,r*0.19); ctx.lineTo(-r*0.78,r*0.00); ctx.moveTo(r*0.62,r*0.19); ctx.lineTo(r*0.78,r*0.00); ctx.stroke();
+  if (u>=14){                                         /* teeth: the upper row fixed, the lower row grinding */
+    var N=10, tw=r*1.2/N;
+    for (i=0;i<N;i++){
+      var s=(i+0.5)/N, tx=-r*0.60+r*1.2*s;
+      var yt=r*((1-s)*(1-s)*0.20+2*(1-s)*s*0.44+s*s*0.20), yb=r*((1-s)*(1-s)*0.20+2*(1-s)*s*0.84+s*s*0.20)+gy;
+      var lt=r*(0.08+0.07*Math.sin(s*Math.PI));
+      ctx.fillStyle=BONE; ctx.fillRect(tx-tw*0.40,yt-r*0.02,tw*0.80,lt);
+      ctx.fillRect(tx-tw*0.40+gx,yb-lt,tw*0.80,lt+r*0.01);
+    }
+  }
+  /* the sockets: slanted in an angry frown */
+  ctx.fillStyle='#0b0510';
+  ctx.beginPath(); ctx.moveTo(-r*0.56,-r*0.30); ctx.lineTo(-r*0.10,-r*0.12); ctx.lineTo(-r*0.16,r*0.06); ctx.quadraticCurveTo(-r*0.46,r*0.10,-r*0.56,-r*0.30); ctx.closePath();
+  ctx.moveTo(r*0.56,-r*0.30); ctx.lineTo(r*0.10,-r*0.12); ctx.lineTo(r*0.16,r*0.06); ctx.quadraticCurveTo(r*0.46,r*0.10,r*0.56,-r*0.30); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,r*0.06); ctx.quadraticCurveTo(-r*0.13,r*0.24,-r*0.03,r*0.29); ctx.lineTo(0,r*0.23); ctx.lineTo(r*0.03,r*0.29); ctx.quadraticCurveTo(r*0.13,r*0.24,0,r*0.06); ctx.fill();   /* the nose */
+  if (u>=12){                                         /* a crack down the crown */
+    ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,r*0.03);
+    ctx.beginPath(); ctx.moveTo(r*0.16,-r*0.97); ctx.lineTo(r*0.06,-r*0.72); ctx.lineTo(r*0.20,-r*0.58); ctx.lineTo(r*0.10,-r*0.42); ctx.stroke();
+  }
+  /* mad red pupils: tiny, mismatched, jittering */
+  var jt=Math.floor(t*9+idx);
+  for (var e=-1;e<=1;e+=2){
+    var px=e*r*0.33+(hashAt(jt*2+e,61)-0.5)*r*0.10, py=-r*0.08+(hashAt(jt*3+e,62)-0.5)*r*0.06, pr=r*(e<0?0.07:0.045);
+    glowDot(px,py,r*0.30,'#ff2a2a',0.55*A0);
+    ctx.fillStyle='#ff4a3a'; ctx.beginPath(); ctx.arc(px,py,Math.max(0.8,pr),0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff0e0'; ctx.beginPath(); ctx.arc(px,py,Math.max(0.5,pr*0.35),0,Math.PI*2); ctx.fill();
+  }
+  ctx.lineJoin='miter'; ctx.globalAlpha=A0;
+}
+/* B: HAUNTED BILLBOARD. A torn poster on rusty legs; build 84 (Carlos): a mad skull with a grinding
+   grin fades in through the tear, twitching and lunging, glitching in slices; one spotlight is dying. */
+function hwBillboardB(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha, bw=u*1.9, bh=u*1.05, by=gy-u*1.05-bh;
+  shadowOn(x,gy,u*1.1,u);
+  ctx.fillStyle='#2a1c22'; ctx.fillRect(x-bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh); ctx.fillRect(x+bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh);
+  if (u>=14){ ctx.strokeStyle='#2a1c22'; ctx.lineWidth=Math.max(1,u*0.025); ctx.beginPath(); ctx.moveTo(x-bw*0.36,by+bh+u*0.1); ctx.lineTo(x+bw*0.36,gy-u*0.2); ctx.stroke(); }
+  ctx.fillStyle='#1a0e18'; ctx.fillRect(x-bw/2-u*0.04,by-u*0.04,bw+u*0.08,bh+u*0.08);
+  var pg=ctx.createLinearGradient(0,by,0,by+bh); pg.addColorStop(0,'#3a1a4a'); pg.addColorStop(1,'#16081e');
+  ctx.fillStyle=pg; ctx.fillRect(x-bw/2,by,bw,bh);
+  if (u>=12){
+    ctx.save(); ctx.beginPath(); ctx.rect(x-bw/2,by,bw,bh); ctx.clip();
+    ctx.fillStyle='rgba(255,122,26,.30)'; ctx.beginPath(); ctx.arc(x-bw*0.22,by+bh*0.70,bh*0.38,Math.PI,0); ctx.fill();
+    ctx.fillStyle='rgba(255,47,190,.20)'; for (var s=0;s<4;s++) ctx.fillRect(x-bw/2,by+bh*(0.55+s*0.1),bw*0.6,bh*0.03);
+    ctx.fillStyle='#0b0510';
+    ctx.beginPath(); ctx.moveTo(x-bw*0.05,by); ctx.lineTo(x+bw*0.50,by); ctx.lineTo(x+bw*0.50,by+bh);
+    for (var i=0;i<=8;i++){ var ty=by+bh-i*bh/8; ctx.lineTo(x+bw*(0.12+0.10*hashAt(idx+i,8))-(i%2)*bw*0.05,ty); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(240,225,200,.55)'; ctx.lineWidth=Math.max(1,u*0.01); ctx.stroke();
+    var cyc=(t+idx*1.3)%6, vis=cyc<0.6?cyc/0.6:(cyc<3.8?1:(cyc<4.6?(4.6-cyc)/0.8:0)), gl=(Math.sin(t*37)>0.7)?1:0;
+    if (vis>0.01){
+      var fx=x+bw*0.28, fy=by+bh*0.50, fr=bh*0.40;
+      var tw=(hashAt(Math.floor(t*6)+idx,13)-0.5)*0.24, lunge=1+0.12*clamp((cyc-0.6)/0.5,0,1)*clamp((3.8-cyc)/0.6,0,1);
+      glowDot(fx,fy,fr*2.0,'#ff3a3a',0.20*vis*A0);
+      for (var sl=0;sl<6;sl++){
+        var y0=fy-fr*1.30+sl*fr*0.44, off=gl*(hashAt(Math.floor(t*12)+sl,9)-0.5)*u*0.14;
+        ctx.save(); ctx.beginPath(); ctx.rect(fx-fr*1.5,y0,fr*3.0,fr*0.44+0.5); ctx.clip();
+        ctx.translate(fx+off,fy); ctx.rotate(tw); ctx.scale(lunge,lunge);
+        ctx.globalAlpha=A0*vis; madSkull(fr,t,idx,u);
+        ctx.restore();
+      }
+      ctx.globalAlpha=A0;
+    }
+    ctx.restore();
+  }
+  if (u>=10) for (var L=0;L<2;L++){
+    var lx=x+(L?0.25:-0.25)*bw, on=L===0?1:((Math.sin(t*17)*Math.sin(t*5.3+idx)>0.1)?1:0.15);
+    ctx.globalAlpha=A0; ctx.fillStyle=INK; ctx.fillRect(lx-u*0.06,by-u*0.14,u*0.12,u*0.06); ctx.fillRect(lx-u*0.01,by-u*0.08,u*0.02,u*0.08);
+    if (on>0.2){ ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=A0*0.18*on;
+      ctx.fillStyle='#ffe0a0'; ctx.beginPath(); ctx.moveTo(lx-u*0.05,by-u*0.09); ctx.lineTo(lx+u*0.05,by-u*0.09); ctx.lineTo(lx+bw*0.22,by+bh*0.8); ctx.lineTo(lx-bw*0.22,by+bh*0.8); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  }
+  ctx.globalAlpha=A0;
+}
+
+/* ---------------- KIOSK slot (where the fuel stop stands) ---------------- */
+/* A: WITCH'S CAULDRON STAND. A crooked hut with a lit round window; in front, a bubbling cauldron on a fire. */
+function hwKioskA(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha, hx=x-side*u*0.10;
+  shadowOn(x,gy,u*1.0,u);
+  ctx.save(); ctx.translate(hx,gy); ctx.rotate(side*0.035);
+  ctx.fillStyle='#24141e'; ctx.fillRect(-u*0.55,-u*0.95,u*1.1,u*0.95);
+  if (u>=16){ ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.lineWidth=Math.max(1,u*0.008); for (var pl=1;pl<6;pl++){ ctx.beginPath(); ctx.moveTo(-u*0.55,-u*0.95+pl*u*0.16); ctx.lineTo(u*0.55,-u*0.95+pl*u*0.16+u*0.01); ctx.stroke(); } }
+  ctx.fillStyle='#120a12';
+  ctx.beginPath(); ctx.moveTo(-u*0.72,-u*0.90); ctx.lineTo(u*0.72,-u*0.90); ctx.quadraticCurveTo(u*0.12,-u*1.45,u*0.18,-u*1.95);
+  ctx.quadraticCurveTo(u*0.42,-u*2.05,u*0.38,-u*1.88); ctx.quadraticCurveTo(u*0.0,-u*1.60,-u*0.72,-u*0.90); ctx.closePath(); ctx.fill();
+  var wk=0.8+0.2*Math.sin(t*5+idx);
+  ctx.fillStyle='rgba(255,170,70,'+(0.65+0.35*wk).toFixed(3)+')'; ctx.beginPath(); ctx.arc(-u*0.22,-u*0.58,u*0.14,0,Math.PI*2); ctx.fill();
+  if (u>=14){ ctx.strokeStyle='#24141e'; ctx.lineWidth=Math.max(1,u*0.02); ctx.beginPath(); ctx.moveTo(-u*0.36,-u*0.58); ctx.lineTo(-u*0.08,-u*0.58); ctx.moveTo(-u*0.22,-u*0.72); ctx.lineTo(-u*0.22,-u*0.44); ctx.stroke();
+    ctx.fillStyle='#0b0508'; rr(u*0.12,-u*0.62,u*0.26,u*0.62,u*0.12); ctx.fill(); }
+  glowDot(-u*0.22,-u*0.58,u*0.4,'#ff9a2e',0.25*wk*A0);
+  if (u>=12){
+    ctx.fillStyle='#1a0e14'; ctx.fillRect(-u*0.5,-u*1.18,u*0.46,u*0.24);
+    ctx.fillStyle=GOO; ctx.beginPath(); ctx.moveTo(-u*0.40,-u*0.98); ctx.lineTo(-u*0.18,-u*0.98); ctx.lineTo(-u*0.27,-u*1.14); ctx.closePath(); ctx.fill();
+    ctx.fillRect(-u*0.44,-u*1.0,u*0.30,u*0.025); }
+  ctx.restore();
+  var cx=x+side*-u*0.62, cy=gy-u*0.28, cr=u*0.32, fk=lampFlame(t*1.4,idx);
+  glowDot(cx,gy-u*0.05,u*0.55,'#ff7a1a',0.40*fk*A0);
+  if (u>=10){ ctx.fillStyle='rgba(255,'+(110+60*fk|0)+',30,0.85)';
+    for (var f=0;f<3;f++){ var fx=cx+(f-1)*cr*0.35, fh=u*(0.12+0.06*Math.sin(t*11+f*2)); ctx.beginPath(); ctx.moveTo(fx-u*0.05,gy); ctx.quadraticCurveTo(fx,gy-fh*1.4,fx+u*0.05,gy); ctx.fill(); } }
+  ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,u*0.03);
+  ctx.beginPath(); ctx.moveTo(cx-cr*0.7,cy+cr*0.5); ctx.lineTo(cx-cr*0.85,gy); ctx.moveTo(cx+cr*0.7,cy+cr*0.5); ctx.lineTo(cx+cr*0.85,gy); ctx.stroke();
+  var kg=ctx.createRadialGradient(cx-cr*0.3,cy-cr*0.2,cr*0.1,cx,cy,cr*1.1); kg.addColorStop(0,'#3a3046'); kg.addColorStop(1,'#08060c');
+  ctx.fillStyle=kg; ctx.beginPath(); ctx.ellipse(cx,cy,cr,cr*0.82,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#0d0a12'; ctx.beginPath(); ctx.ellipse(cx,cy-cr*0.62,cr*1.02,cr*0.22,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=GOO; ctx.beginPath(); ctx.ellipse(cx,cy-cr*0.62,cr*0.86,cr*0.15,0,0,Math.PI*2); ctx.fill();
+  glowDot(cx,cy-cr*0.7,cr*1.6,GOO,0.35*A0);
+  if (u>=12){
+    for (var b=0;b<7;b++){
+      var ph=((t*0.7+b*0.37+idx*0.1)%1), bx=cx+(hashAt(b+idx,3)-0.5)*cr*1.4+Math.sin(t*3+b)*u*0.02, by=cy-cr*0.66-ph*u*0.55;
+      ctx.globalAlpha=A0*(1-ph)*0.9; ctx.strokeStyle=GOO; ctx.lineWidth=Math.max(0.8,u*0.008);
+      ctx.beginPath(); ctx.arc(bx,by,u*(0.025+0.02*hashAt(b,5))*(ph>0.85?1.6:1),0,Math.PI*2); ctx.stroke();
+    }
+    for (var w2=0;w2<3;w2++){ var ph2=((t*0.25+w2*0.33)%1);
+      ctx.globalAlpha=A0*0.18*Math.sin(ph2*Math.PI); ctx.fillStyle='#c8ffb0';
+      ctx.beginPath(); ctx.ellipse(cx+Math.sin(t*0.8+w2*2)*u*0.12,cy-cr*0.8-ph2*u*0.9,u*(0.10+ph2*0.18),u*(0.06+ph2*0.08),0,0,Math.PI*2); ctx.fill(); }
+    ctx.globalAlpha=A0;
+  }
+}
+/* B: HAUNTED GAS STATION. The fuel stop gone bad: a buzzing broken light strip, a boarded price sign,
+   and a sheet ghost drifting round the pump. */
+function hwKioskB(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha, cw=u*1.5, ch=u*1.05, cy=gy-ch;
+  shadowOn(x,gy,u*1.0,u);
+  ctx.fillStyle='#1c1222'; ctx.fillRect(x-cw*0.40,cy,u*0.07,ch); ctx.fillRect(x+cw*0.40-u*0.07,cy,u*0.07,ch);
+  ctx.fillStyle='#24182c'; ctx.fillRect(x-cw/2,cy-u*0.20,cw,u*0.20);
+  ctx.fillStyle='#120a16'; ctx.fillRect(x-cw/2,cy,cw,u*0.035);
+  if (u>=10){
+    for (var i=0;i<6;i++){
+      var dead=hashAt(idx*3+i,2)<0.3, buzz=(i===2)?((Math.sin(t*41)*Math.sin(t*6.1)>0)?1:0.1):1, on=dead?0.06:buzz;
+      ctx.fillStyle='rgba(244,236,208,'+(0.15+0.85*on).toFixed(3)+')'; ctx.fillRect(x-cw/2+u*0.06+i*(cw-u*0.12)/6,cy+u*0.035,(cw-u*0.12)/6-u*0.03,Math.max(1,u*0.025));
+    }
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=A0*0.10;
+    ctx.fillStyle='#f4ecd0'; ctx.beginPath(); ctx.moveTo(x-cw*0.45,cy+u*0.06); ctx.lineTo(x+cw*0.45,cy+u*0.06); ctx.lineTo(x+cw*0.6,gy); ctx.lineTo(x-cw*0.6,gy); ctx.closePath(); ctx.fill(); ctx.restore();
+    ctx.globalAlpha=A0;
+  }
+  var px=x, pw=u*0.22, ph=u*0.50;
+  ctx.fillStyle='#2e2034'; rr(px-pw/2,gy-ph,pw,ph,u*0.03); ctx.fill();
+  if (u>=12){ ctx.fillStyle='rgba(157,255,106,'+(0.25+0.2*Math.sin(t*3)).toFixed(3)+')'; ctx.fillRect(px-pw*0.32,gy-ph*0.84,pw*0.64,ph*0.18);
+    ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,u*0.018); ctx.beginPath(); ctx.moveTo(px+pw/2,gy-ph*0.6); ctx.quadraticCurveTo(px+pw*1.4,gy-ph*0.2,px+pw*0.8,gy-ph*0.05); ctx.stroke(); }
+  var sx=x+side*cw*0.72, sh=u*1.45;
+  ctx.fillStyle='#1c1222'; ctx.fillRect(sx-u*0.04,gy-sh,u*0.08,sh);
+  ctx.fillStyle='#2a1a2e'; ctx.fillRect(sx-u*0.24,gy-sh-u*0.45,u*0.48,u*0.45);
+  if (u>=12){ ctx.fillStyle='#5a3a22';
+    ctx.save(); ctx.translate(sx,gy-sh-u*0.22); ctx.rotate(0.35); ctx.fillRect(-u*0.30,-u*0.04,u*0.60,u*0.08); ctx.rotate(-0.7); ctx.fillRect(-u*0.30,-u*0.04,u*0.60,u*0.08); ctx.restore();
+    ctx.fillStyle='rgba(255,122,26,'+(0.45+0.4*((Math.sin(t*2.2)>0)?1:0)).toFixed(3)+')';
+    ctx.beginPath(); ctx.moveTo(sx,gy-sh-u*0.36); ctx.quadraticCurveTo(sx+u*0.07,gy-sh-u*0.25,sx,gy-sh-u*0.20); ctx.quadraticCurveTo(sx-u*0.07,gy-sh-u*0.25,sx,gy-sh-u*0.36); ctx.fill(); }
+  if (u>=8){
+    var an=t*0.6+idx, gx=px+Math.cos(an)*u*0.45, gyy=gy-u*0.55+Math.sin(t*1.7)*u*0.06, gs=u*0.42, behind=Math.sin(an)<0;
+    if (behind){ ctx.fillStyle='#2e2034'; rr(px-pw/2,gy-ph,pw,ph,u*0.03); ctx.fill(); }
+    sheetGhost(gx,gyy,gs,t,idx,0.62,0);
+  }
+}
+function sheetGhost(x,y,s,t,idx,alpha,wave){       /* centre of the head at x,y; s = height; wave 0 none, 1 thumb out, 2 waving */
+  var A0=ctx.globalAlpha, hr=s*0.30;
+  glowDot(x,y+s*0.15,s*0.9,'#cfeaff',0.20*A0*alpha);
+  ctx.globalAlpha=A0*alpha;
+  var g=ctx.createLinearGradient(0,y-hr,0,y+s*0.75); g.addColorStop(0,'#f4fbff'); g.addColorStop(1,'rgba(200,225,255,0.15)');
+  ctx.fillStyle=g;
+  ctx.beginPath(); ctx.arc(x,y,hr,Math.PI,0);
+  ctx.quadraticCurveTo(x+hr*1.15,y+s*0.35,x+hr*1.25,y+s*0.70);
+  for (var i=0;i<=6;i++){ var hx=x+hr*1.25-i*hr*2.5/6; ctx.lineTo(hx,y+s*0.70+((i%2)?-s*0.08:s*0.04)*(0.6+0.4*Math.sin(t*5+i+idx))); }
+  ctx.quadraticCurveTo(x-hr*1.15,y+s*0.35,x-hr,y); ctx.closePath(); ctx.fill();
+  if (wave){
+    var wa=wave===2?Math.sin(t*9)*0.7:0.15;
+    ctx.save(); ctx.translate(x+hr*0.9,y+s*0.22); ctx.rotate(-1.05+wa);
+    ctx.beginPath(); ctx.ellipse(hr*0.55,0,hr*0.62,hr*0.22,0,0,Math.PI*2); ctx.fill();
+    if (wave===1){ ctx.beginPath(); ctx.ellipse(hr*1.12,-hr*0.16,hr*0.10,hr*0.20,0.2,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+  ctx.fillStyle='#0b0510';
+  ctx.beginPath(); ctx.ellipse(x-hr*0.38,y-hr*0.05,hr*0.18,hr*0.28,0,0,Math.PI*2); ctx.ellipse(x+hr*0.38,y-hr*0.05,hr*0.18,hr*0.28,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x,y+hr*0.55,hr*0.16,hr*0.22*(0.8+0.2*Math.sin(t*3+idx)),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=A0;
+}
+
+/* ---------------- TOWER slot ---------------- */
+/* A: LEANING CHAPEL. A stone chapel and a crooked steeple, a glowing rose window, a bell swinging, bats round the spire. */
+function hwTowerA(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha;
+  shadowOn(x,gy,u*1.2,u);
+  ctx.save(); ctx.translate(x,gy);
+  var st='#2a2030', st2='#1c1522';
+  ctx.fillStyle=st2; ctx.fillRect(-u*1.0,-u*1.6,u*1.3,u*1.6);
+  ctx.beginPath(); ctx.moveTo(-u*1.08,-u*1.6); ctx.lineTo(-u*0.35,-u*2.25); ctx.lineTo(u*0.38,-u*1.6); ctx.closePath(); ctx.fill();
+  ctx.rotate(side*0.05);
+  ctx.fillStyle=st; ctx.fillRect(u*0.10,-u*3.0,u*0.62,u*3.0);
+  ctx.beginPath(); ctx.moveTo(u*0.04,-u*3.0); ctx.lineTo(u*0.41,-u*4.7); ctx.lineTo(u*0.78,-u*3.0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#120a14'; ctx.fillRect(u*0.39,-u*5.0,u*0.04,u*0.32); ctx.fillRect(u*0.31,-u*4.9,u*0.20,u*0.04);
+  if (u>=10){
+    ctx.fillStyle='#0d0710'; rr(u*0.22,-u*2.75,u*0.38,u*0.50,u*0.18); ctx.fill();
+    var bs=Math.sin(t*2.2+idx)*0.5;
+    ctx.save(); ctx.translate(u*0.41,-u*2.70); ctx.rotate(bs);
+    ctx.fillStyle='#8a6a2a'; ctx.beginPath(); ctx.moveTo(-u*0.10,u*0.26); ctx.quadraticCurveTo(-u*0.09,u*0.04,0,u*0.03); ctx.quadraticCurveTo(u*0.09,u*0.04,u*0.10,u*0.26); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.rotate(-side*0.05);
+  var k=0.7+0.3*Math.sin(t*1.3+idx);
+  var rx=-u*0.35, ry=-u*1.55, rr2=u*0.22;
+  glowDot(rx,ry,u*0.7,'#ff5a2a',0.30*k*A0);
+  ctx.fillStyle='rgba(255,'+(90+60*k|0)+',40,'+(0.75+0.25*k).toFixed(3)+')'; ctx.beginPath(); ctx.arc(rx,ry,rr2,0,Math.PI*2); ctx.fill();
+  if (u>=12){ ctx.strokeStyle=st2; ctx.lineWidth=Math.max(1,u*0.02);
+    for (var sp=0;sp<8;sp++){ var a=sp*Math.PI/4; ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+Math.cos(a)*rr2,ry+Math.sin(a)*rr2); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(rx,ry,rr2*0.45,0,Math.PI*2); ctx.stroke(); }
+  ctx.fillStyle='rgba(255,140,60,'+(0.5+0.3*k).toFixed(3)+')';
+  for (var w=0;w<2;w++){ var wx=-u*0.82+w*u*0.36; rr(wx,-u*1.05,u*0.16,u*0.55,u*0.08); ctx.fill(); }
+  ctx.fillStyle='#0b0510'; rr(u*0.28,-u*0.62,u*0.26,u*0.62,u*0.13); ctx.fill();
+  if (u>=12){ ctx.fillStyle='#07030a';
+    for (var b=0;b<3;b++){ var an=t*1.1+b*2.1+idx, bx=u*0.41+Math.cos(an)*u*0.75, by=-u*4.1+Math.sin(an)*u*0.25; batShape(bx,by,u*0.09,Math.sin(t*16+b)); } }
+  ctx.restore();
+}
+/* B: HAUNTED MANSION TOWER. A tall Victorian tower, a witch's-hat turret, iron spikes, one window lit
+   where a shape walks past. */
+function hwTowerB(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha;
+  shadowOn(x,gy,u*1.0,u);
+  ctx.save(); ctx.translate(x,gy);
+  var wall='#261a2c', dark='#140c18';
+  ctx.fillStyle=wall; ctx.fillRect(-u*0.62,-u*3.6,u*1.24,u*3.6);
+  ctx.fillStyle=dark; ctx.fillRect(-u*0.70,-u*3.66,u*1.40,u*0.10); ctx.fillRect(-u*0.70,-u*2.0,u*1.40,u*0.08);
+  ctx.fillStyle=wall; ctx.fillRect(-u*0.40,-u*4.25,u*0.80,u*0.62);
+  ctx.fillStyle=dark; ctx.beginPath(); ctx.moveTo(-u*0.52,-u*4.22); ctx.lineTo(u*0.04,-u*5.6); ctx.lineTo(u*0.52,-u*4.22); ctx.closePath(); ctx.fill();
+  ctx.fillRect(u*0.02,-u*5.85,u*0.03,u*0.28);
+  if (u>=12){ ctx.fillStyle=dark; for (var sp=0;sp<7;sp++) ctx.fillRect(-u*0.66+sp*u*0.22,-u*3.82,u*0.025,u*0.16);
+    ctx.fillRect(-u*0.68,-u*3.68,u*1.36,u*0.02);
+    ctx.fillStyle=dark; ctx.fillRect(u*0.35,-u*4.05,u*0.14,u*0.45); }
+  var lit=(Math.floor((t+idx*2)/5)%3), k=0.8+0.2*Math.sin(t*19)*Math.sin(t*3.1);
+  var WIN=[[-0.40,-3.25],[0.14,-3.25],[-0.40,-2.65],[0.14,-2.65],[-0.40,-1.55],[0.14,-1.55],[-0.13,-4.05]];
+  for (var w=0;w<WIN.length;w++){
+    var wx=WIN[w][0]*u, wy=WIN[w][1]*u, ww=u*0.26, wh=u*(w===6?0.30:0.44);
+    var on=(w===lit*2+1)||(w===6 && Math.sin(t*0.7)>0.3);
+    if (on){ glowDot(wx+ww/2,wy+wh/2,u*0.6,'#ff9a2e',0.25*k*A0);
+      ctx.fillStyle='rgba(255,180,90,'+(0.7+0.3*k).toFixed(3)+')'; rr(wx,wy,ww,wh,u*0.10); ctx.fill();
+      if (w!==6 && u>=14){ var sx=wx+((t*0.35+idx)%1.4)/1.4*(ww+u*0.2)-u*0.1;
+        ctx.save(); rr(wx,wy,ww,wh,u*0.10); ctx.clip(); ctx.fillStyle='#120612';
+        ctx.beginPath(); ctx.arc(sx,wy+wh*0.35,u*0.05,0,Math.PI*2); ctx.fill(); ctx.fillRect(sx-u*0.06,wy+wh*0.42,u*0.12,wh*0.6); ctx.restore(); }
+    } else { ctx.fillStyle='#0b0610'; rr(wx,wy,ww,wh,u*0.10); ctx.fill(); }
+    if (u>=16){ ctx.strokeStyle=dark; ctx.lineWidth=Math.max(1,u*0.015); ctx.beginPath(); ctx.moveTo(wx+ww/2,wy+u*0.08); ctx.lineTo(wx+ww/2,wy+wh); ctx.stroke(); }
+  }
+  ctx.fillStyle='#0b0510'; rr(-u*0.16,-u*0.65,u*0.32,u*0.65,u*0.16); ctx.fill();
+  if (u>=12){ ctx.fillStyle=dark; ctx.fillRect(-u*0.75,-u*0.06,u*1.5,u*0.06);
+    for (var r2=0;r2<8;r2++) ctx.fillRect(-u*0.75+r2*u*0.21,-u*0.30,u*0.02,u*0.26);
+    ctx.fillRect(-u*0.75,-u*0.32,u*1.5,u*0.025); }
+  ctx.restore();
+}
+
+/* ---------------- DINO slot: crosses the road far ahead, like the game's dino ---------------- */
+/* the skeleton rex's skull seen from the front (centre x,y; s = road unit in px; open 0..1) */
+function rexSkullFront(x,y,s,open,t,idx,glow){
+  var A0=ctx.globalAlpha, w=Math.max(1,s*0.03), d=open*s*0.34, i;
+  ctx.lineJoin='round';
+  if (d>0.5){                                         /* the open mouth, green fire in the throat */
+    ctx.fillStyle='#0b0510'; ctx.beginPath(); ctx.moveTo(-s*0.22+x,y+s*0.18); ctx.lineTo(s*0.22+x,y+s*0.18); ctx.lineTo(s*0.17+x,y+s*0.24+d); ctx.lineTo(-s*0.17+x,y+s*0.24+d); ctx.closePath(); ctx.fill();
+    glowDot(x,y+s*0.22+d*0.5,s*0.24,GOO,0.40*open*A0);
+  }
+  /* the lower jaw */
+  ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=w;
+  ctx.beginPath(); ctx.moveTo(x-s*0.25,y+s*0.20+d); ctx.lineTo(x+s*0.25,y+s*0.20+d); ctx.lineTo(x+s*0.17,y+s*0.38+d); ctx.quadraticCurveTo(x,y+s*0.44+d,x-s*0.17,y+s*0.38+d); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (s>=14){ for (i=0;i<6;i++){ var tx=x-s*0.19+i*s*0.076; ctx.beginPath(); ctx.moveTo(tx-s*0.02,y+s*0.21+d); ctx.lineTo(tx,y+s*0.13+d); ctx.lineTo(tx+s*0.02,y+s*0.21+d); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+  /* the upper skull: wide at the eyes, narrowing to the snout that points at you */
+  ctx.beginPath(); ctx.moveTo(x-s*0.48,y-s*0.22);
+  ctx.quadraticCurveTo(x-s*0.46,y-s*0.44,x,y-s*0.46); ctx.quadraticCurveTo(x+s*0.46,y-s*0.44,x+s*0.48,y-s*0.22);
+  ctx.lineTo(x+s*0.40,y+s*0.02); ctx.lineTo(x+s*0.24,y+s*0.20); ctx.lineTo(x-s*0.24,y+s*0.20); ctx.lineTo(x-s*0.40,y+s*0.02); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  if (s>=14){ for (i=0;i<7;i++){ var ux=x-s*0.21+i*s*0.07; ctx.beginPath(); ctx.moveTo(ux-s*0.022,y+s*0.19); ctx.lineTo(ux,y+s*0.28); ctx.lineTo(ux+s*0.022,y+s*0.19); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+  /* sockets with green fire, nostrils, a brow ridge */
+  ctx.fillStyle='#0b0510';
+  for (var e=-1;e<=1;e+=2){ ctx.beginPath(); ctx.ellipse(x+e*s*0.27,y-s*0.16,s*0.12,s*0.09,e*0.25,0,Math.PI*2); ctx.fill(); }
+  ctx.beginPath(); ctx.ellipse(x-s*0.07,y+s*0.08,s*0.035,s*0.05,0.3,0,Math.PI*2); ctx.ellipse(x+s*0.07,y+s*0.08,s*0.035,s*0.05,-0.3,0,Math.PI*2); ctx.fill();
+  if (s>=12){ ctx.strokeStyle=INK; ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(x-s*0.40,y-s*0.27); ctx.quadraticCurveTo(x,y-s*0.20,x+s*0.40,y-s*0.27); ctx.stroke(); }
+  var ek=(0.7+0.3*Math.sin(t*5+idx))*glow;
+  for (e=-1;e<=1;e+=2){
+    glowDot(x+e*s*0.27,y-s*0.16,s*0.20,GOO,0.45*ek*A0);
+    ctx.fillStyle='rgba(220,255,190,'+clamp(0.9*ek,0,1).toFixed(3)+')'; ctx.beginPath(); ctx.arc(x+e*s*0.27,y-s*0.16,Math.max(1,s*0.045),0,Math.PI*2); ctx.fill();
+  }
+  ctx.lineJoin='miter';
+}
+/* A: SKELETON REX. Bones in the dark, green fire in the eye socket, the jaw snapping now and then.
+   Build 84 (Carlos): halfway across the road it turns its skull to the camera, opens its jaw wide,
+   then turns back and walks on. */
+function hwDinoA(x,gy,u,idx,side,walk){
+  var t=tnow(), A0=ctx.globalAlpha, f=side>0?-1:1;
+  var moving=walk>0.001&&walk<0.999, ph=walk*17*Math.PI, sw=moving?Math.sin(ph)*0.45:0, bob=moving?Math.abs(Math.cos(ph))*u*0.05:0;
+  shadowOn(x,gy,u*1.6,u);
+  var s=u;
+  function P(lx,ly){ return [x+f*lx*s, gy-(ly*s)-bob]; }
+  var w=Math.max(1.2,u*0.045);
+  if (u<8){ ctx.fillStyle=BONE; ctx.fillRect(x-u*1.2,gy-u*2.2,u*2.4,u*0.25); ctx.fillRect(x+f*u*0.8,gy-u*3.0,u*0.5,u*0.5); return; }
+  /* the look: it turns to you as it steps onto the road (walk 0.40-0.50), holds it while it crosses and
+     reaches the far side (to 0.80), and is back in profile by 0.90 (0 = profile, 1 = facing you) */
+  var turn=ease((walk-0.40)/0.10)*ease((0.90-walk)/0.10), open=clamp((turn-0.6)/0.4,0,1);
+  var hip=P(-0.15,1.75), sh=P(0.95,2.35), nk=P(1.32,2.82), sk=P(1.62,2.66);
+  ctx.globalAlpha=A0*0.65;
+  function leg(sgn){
+    var a=sgn*sw, kx=-0.15+Math.sin(a)*0.55+0.25, ky=1.75-0.85;
+    var k2=P(kx,ky), ft=P(-0.15+Math.sin(a)*0.95,0.08);
+    bone(hip[0],hip[1],k2[0],k2[1],w*1.3); bone(k2[0],k2[1],ft[0],ft[1],w*1.1);
+    var toe=P(-0.15+Math.sin(a)*0.95+0.32,0.02); bone(ft[0],ft[1],toe[0],toe[1],w*0.8);
+  }
+  leg(-1); ctx.globalAlpha=A0;
+  var tailP=[], i;
+  for (i=0;i<=9;i++){ var e=i/9; tailP.push(P(-0.15-e*2.25,1.75+e*0.15-e*e*0.55+Math.sin(t*1.6+e*3)*0.06*e)); }
+  for (i=0;i<9;i++) bone(tailP[i][0],tailP[i][1],tailP[i+1][0],tailP[i+1][1],w*(1.1-i*0.09));
+  var spine=[]; for (i=0;i<=6;i++){ var e2=i/6; spine.push(P(-0.15+e2*1.10,1.75+e2*0.60+Math.sin(e2*Math.PI)*0.12)); }
+  for (i=0;i<6;i++) bone(spine[i][0],spine[i][1],spine[i+1][0],spine[i+1][1],w*1.15);
+  ctx.strokeStyle=INK; ctx.lineCap='round';
+  for (i=1;i<6;i++){
+    var sp=spine[i], L=(0.55-Math.abs(i-3)*0.08)*s, cx=sp[0]+f*s*0.10;
+    ctx.lineWidth=w*1.4; ctx.strokeStyle=INK; ctx.beginPath(); ctx.moveTo(sp[0],sp[1]); ctx.quadraticCurveTo(cx+f*s*0.25,sp[1]+L*0.6,sp[0]+f*s*0.02,sp[1]+L); ctx.stroke();
+    ctx.lineWidth=w*0.8; ctx.strokeStyle=BONE; ctx.stroke();
+  }
+  bone(sh[0],sh[1],nk[0],nk[1],w*1.0);
+  ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=w*0.7;
+  ctx.beginPath(); ctx.moveTo(hip[0]-f*s*0.25,hip[1]-s*0.10); ctx.lineTo(hip[0]+f*s*0.30,hip[1]-s*0.08); ctx.lineTo(hip[0]+f*s*0.10,hip[1]+s*0.22); ctx.lineTo(hip[0]-f*s*0.12,hip[1]+s*0.20); ctx.closePath(); ctx.fill(); ctx.stroke();
+  var el=P(1.20,1.95), hd=P(1.38,2.05); bone(sh[0],sh[1]-s*0.05,el[0],el[1],w*0.7); bone(el[0],el[1],hd[0],hd[1],w*0.6);
+  /* the skull turns about a point just behind the eye: the profile squeezes away, the front view grows in */
+  var pvx=sk[0]+f*0.10*s, pvy=sk[1]-0.12*s;
+  if (turn<0.5){
+    var cq=Math.max(0.12,1-turn*2);
+    ctx.save(); ctx.translate(pvx,0); ctx.scale(cq,1); ctx.translate(-pvx,0);
+    var snap=((t+idx)%3.2)<0.25?Math.sin(((t+idx)%3.2)/0.25*Math.PI):0, jo=0.10+snap*0.35;
+    var X=function(lx){ return sk[0]+f*lx*s; }, Y=function(ly){ return sk[1]-ly*s; };
+    ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=w*0.9; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(X(-0.30),Y(0.05)); ctx.lineTo(X(-0.25),Y(0.32)); ctx.lineTo(X(0.10),Y(0.42)); ctx.lineTo(X(0.55),Y(0.30)); ctx.lineTo(X(0.78),Y(0.12));
+    ctx.lineTo(X(0.80),Y(-0.02)); ctx.lineTo(X(0.10),Y(-0.04)); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.translate(X(-0.15),Y(-0.02)); ctx.rotate(f*jo);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(f*s*0.88,s*0.02); ctx.lineTo(f*s*0.82,s*0.14); ctx.lineTo(f*s*0.05,s*0.16); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (u>=14){ ctx.fillStyle=BONE; for (var tt=0;tt<5;tt++){ var tx=f*s*(0.25+tt*0.12); ctx.beginPath(); ctx.moveTo(tx-f*s*0.03,0); ctx.lineTo(tx,-s*0.07); ctx.lineTo(tx+f*s*0.03,0); ctx.fill(); } }
+    ctx.restore();
+    if (u>=14){ ctx.fillStyle=BONE; for (var t2=0;t2<5;t2++){ var tx2=X(0.25+t2*0.11); ctx.beginPath(); ctx.moveTo(tx2-f*s*0.03,Y(-0.02)); ctx.lineTo(tx2,Y(-0.10)); ctx.lineTo(tx2+f*s*0.03,Y(-0.02)); ctx.fill(); } }
+    ctx.fillStyle='#0b0510'; ctx.beginPath(); ctx.ellipse(X(0.05),Y(0.24),s*0.10,s*0.08,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(X(0.55),Y(0.18),s*0.05,s*0.03,0,0,Math.PI*2); ctx.fill();
+    var ek=0.7+0.3*Math.sin(t*5+idx);
+    glowDot(X(0.05),Y(0.24),s*0.32,GOO,0.55*ek*A0);
+    ctx.fillStyle='rgba(200,255,160,'+(0.8*ek).toFixed(3)+')'; ctx.beginPath(); ctx.arc(X(0.05),Y(0.24),s*0.035,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  } else {
+    var cf=Math.max(0.12,(turn-0.5)*2), qv=open>0.9?Math.sin(t*38)*s*0.006:0;
+    ctx.save(); ctx.translate(pvx,0); ctx.scale(cf,1); ctx.translate(-pvx,0);
+    rexSkullFront(pvx,pvy+s*0.10+qv,s*1.45,open,t,idx,1+0.4*open);   /* the head thrust at you: bigger */
+    ctx.restore();
+  }
+  leg(1);
+  ctx.lineCap='butt'; ctx.lineJoin='miter'; ctx.globalAlpha=A0;
+}
+/* B: GHOST REX. The neon rex's shape as a see-through ghost: no legs, a body that fades into smoke,
+   hollow eyes, floating and slowly bobbing as it drifts across. */
+function hwDinoB(x,gy,u,idx,side,walk){
+  rexPaths();
+  var t=tnow(), A0=ctx.globalAlpha, k=u*5.6/400, fl=Math.sin(t*1.4+idx)*u*0.12;
+  glowDot(x,gy-u*0.05,u*1.2,'#bfe8ff',0.10*A0);
+  ctx.save(); ctx.translate(x,gy-u*0.55+fl); if (side>0) ctx.scale(-1,1);
+  ctx.scale(k,k); ctx.translate(-205,-205);
+  var g=ctx.createLinearGradient(0,40,0,205);
+  g.addColorStop(0,'rgba(220,245,255,0.62)'); g.addColorStop(0.6,'rgba(170,215,255,0.35)'); g.addColorStop(1,'rgba(170,215,255,0)');
+  ctx.globalAlpha=A0; ctx.fillStyle=g; ctx.fill(REX_BODY);
+  ctx.strokeStyle='rgba(225,248,255,0.85)'; ctx.lineJoin='round';
+  if (u>=8){ ctx.save(); ctx.clip(REX_BODY); ctx.lineWidth=Math.max(5,2/k); ctx.stroke(REX_BODY); ctx.restore(); }
+  for (var i=0;i<5;i++){
+    var ph=((t*0.5+i*0.2)%1), sx=60+i*40+Math.sin(t+i)*6, sy=180+ph*50;
+    ctx.globalAlpha=A0*0.25*(1-ph); ctx.fillStyle='#d8f0ff';
+    ctx.beginPath(); ctx.ellipse(sx,sy,18+ph*20,8+ph*6,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=A0;
+  if (u>14){ ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=Math.max(1.6,0.8/k); ctx.stroke(REX_TEETH); }
+  ctx.fillStyle='#0b0510'; ctx.beginPath(); ctx.ellipse(366,48,9,7,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(388,58,4,3,0,0,Math.PI*2); ctx.fill();
+  ctx.restore(); ctx.lineJoin='miter';
+  glowDot(x,gy-u*1.6+fl,u*1.6,'#cfeaff',0.12*A0);
+}
+
+/* ---------------- OBELISK slot (where the rune monolith stands) ---------------- */
+/* A: GRAVEYARD. Three tombstones and a low iron fence; the big stone has a crack that glows green. */
+function hwObeliskA(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha;
+  shadowOn(x,gy,u*1.0,u);
+  function stone(sx,w,h,kind,lean){
+    ctx.save(); ctx.translate(sx,gy); ctx.rotate(lean);
+    var g=ctx.createLinearGradient(-w/2,0,w/2,0); g.addColorStop(0,'#4a4256'); g.addColorStop(0.5,'#3a3346'); g.addColorStop(1,'#221c2c');
+    ctx.fillStyle=g; ctx.beginPath();
+    if (kind===0){ ctx.moveTo(-w/2,0); ctx.lineTo(-w/2,-h+w/2); ctx.arc(0,-h+w/2,w/2,Math.PI,0); ctx.lineTo(w/2,0); }
+    else if (kind===1){ var a=w*0.32; ctx.moveTo(-a/2,0); ctx.lineTo(-a/2,-h*0.62); ctx.lineTo(-w/2,-h*0.62); ctx.lineTo(-w/2,-h*0.80); ctx.lineTo(-a/2,-h*0.80); ctx.lineTo(-a/2,-h); ctx.lineTo(a/2,-h); ctx.lineTo(a/2,-h*0.80); ctx.lineTo(w/2,-h*0.80); ctx.lineTo(w/2,-h*0.62); ctx.lineTo(a/2,-h*0.62); ctx.lineTo(a/2,0); }
+    else { ctx.moveTo(-w/2,0); ctx.lineTo(-w/2,-h*0.75); ctx.lineTo(0,-h); ctx.lineTo(w/2,-h*0.75); ctx.lineTo(w/2,0); }
+    ctx.closePath(); ctx.fill();
+    if (u>=14 && kind!==1){ ctx.fillStyle='rgba(10,6,14,.55)'; for (var l=0;l<3;l++) ctx.fillRect(-w*0.30,-h*0.62+l*h*0.12,w*(0.6-l*0.12),Math.max(1,h*0.03)); }
+    ctx.restore();
+  }
+  stone(x-u*0.62,u*0.34,u*0.62,2,-0.10);
+  stone(x+u*0.58,u*0.30,u*0.78,1,0.07);
+  stone(x,u*0.52,u*1.0,0,0.02);
+  if (u>=10){
+    var k=0.55+0.45*Math.sin(t*2.1+idx);
+    ctx.strokeStyle='rgba(157,255,106,'+(0.6+0.4*k).toFixed(3)+')'; ctx.lineWidth=Math.max(1,u*0.018); ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(x-u*0.04,gy-u*0.92); ctx.lineTo(x+u*0.04,gy-u*0.70); ctx.lineTo(x-u*0.06,gy-u*0.50); ctx.lineTo(x+u*0.05,gy-u*0.30); ctx.lineTo(x-u*0.02,gy-u*0.10); ctx.stroke();
+    ctx.lineJoin='miter';
+    glowDot(x,gy-u*0.5,u*0.6,GOO,0.30*k*A0);
+    for (var m=0;m<4;m++){ var ph=((t*0.4+m*0.25)%1);
+      ctx.globalAlpha=A0*0.7*(1-ph); ctx.fillStyle=GOO; ctx.fillRect(x+(hashAt(m+idx,6)-0.5)*u*0.2,gy-u*(0.2+ph*0.9),Math.max(1,u*0.02),Math.max(1,u*0.02)); }
+    ctx.globalAlpha=A0;
+  }
+  if (u>=8){ ctx.fillStyle='#120a14'; var fy=gy+u*0.10, fx0=x-u*1.0;
+    ctx.fillRect(fx0,fy-u*0.32,u*2.0,Math.max(1,u*0.02)); ctx.fillRect(fx0,fy-u*0.12,u*2.0,Math.max(1,u*0.02));
+    for (var p=0;p<11;p++){ var px=fx0+p*u*0.2; ctx.fillRect(px-u*0.012,fy-u*0.42,u*0.024,u*0.42);
+      ctx.beginPath(); ctx.moveTo(px-u*0.03,fy-u*0.42); ctx.lineTo(px,fy-u*0.50); ctx.lineTo(px+u*0.03,fy-u*0.42); ctx.closePath(); ctx.fill(); } }
+  if (u>=16){ ctx.fillStyle='#e8e0d0'; ctx.fillRect(x-u*0.30,gy-u*0.10,u*0.04,u*0.08); glowDot(x-u*0.28,gy-u*0.13,u*0.10,'#ffd27a',0.8*A0*lampFlame(t,idx)); }
+}
+/* B: RISING HAND. One tombstone, a fresh mound, and a skeletal hand that slowly claws its way out,
+   waves, and sinks back, with green light leaking from the soil. */
+function hwObeliskB(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha;
+  shadowOn(x,gy,u*0.9,u);
+  var g=ctx.createLinearGradient(x-u*0.3,0,x+u*0.3,0); g.addColorStop(0,'#4a4256'); g.addColorStop(1,'#221c2c');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x-u*0.30,gy); ctx.lineTo(x-u*0.30,gy-u*0.62); ctx.arc(x,gy-u*0.62,u*0.30,Math.PI,0); ctx.lineTo(x+u*0.30,gy); ctx.closePath(); ctx.fill();
+  if (u>=14){ ctx.fillStyle='rgba(10,6,14,.6)'; ctx.fillRect(x-u*0.06,gy-u*0.88,u*0.12,u*0.30); ctx.fillRect(x-u*0.14,gy-u*0.80,u*0.28,u*0.08);
+    for (var l=0;l<2;l++) ctx.fillRect(x-u*0.18,gy-u*0.42+l*u*0.12,u*0.36-l*u*0.1,Math.max(1,u*0.025)); }
+  var mx=x-side*u*0.62;
+  var cyc=((t+idx*1.7)%7)/7, rise=cyc<0.35?cyc/0.35:(cyc<0.75?1:Math.max(0,1-(cyc-0.75)/0.18));
+  var e=rise*rise*(3-2*rise);
+  glowDot(mx,gy-u*0.05,u*0.6,GOO,(0.18+0.25*e)*A0);
+  ctx.fillStyle='#2a1a1e'; ctx.beginPath(); ctx.ellipse(mx,gy,u*0.55,u*0.16,0,Math.PI,0); ctx.fill();
+  if (u>=10){ ctx.strokeStyle='rgba(157,255,106,'+(0.4+0.4*e).toFixed(3)+')'; ctx.lineWidth=Math.max(1,u*0.012);
+    ctx.beginPath(); ctx.moveTo(mx-u*0.3,gy-u*0.03); ctx.lineTo(mx-u*0.12,gy-u*0.09); ctx.lineTo(mx+u*0.02,gy-u*0.05); ctx.moveTo(mx+u*0.12,gy-u*0.10); ctx.lineTo(mx+u*0.32,gy-u*0.04); ctx.stroke(); }
+  if (u>=10 && e>0.02){
+    var w=Math.max(1,u*0.028), base=gy-u*0.10, hy=base-e*u*0.55, wav=cyc>0.35&&cyc<0.75?Math.sin(t*6)*0.25:0;
+    ctx.save(); ctx.beginPath(); ctx.rect(mx-u,gy-u*2,u*2,u*2-u*0.10+1); ctx.clip();
+    bone(mx,base+u*0.1,mx+u*0.02,hy,w*1.3);
+    ctx.translate(mx+u*0.02,hy); ctx.rotate(wav);
+    ctx.fillStyle=BONE; ctx.beginPath(); ctx.ellipse(0,-u*0.03,u*0.07,u*0.06,0,0,Math.PI*2); ctx.fill();
+    for (var fg=0;fg<4;fg++){ var a=-0.75+fg*0.5, curl=(Math.sin(t*3+fg)*0.3+0.2)*(1-e*0.5);
+      var k1x=Math.sin(a)*u*0.11, k1y=-u*0.05-Math.cos(a)*u*0.11, k2x=k1x+Math.sin(a+curl)*u*0.09, k2y=k1y-Math.cos(a+curl)*u*0.09;
+      bone(Math.sin(a)*u*0.04,-u*0.06,k1x,k1y,w*0.6); bone(k1x,k1y,k2x,k2y,w*0.5); }
+    bone(-u*0.05,-u*0.02,-u*0.13,-u*0.08,w*0.6);
+    ctx.restore();
+    if (u>=16) for (var d=0;d<5;d++){ var ph=((t*1.3+d*0.21)%1); ctx.globalAlpha=A0*(1-ph)*e; ctx.fillStyle='#3a2420';
+      ctx.fillRect(mx+(hashAt(d,4)-0.5)*u*0.3,gy-u*0.12-Math.sin(ph*Math.PI)*u*0.12,Math.max(1,u*0.025),Math.max(1,u*0.025)); }
+    ctx.globalAlpha=A0;
+  }
+  ctx.lineCap='butt';
+}
+
+/* ---------------- ALIEN slot: the hitchhikers (the hailers of this zone) ---------------- */
+/* A: GHOST HITCHHIKER. A sheet ghost hovering by the road, thumb out; when it hails it waves.
+   bubble: draw the ?/! sign (defaults to hail). */
+function hwAlienA(x,gy,u,idx,side,walk,hail,bubble){
+  var t=tnow(), s=u*1.15, hy=gy-u*0.95+Math.sin(t*1.8+idx)*u*0.05;
+  shadowOn(x,gy,u*0.35*(0.8+0.2*Math.sin(t*1.8+idx)),u);
+  if (u<6){ ctx.fillStyle='#e8f6ff'; ctx.fillRect(x-1,gy-u*1.3,2,u*1.1); return; }
+  sheetGhost(x,hy,s,t,idx,0.85,hail?2:1);
+  hwBubble(x,hy-s*0.45,u,bubble===undefined?hail:bubble);
+}
+/* B: SKELETON HITCHHIKER. A skeleton in a battered top hat, thumb out; when it hails it waves its hat. */
+function hwAlienB(x,gy,u,idx,side,walk,hail,bubble){
+  var t=tnow(), A0=ctx.globalAlpha, w=Math.max(1,u*0.032), f=-side;
+  shadowOn(x,gy,u*0.3,u);
+  if (u<6){ ctx.fillStyle=BONE; ctx.fillRect(x-1,gy-u*1.3,2,u*1.3); return; }
+  var pel=[x,gy-u*0.62], neck=[x,gy-u*1.08], sk=[x,gy-u*1.22], bw=Math.sin(t*1.2+idx)*u*0.01;
+  bone(pel[0]-u*0.06,pel[1],x-u*0.08,gy-u*0.32,w); bone(x-u*0.08,gy-u*0.32,x-u*0.09,gy-u*0.02,w);
+  bone(pel[0]+u*0.06,pel[1],x+u*0.09,gy-u*0.32,w); bone(x+u*0.09,gy-u*0.32,x+u*0.11,gy-u*0.02,w);
+  bone(pel[0],pel[1],neck[0]+bw,neck[1],w*1.1);
+  ctx.strokeStyle=INK; ctx.lineCap='round';
+  for (var r=0;r<4;r++){ var ry=neck[1]+u*(0.07+r*0.08), rw=u*(0.15-r*0.015);
+    ctx.lineWidth=w*1.4; ctx.strokeStyle=INK; ctx.beginPath(); ctx.ellipse(x+bw,ry,rw,u*0.035,0,0,Math.PI); ctx.stroke();
+    ctx.lineWidth=w*0.75; ctx.strokeStyle=BONE; ctx.stroke(); }
+  ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=w*0.6;
+  ctx.beginPath(); ctx.ellipse(pel[0],pel[1],u*0.11,u*0.06,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  var sh=[x+f*u*0.15,neck[1]+u*0.06], sh2=[x-f*u*0.15,neck[1]+u*0.06];
+  var el=[sh[0]+f*u*0.18,sh[1]+u*0.14], hd=[el[0]+f*u*0.16,el[1]-u*0.06];
+  bone(sh[0],sh[1],el[0],el[1],w*0.9); bone(el[0],el[1],hd[0],hd[1],w*0.8);
+  if (u>=12) bone(hd[0],hd[1],hd[0]+f*u*0.02,hd[1]-u*0.08,w*0.6);
+  var wa=hail?Math.sin(t*9)*0.6:0, el2=[sh2[0]-f*u*0.12+(hail?-f*u*0.04:0),sh2[1]+(hail?-u*0.20:u*0.18)];
+  var hd2=hail?[el2[0]-f*u*0.04+Math.sin(wa)*u*0.10,el2[1]-u*0.20]:[x-f*u*0.10,pel[1]-u*0.02];
+  bone(sh2[0],sh2[1],el2[0],el2[1],w*0.9); bone(el2[0],el2[1],hd2[0],hd2[1],w*0.8);
+  var sr=u*0.12;
+  ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=w*0.7;
+  ctx.beginPath(); ctx.ellipse(sk[0]+bw,sk[1],sr,sr*1.08,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillRect(sk[0]+bw-sr*0.55,sk[1]+sr*0.6,sr*1.1,sr*0.4);
+  ctx.fillStyle='#0b0510';
+  ctx.beginPath(); ctx.ellipse(sk[0]+bw-sr*0.38,sk[1]-sr*0.02,sr*0.26,sr*0.30,0,0,Math.PI*2); ctx.ellipse(sk[0]+bw+sr*0.38,sk[1]-sr*0.02,sr*0.26,sr*0.30,0,0,Math.PI*2); ctx.fill();
+  var ek=0.6+0.4*Math.sin(t*4+idx);
+  if (u>=12){ ctx.fillStyle='rgba(157,255,106,'+ek.toFixed(3)+')'; ctx.fillRect(sk[0]+bw-sr*0.42,sk[1]-sr*0.04,Math.max(1,sr*0.12),Math.max(1,sr*0.12)); ctx.fillRect(sk[0]+bw+sr*0.34,sk[1]-sr*0.04,Math.max(1,sr*0.12),Math.max(1,sr*0.12));
+    glowDot(sk[0]+bw,sk[1],sr*2.2,GOO,0.15*ek*A0); }
+  var hx=hail?hd2[0]:sk[0]+bw, hyy=hail?hd2[1]-u*0.02:sk[1]-sr*0.85, tilt=hail?wa*0.6:-0.15;
+  ctx.save(); ctx.translate(hx,hyy); ctx.rotate(tilt);
+  ctx.fillStyle='#160c18'; ctx.fillRect(-sr*1.2,-sr*0.12,sr*2.4,sr*0.24); ctx.fillRect(-sr*0.75,-sr*1.45,sr*1.5,sr*1.36);
+  ctx.fillStyle='#ff7a1a'; ctx.fillRect(-sr*0.75,-sr*0.42,sr*1.5,sr*0.18);
+  ctx.restore();
+  hwBubble(sk[0],sk[1]-sr*2.2,u,bubble===undefined?hail:bubble);
+  ctx.lineCap='butt'; ctx.globalAlpha=A0;
+}
+
+/* the haunted look for a prop slot: each type, each prop's own coin (build 81's toss) picks A or B */
+function hwDeco(type,x,gy,u,idx,side,walk,hail,zRel){
+  var A=propToss(idx);
+  if (type===0){ if (A) hwMastA(x,gy,u,idx,side); else hwMastB(x,gy,u,idx,side); }
+  else if (type===1){ if (A) hwBillboardA(x,gy,u,idx,side,zRel); else hwBillboardB(x,gy,u,idx,side); }
+  else if (type===2){ if (A) hwKioskA(x,gy,u,idx,side); else hwKioskB(x,gy,u,idx,side); }
+  else if (type===3){ if (A) hwTowerA(x,gy,u,idx,side); else hwTowerB(x,gy,u,idx,side); }
+  else if (type===4){ if (A) hwDinoA(x,gy,u,idx,side,walk); else hwDinoB(x,gy,u,idx,side,walk); }
+  else if (type===5){ if (A) hwObeliskA(x,gy,u,idx,side); else hwObeliskB(x,gy,u,idx,side); }
+  else { if (A) hwAlienA(x,gy,u,idx,side,walk,hail); else hwAlienB(x,gy,u,idx,side,walk,hail); }
+}
+
+/* THE HALLOWEEN ACTIVATOR as it stands in VAPOR (build 84): a crooked gas lamp with its lantern over
+   the outer lane, the skeleton hitchhiker at the hailer's spot and the ghost hovering a little further up
+   the road (1,600 units, so the two never overlap). They wave
+   (one ?/! between them, the ghost's) and the flame burns green only while hailLive(): the mist can
+   really take you then. */
+function hwActDraw(idx,zRel,p,a,side){
+  var live=hailLive(), t=performance.now()/1000;
+  var zg=zRel+1600;                                /* far to near: the ghost, the lamp, the skeleton */
+  if (zg<MAXZ){
+    var pg=proj(zg), ag=1-fogAt(zg);
+    if (pg.y>horizonY && ag>0.05){
+      var xg=W/2+pg.ppu*(bend(zg)+side*2.30-playerX);
+      if (xg>-pg.ppu*3 && xg<W+pg.ppu*3){ ctx.globalAlpha=ag; hwAlienA(xg,pg.y,pg.ppu,idx,side,0,live,live); }
+    }
+  }
+  gasLampAt(zRel,p,side,live?hailFlick(t,idx):1,idx,HAIL_HEAD_X,live,1);
+  var xs=W/2+p.ppu*(bend(zRel)+side*HAIL_LAT-playerX);
+  if (xs>-p.ppu*3 && xs<W+p.ppu*3){ ctx.globalAlpha=a; hwAlienB(xs,p.y,p.ppu,idx,side,0,live,false); }
+  ctx.globalAlpha=1; ctx.lineCap='butt'; ctx.lineJoin='miter';
+}
+/* ---------------------------------------------------------------
+   HAUNTED HIGHWAY'S TWO SURPRISES (build 87, Carlos 10-19)
+   1. THE GHOST'S BOO. Now and then one of the roadside ghost hitchhikers (only the ones that thumb a
+      ride, never a hailer that takes you home) wakes up as you come up to it: it lifts off its spot,
+      floats out into the lanes, then rushes the car and pops up right in front of the camera, big and
+      see-through, with a classic "booooo". The face stays SCARE_FACE (1.3 s) at SCARE_A of full
+      strength, so the road shows through it. It is the sheet ghost's own cartoon face: two eyes, an O.
+   2. THE GIANT HAND. A few graveyards hold a much bigger skeleton hand. When one is coming up and a car
+      is about to pass it, the hand rears back, swings out over the road and slams that car flat, a
+      little way ahead of you: the slam lands when the graveyard is 0.45 s of your speed ahead
+      (4,500-8,000 units), close enough to see it, never out at the horizon. The flat car is harmless:
+      drive over it. To make the timing land, the car the hand picks is eased (between half and 1.6x its
+      own speed) so it reaches the graveyard as you come up to it. No car fits = no slam, it just claws.
+   Both live in HAUNTED HIGHWAY only (ZN.look 'haunted'), only while playing, never in the tutorial,
+   and never both at once. Neither uses Math.random, so nothing else in a run changes.
+   ?spooky=1 makes both happen as often as they can (testing).
+--------------------------------------------------------------- */
+var SPOOK_TEST=(function(){ try{ return /[?&]spooky=1/.test(location.search||''); }catch(_){ return false; } })();
+var SCARE_ODDS  = SPOOK_TEST?1:0.70;  /* share of the roadside ghosts that can wake                    */
+var SCARE_EVERY = SPOOK_TEST?8:35;    /* s: at least this long between two scares                      */
+var SCARE_WAKE  = 19000;              /* a ghost wakes when it is this far ahead...                    */
+var SCARE_NEAR  = 11000;              /* ...and not yet nearer than this                               */
+var SCARE_HOVER = 7000;               /* where it hangs in the lanes before the rush                   */
+var SCARE_LEAVE = 0.85;               /* s: lifting off and floating out into the lanes                */
+var SCARE_RUSH  = 0.50;               /* s: the rush at the car                                        */
+var SCARE_FACE  = 1.3;                /* s: the face up close (Carlos)                                 */
+var SCARE_A     = 0.40;               /* the face's strength: mostly see-through (Carlos)             */
+var BOO_VOL     = 0.27;               /* the voice (its loudest 50 ms about 2 dB over THE MIST's wail)  */
+var HAND_ODDS   = SPOOK_TEST?0.70:0.28;  /* share of the graveyard slots that hold the giant hand      */
+var HAND_EVERY  = SPOOK_TEST?5:20;    /* s between two slams                                           */
+var HAND_LAT    = 2.45;               /* its graveyard stands here, just off the road                  */
+var HAND_ARM    = 40000;              /* it starts picking a car when it is this close                 */
+var HAND_REACH  = 2400;               /* how far along the road from its graveyard it can still reach  */
+var HAND_WIND=0.55, HAND_SWING=0.30, HAND_HOLD=0.12, HAND_LIFT=0.60;   /* s */
+var PAN_LIFE    = 6;                  /* s a flattened car lies there                                  */
+var PAN_SLIDE   = 0.85;               /* the flat car skids on at this share of its speed, slowing     */
+var scare=null, scareCool=0, scareLast=-1, hand=null, handCool=0, handLast=-1, pans=[];
+
+function hwSpookClear(){
+  scare=null; hand=null; pans=[]; scareLast=-1; handLast=-1;
+  scareCool=SPOOK_TEST?2:12; handCool=SPOOK_TEST?1:6;      /* not the moment you arrive */
+}
+function hwLerp(a,b,k){ return a+(b-a)*k; }
+function hwCamH(){ return camH*H/(roadWidth*W); }            /* the camera's height in road units */
+/* a prop slot's type, the same decision drawDecor makes (-1 = an empty slot) */
+function hwSlotType(idx){
+  if (hashAt(idx,1) > Math.min(1,0.5*ZN.propDens)) return -1;
+  var t=hashAt(idx,4);
+  var type = t<0.22?0 : t<0.42?1 : t<0.59?2 : t<0.76?3 : t<0.85?4 : t<0.94?5 : 6;
+  if (!(ZN.propMask & (1<<type))){
+    var allow=[];
+    for (var pm=0;pm<7;pm++) if (ZN.propMask & (1<<pm)) allow.push(pm);
+    if (!allow.length) return -1;
+    type=allow[(hashAt(idx,11)*allow.length)|0];
+  }
+  return type;
+}
+/* a ghost hitchhiker that only thumbs a ride (look A of the alien slot, not a hailer) and may wake */
+function isScareGhost(idx){
+  return ZN.look==='haunted' && hwSlotType(idx)===6 && hashAt(idx,10)>=HAIL_ODDS && propToss(idx) && hashAt(idx,81)<SCARE_ODDS;
+}
+/* a graveyard slot (either look) that holds the giant hand instead */
+function isGiantHand(idx){
+  return ZN.look==='haunted' && hwSlotType(idx)===5 && hashAt(idx,82)<HAND_ODDS;
+}
+function handBusy(){ return !!(hand && (hand.vic || hand.ph==='wind' || hand.ph==='swing' || hand.ph==='hold' || hand.ph==='lift')); }
+
+/* ---- the step: once a frame, from update(), only while playing ---- */
+function hwSpookStep(dt){
+  if (ZN.look!=='haunted' || learn || state!=='playing') return;
+  scareStep(dt); handStep(dt); panStep(dt);
+}
+
+function scareStep(dt){
+  if (!scare){
+    scareCool=Math.max(0,scareCool-dt);
+    if (scareCool>0 || handBusy()) return;
+    var lo=Math.max(scareLast+1, Math.floor((position+SCARE_NEAR)/DECO_SPACE)+1), hi=Math.floor((position+SCARE_WAKE)/DECO_SPACE);
+    for (var idx=lo; idx<=hi; idx++){
+      if (!isScareGhost(idx)) continue;
+      var zr=idx*DECO_SPACE-position, side=hashAt(idx,2)<0.5?-1:1, l0=side*(2.00+hashAt(idx,3)*0.60);
+      scare={isSpook:true, kind:'ghost', idx:idx, side:side, ph:'leave', t:0, z0:zr, l0:l0,
+             gz:zr, gl:l0, gh:0.95, a:0.85, z:position+zr, rz:0, rl:0, rh:0, sx:0, sy:0, hr:0};
+      scareLast=idx;
+      break;
+    }
+    return;
+  }
+  var s=scare; s.t+=dt;
+  if (s.ph==='leave'){
+    var q=clamp(s.t/SCARE_LEAVE,0,1);
+    s.gz=hwLerp(s.z0, SCARE_HOVER, ease(q));
+    s.gl=hwLerp(s.l0, clamp(playerX+s.side*0.30,-0.85,0.85), ease(clamp(q*1.15,0,1)));   /* out into the lanes, its side of you */
+    s.gh=0.95+0.16*Math.sin(q*Math.PI*0.5);
+    if (s.t>=SCARE_LEAVE){ s.ph='rush'; s.t=0; s.rz=s.gz; s.rl=s.gl; s.rh=s.gh; scareWhoosh(); }
+  } else if (s.ph==='rush'){
+    var r=clamp(s.t/SCARE_RUSH,0,1), e=easeIn(r);
+    s.gz=hwLerp(s.rz, 600, e);
+    s.gl=hwLerp(s.rl, playerX, ease(r));
+    s.gh=hwLerp(s.rh, hwCamH()+0.12, ease(r));
+    s.a=hwLerp(0.85, 0.55, e);
+    var p=proj(Math.max(200,s.gz)), hr=1.15*p.ppu*0.30;
+    if (hr>=scareR()*0.72 || s.t>=SCARE_RUSH){            /* it has reached the camera: the face */
+      s.sx=W/2+p.ppu*(bend(Math.max(200,s.gz))+s.gl-playerX); s.sy=p.y-s.gh*p.ppu; s.hr=hr;
+      s.ph='face'; s.t=0; shake=Math.max(shake,3);
+      booSfx();
+    }
+  } else if (s.t>=SCARE_FACE){ scare=null; scareCool=SCARE_EVERY; return; }
+  s.z=position+s.gz;
+}
+
+function handZs(){ return clamp(Z_CAR+0.42*speed, 4500, 7000); }   /* where the slam lands, ahead of you */
+function handStep(dt){
+  handCool=Math.max(0,handCool-dt);
+  if (!hand){
+    if (handCool>0 || scare) return;
+    var lo=Math.max(handLast+1, Math.floor((position+handZs()+speed*(HAND_WIND+HAND_SWING)+1500)/DECO_SPACE)+1);
+    var hi=Math.floor((position+Math.min(HAND_ARM,MAXZ-1500))/DECO_SPACE);
+    for (var idx=lo; idx<=hi; idx++){
+      if (!isGiantHand(idx)) continue;
+      hand={isSpook:true, kind:'hand', idx:idx, side:hashAt(idx,2)<0.5?-1:1, zP:idx*DECO_SPACE, ph:'arm', t:0,
+            vic:null, tz:idx*DECO_SPACE, tx:0, z:idx*DECO_SPACE, squashed:false};
+      hand.tx=hand.side*0.5;
+      handLast=idx;
+      break;
+    }
+    return;
+  }
+  var h=hand, zRelP=h.zP-position;
+  if (zRelP<300){ if (h.vic) h.vic.hwVic=false; hand=null; return; }   /* gone past it */
+  if (h.vic && cars.indexOf(h.vic)<0) h.vic=null;                    /* shot, eaten by the dino... */
+  if (h.ph==='arm'){
+    var Tslam=(zRelP-handZs())/Math.max(speed,3000), Tpre=HAND_WIND+HAND_SWING;
+    if (Tslam<=Tpre){
+      if (h.vic && Math.abs(h.vic.z+h.vic.speed*Math.max(0,Tslam)-h.zP)<=HAND_REACH){
+        h.ph='wind'; h.t=0; h.tz=h.vic.z; h.tx=h.vic.x; handCreakSfx(h);
+      } else { if (h.vic) h.vic.hwVic=false; h.vic=null; h.ph='pass'; }
+      return;
+    }
+    if (!h.vic) h.vic=handPick(h,Tslam);
+    if (h.vic){
+      var c=h.vic, req=(h.zP-c.z)/Tslam, vmin=Math.max(1600,c.hwBase*0.5), vmax=Math.min(8800,c.hwBase*1.6);
+      if (req<vmin*0.8 || req>vmax*1.25){ c.hwVic=false; h.vic=null; }             /* it can't make it now */
+      else c.speed+=(clamp(req,vmin,vmax)-c.speed)*Math.min(1,dt*1.6);
+    }
+  } else if (h.ph==='wind'){
+    h.t+=dt; handTrack(h);
+    if (h.t>=HAND_WIND){ h.ph='swing'; h.t=0; handWhooshSfx(h); }
+  } else if (h.ph==='swing'){
+    h.t+=dt; handTrack(h);
+    if (h.t>=HAND_SWING){ handSlam(h); h.ph='hold'; h.t=0; }
+  } else if (h.ph==='hold'){
+    h.t+=dt; if (h.t>=HAND_HOLD){ h.ph='lift'; h.t=0; }
+  } else if (h.ph==='lift'){
+    h.t+=dt; if (h.t>=HAND_LIFT){ h.ph='done'; h.t=0; }
+  }
+  h.z = (h.ph==='swing'||h.ph==='hold'||h.ph==='lift') ? h.tz-8 : h.zP;   /* sorted just in front of its car */
+}
+function handTrack(h){ if (h.vic){ h.tz=h.vic.z; h.tx=h.vic.x; } }
+/* the car that can reach the graveyard just as you come up to it with the least change of speed;
+   one in the lanes on the hand's side is preferred, a weaver van a little less */
+function handPick(h,T){
+  var best=null, bs=1e9, zc=position+Z_CAR;
+  for (var i=0;i<cars.length;i++){
+    var c=cars[i];
+    if (c.passed || c.z-zc<2500) continue;
+    var req=(h.zP-c.z)/T, vmin=Math.max(1600,c.speed*0.5), vmax=Math.min(8800,c.speed*1.6);
+    if (req<vmin || req>vmax) continue;
+    var sc=Math.abs(Math.log(req/c.speed)) + (c.x*h.side>0?0:0.35) + (c.weaver?0.3:0);
+    if (sc<bs){ bs=sc; best=c; }
+  }
+  if (best){ best.hwVic=true; best.hwBase=best.speed; }
+  return best;
+}
+function handSlam(h){
+  var c=h.vic, ok=!!c && cars.indexOf(c)>=0 && Math.abs(c.z-h.zP)<=HAND_REACH+600;
+  if (ok){ h.tz=c.z; h.tx=c.x; cars.splice(cars.indexOf(c),1); h.squashed=true; }
+  h.vic=null; handCool=HAND_EVERY;
+  pans.push({isSpook:true, kind:'pan', z:h.tz, x:h.tx, col:ok?c.color:null, empty:!ok, t:0, hit:false, seed:h.idx,
+             v:ok?c.speed*PAN_SLIDE:0, v0:ok?c.speed*PAN_SLIDE:1});
+  shake=Math.max(shake, ok?5:4);
+  var zr=h.tz-position, p=proj(Math.max(200,zr));
+  handSlamSfx(ok, clamp((W/2+p.ppu*(bend(Math.max(200,zr))+h.tx-playerX)-W/2)/(W/2),-1,1)*0.7);
+}
+function panStep(dt){
+  for (var i=pans.length-1;i>=0;i--){
+    var o=pans[i]; o.t+=dt;
+    if (o.v>0 && o.t>HAND_HOLD){ o.z+=o.v*dt; o.v*=Math.pow(0.2,dt); if (o.v<60) o.v=0; }   /* pressed, then it skids on, flat, and stops */
+    var dz=o.z-(position+Z_CAR);
+    if (!o.empty && !o.hit && dz<60 && dz>-500 && Math.abs(o.x-playerX)<0.36){   /* you drove over it: a bump, nothing more */
+      o.hit=true; shake=Math.max(shake,2.5); blip(150,0.10,'square',0.10,0,0.6);
+    }
+    if (o.t>=PAN_LIFE || o.z-position<-2600) pans.splice(i,1);
+  }
+}
+
+/* ---- drawing ---- */
+/* render() hands these to the far-to-near list with the cars */
+function hwSpookSort(list){
+  if (ZN.look!=='haunted') return;
+  for (var i=0;i<pans.length;i++) list.push(pans[i]);
+  if (hand && (hand.ph==='swing'||hand.ph==='hold'||hand.ph==='lift')) list.push(hand);
+  if (scare && (scare.ph==='leave'||scare.ph==='rush') && scare.gz>=Z_CAR+150) list.push(scare);
+}
+function drawSpook(o){
+  if (o.kind==='pan') drawPancake(o);
+  else if (o.kind==='hand') drawHandArm(o.idx,o.side,o.zP,o);
+  else drawScareGhost(o);
+}
+/* once the rushing ghost is nearer than your car it is drawn over it */
+function hwSpookNear(){ if (scare && scare.ph==='rush' && scare.gz<Z_CAR+150) drawScareGhost(scare); }
+
+function drawScareGhost(o){
+  var zr=Math.max(200,o.gz), p=proj(zr), u=p.ppu, t=tnow();
+  var x=W/2+u*(bend(zr)+o.gl-playerX), hy=p.y-o.gh*u+Math.sin(t*6+o.idx)*u*0.03, s=u*1.15;
+  if (x<-s*2||x>W+s*2) return;
+  var A0=ctx.globalAlpha, a=(1-fogAt(zr))*o.a;
+  if (o.ph==='leave'){ ctx.globalAlpha=a*(1-clamp(o.t/SCARE_LEAVE,0,1)); shadowOn(x,p.y,u*0.35,u); }
+  ctx.globalAlpha=1;
+  if (u<6){ ctx.globalAlpha=a; ctx.fillStyle='#e8f6ff'; ctx.fillRect(x-1,hy-u*0.4,2,u*1.0); ctx.globalAlpha=A0; return; }
+  sheetGhost(x,hy,s,t,o.idx,a,2);
+  ctx.globalAlpha=A0;
+}
+
+function scareR(){ return Math.min(H*0.36, W*0.30); }       /* the face's head radius up close */
+function booEnv(t){                                          /* how open the mouth is, with the voice */
+  if (t<0.12) return t/0.12;
+  if (t<0.90) return 1-0.15*(t-0.12)/0.78;
+  return Math.max(0,0.85*(1-(t-0.90)/0.40));
+}
+/* THE JUMP SCARE: drawn over the world and under the HUD, see-through (SCARE_A) */
+function drawScareFace(){
+  if (!scare || scare.ph!=='face' || (state!=='playing' && state!=='paused')) return;
+  var s=scare, t=s.t, R0=scareR();
+  var pe=easeOut(clamp(t/0.16,0,1)), bump=1+0.10*Math.sin(clamp(t/0.16,0,1)*Math.PI);
+  var out=clamp((t-(SCARE_FACE-0.32))/0.32,0,1);
+  var R=hwLerp(s.hr,R0,pe)*bump*(1+0.30*out*out);
+  var cx=hwLerp(s.sx,W/2,pe)+Math.sin(t*6.3)*R*0.035, cy=hwLerp(s.sy,H*0.44,pe)+Math.sin(t*4.2)*R*0.025;
+  var Aa=hwLerp(0.55,SCARE_A,pe)*(1-out);
+  if (Aa<=0.005 || R<=1) return;
+  var env=booEnv(t), wav=Math.sin(t*9);
+  ctx.save();
+  ctx.translate(cx,cy); ctx.rotate(Math.sin(t*5.1)*0.035);
+  /* the sheet: head dome, sides running off the bottom of the screen, both arms up ("boo!"),
+     one path so where the arms meet the body it is not doubly dark. A flat colour, no gradient and no
+     halo: it covers a lot of screen, and on a phone those two cost about 6 ms a frame (measured) */
+  ctx.globalAlpha=Aa;
+  ctx.fillStyle='#e6f2ff';
+  ctx.beginPath(); ctx.moveTo(-R,0); ctx.arc(0,0,R,Math.PI,0);
+  ctx.quadraticCurveTo(R*1.18,R*1.2,R*1.30,R*2.4);
+  for (var i=0;i<=8;i++) ctx.lineTo(R*1.30-i*R*2.6/8, R*2.4+((i%2)?-R*0.12:R*0.06)*(0.7+0.3*Math.sin(t*5+i)));
+  ctx.quadraticCurveTo(-R*1.18,R*1.2,-R,0); ctx.closePath();
+  for (var sd=-1; sd<=1; sd+=2){
+    var ra=sd*(0.50+0.10*wav*sd), ax=sd*R*1.06, ay=R*0.10;      /* an arm raised beside the head, waving a little */
+    ctx.moveTo(ax+Math.cos(ra)*R*0.20, ay+Math.sin(ra)*R*0.20);
+    ctx.ellipse(ax, ay, R*0.20, R*0.58, ra, 0, Math.PI*2);
+    var hx=ax+Math.sin(ra)*R*0.52, hy2=ay-Math.cos(ra)*R*0.52;  /* its round mitten of a hand */
+    ctx.moveTo(hx+R*0.17,hy2); ctx.arc(hx,hy2,R*0.17,0,Math.PI*2);
+  }
+  ctx.fill('nonzero');
+  ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=Aa*0.35;      /* a faint glowing rim on its head */
+  ctx.strokeStyle='#dff2ff'; ctx.lineWidth=Math.max(1.5,R*0.022);
+  ctx.beginPath(); ctx.arc(0,0,R*0.99,Math.PI*1.06,Math.PI*1.94); ctx.stroke();
+  ctx.globalCompositeOperation='source-over';
+  /* its own cartoon face, as on the roadside: two tall eyes and an O mouth that opens with the voice */
+  ctx.globalAlpha=Math.min(0.62,Aa*1.45); ctx.fillStyle='#140a24';
+  ctx.beginPath();
+  ctx.ellipse(-R*0.36,-R*0.06,R*0.15,R*0.24,0,0,Math.PI*2);
+  ctx.moveTo(R*0.51,-R*0.06); ctx.ellipse(R*0.36,-R*0.06,R*0.15,R*0.24,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0,R*0.50,R*(0.12+0.07*env),R*(0.09+0.21*env),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=Math.min(0.70,Aa*1.6); ctx.fillStyle='#ffffff';      /* a shine in each eye */
+  ctx.beginPath(); ctx.arc(-R*0.40,-R*0.16,R*0.045,0,Math.PI*2); ctx.moveTo(R*0.365,-R*0.16); ctx.arc(R*0.32,-R*0.16,R*0.045,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=Aa*0.55; ctx.fillStyle='rgba(255,140,190,0.5)';      /* and a little blush */
+  ctx.beginPath(); ctx.ellipse(-R*0.62,R*0.22,R*0.13,R*0.06,0,0,Math.PI*2); ctx.moveTo(R*0.75,R*0.22); ctx.ellipse(R*0.62,R*0.22,R*0.13,R*0.06,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+/* a point on the hand's arm, world -> screen (z, lateral, height in road units) */
+function hwPt(zw,lat,ht){
+  var zr=Math.max(200,zw-position), p=proj(zr);
+  return {x:W/2+p.ppu*(bend(zr)+lat-playerX), y:p.y-ht*p.ppu, u:p.ppu};
+}
+/* the arm's pose: e = elbow, w = wrist (z, lateral, height); ang = the hand's direction (0 up, side*pi/2
+   toward that side); flat 0 upright .. 1 lying palm-down; curl = how far the fingers bend */
+function handPose(idx,side,zP,h){
+  var t=tnow(), lg=side*HAND_LAT;
+  var I={e:[zP,lg+side*0.05,0], w:[zP,lg-side*0.10,1.30+0.05*Math.sin(t*1.3+idx)],
+         ang:-side*0.10+0.07*Math.sin(t*0.9+idx), flat:0, curl:0.40+0.30*Math.sin(t*2.3+idx), spread:1};
+  if (!h || h.ph==='arm' || h.ph==='pass' || h.ph==='done') return I;
+  var Wd={e:[zP,lg+side*0.30,0.60], w:[zP,lg+side*0.60,2.05], ang:side*0.38, flat:0, curl:0.06, spread:1.18};
+  if (h.ph==='wind') return poseMix(I,Wd,ease(h.t/HAND_WIND));
+  var S={e:[hwLerp(zP,h.tz,0.50), hwLerp(lg,h.tx,0.38), 1.10], w:[h.tz, h.tx+side*0.52, 0.14], ang:-side*1.62, flat:1, curl:0, spread:1.10};
+  if (h.ph==='swing') return poseArc(Wd,S,easeIn(h.t/HAND_SWING),2.7,1.6);
+  if (h.ph==='hold'){ S.curl=Math.sin(h.t*30)*0.05*(1-h.t/HAND_HOLD); return S; }   /* pressed down, twitching */
+  return poseArc(S,I,ease(h.t/HAND_LIFT),2.2,1.4);                                    /* lift */
+}
+function poseMix(A,B,k){
+  function m(a,b){ return [hwLerp(a[0],b[0],k),hwLerp(a[1],b[1],k),hwLerp(a[2],b[2],k)]; }
+  return {e:m(A.e,B.e), w:m(A.w,B.w), ang:hwLerp(A.ang,B.ang,k), flat:hwLerp(A.flat,B.flat,k),
+          curl:hwLerp(A.curl,B.curl,k), spread:hwLerp(A.spread,B.spread,k)};
+}
+function poseArc(A,B,k,wh,eh){           /* through a raised midpoint, so it swings over rather than slides */
+  k=clamp(k,0,1);
+  function bz(a,b,mh){ var q=1-k, m=[(a[0]+b[0])/2,(a[1]+b[1])/2,mh];
+    return [q*q*a[0]+2*q*k*m[0]+k*k*b[0], q*q*a[1]+2*q*k*m[1]+k*k*b[1], q*q*a[2]+2*q*k*m[2]+k*k*b[2]]; }
+  var o=poseMix(A,B,k); o.e=bz(A.e,B.e,eh); o.w=bz(A.w,B.w,wh); return o;
+}
+/* the slot itself, from drawDecor: tombstones and a cracked mound; the arm too unless it is out over the road */
+function drawHandSlot(idx,zRel,p,a,side){
+  var u=p.ppu, x=W/2+u*(bend(zRel)+side*HAND_LAT-playerX);
+  if (x<-u*7||x>W+u*7) return;
+  ctx.globalAlpha=a;
+  if (u<5){ ctx.fillStyle=BONE; ctx.fillRect(x-1,p.y-Math.max(3,u*1.9),2,Math.max(3,u*1.9)); ctx.globalAlpha=1; return; }
+  handGrave(x,p.y,u,idx,side);
+  var mine=hand && hand.idx===idx ? hand : null;
+  if (!(mine && (mine.ph==='swing'||mine.ph==='hold'||mine.ph==='lift'))) drawHandArm(idx,side,idx*DECO_SPACE,mine);
+  ctx.globalAlpha=1;
+}
+function hwStone(sx,gy,w,h,lean,kind){
+  ctx.save(); ctx.translate(sx,gy); ctx.rotate(lean);
+  var g=ctx.createLinearGradient(-w/2,0,w/2,0); g.addColorStop(0,'#4a4256'); g.addColorStop(0.5,'#3a3346'); g.addColorStop(1,'#221c2c');
+  ctx.fillStyle=g; ctx.beginPath();
+  if (kind===0){ ctx.moveTo(-w/2,0); ctx.lineTo(-w/2,-h+w/2); ctx.arc(0,-h+w/2,w/2,Math.PI,0); ctx.lineTo(w/2,0); }
+  else { ctx.moveTo(-w/2,0); ctx.lineTo(-w/2,-h*0.75); ctx.lineTo(0,-h); ctx.lineTo(w/2,-h*0.75); ctx.lineTo(w/2,0); }
+  ctx.closePath(); ctx.fill();
+  if (h>=12){ ctx.fillStyle='rgba(10,6,14,.55)'; for (var l=0;l<2;l++) ctx.fillRect(-w*0.28,-h*0.58+l*h*0.14,w*(0.56-l*0.14),Math.max(1,h*0.03)); }
+  ctx.restore();
+}
+function handGrave(x,gy,u,idx,side){
+  var t=tnow(), A0=ctx.globalAlpha;
+  shadowOn(x+side*u*0.5,gy,u*1.25,u);
+  hwStone(x+side*u*0.95,gy,u*0.40,u*0.86,-side*0.08,0);
+  hwStone(x+side*u*1.45,gy,u*0.32,u*0.64,side*0.10,1);
+  var k=0.55+0.45*Math.sin(t*2.1+idx);
+  glowDot(x,gy-u*0.06,u*0.95,GOO,(0.22+0.12*k)*A0);
+  ctx.fillStyle='#2a1a1e'; ctx.beginPath(); ctx.ellipse(x,gy,u*0.78,u*0.22,0,Math.PI,0); ctx.fill();
+  if (u>=10){
+    ctx.strokeStyle='rgba(157,255,106,'+(0.45+0.4*k).toFixed(3)+')'; ctx.lineWidth=Math.max(1,u*0.014);
+    ctx.beginPath(); ctx.moveTo(x-u*0.55,gy-u*0.04); ctx.lineTo(x-u*0.30,gy-u*0.12); ctx.lineTo(x-u*0.14,gy-u*0.07);
+    ctx.moveTo(x+u*0.16,gy-u*0.13); ctx.lineTo(x+u*0.36,gy-u*0.07); ctx.lineTo(x+u*0.58,gy-u*0.03); ctx.stroke();
+  }
+}
+/* the giant arm and hand. In the slot (idle / rearing back) from drawDecor; out over the road from
+   render()'s far-to-near list, so it lands on top of its car */
+function drawHandArm(idx,side,zP,h){
+  var zr=zP-position;
+  if (zr<600 || zr>MAXZ) return;
+  var P=handPose(idx,side,zP,h), a=1-fogAt(zr), A0=ctx.globalAlpha;
+  ctx.globalAlpha=a;
+  var S=hwPt(zP,side*(HAND_LAT+0.12),0), E=hwPt(P.e[0],P.e[1],P.e[2]), Wr=hwPt(P.w[0],P.w[1],P.w[2]);
+  var u=Wr.u, ue=E.u, live=h && h.ph!=='arm' && h.ph!=='pass' && h.ph!=='done';
+  if (live) glowDot(S.x,S.y,ue*1.0,GOO,0.20);
+  if (P.e[2]>0.04) bone(S.x,S.y,E.x,E.y,Math.max(2.2,(S.u+ue)*0.5*0.16));          /* the upper arm, out of the ground */
+  var dx=Wr.x-E.x, dy=Wr.y-E.y, L=Math.sqrt(dx*dx+dy*dy)||1, nx=-dy/L, ny=dx/L, off=Math.max(1.2,(u+ue)*0.5*0.07);
+  bone(E.x-nx*off,E.y-ny*off,Wr.x-nx*off*0.6,Wr.y-ny*off*0.6,Math.max(1.6,ue*0.085));   /* ulna */
+  bone(E.x+nx*off,E.y+ny*off,Wr.x+nx*off*0.6,Wr.y+ny*off*0.6,Math.max(1.8,ue*0.105));   /* radius */
+  if (P.e[2]<0.30){                                    /* the mound's front lip buries the elbow */
+    ctx.fillStyle='#2a1a1e'; ctx.beginPath(); ctx.ellipse(E.x,E.y+ue*0.01,ue*0.38,ue*0.10,0,0,Math.PI); ctx.fill();
+    if (ue>=12) for (var d=0;d<4;d++){ ctx.fillRect(E.x+(hashAt(idx*5+d,83)-0.5)*ue*0.5,E.y-ue*(0.02+0.03*hashAt(idx*9+d,83)),Math.max(1,ue*0.04),Math.max(1,ue*0.03)); }
+  }
+  handBones(Wr.x,Wr.y,u,P,side,live);
+  ctx.globalAlpha=A0; ctx.lineCap='butt';
+}
+function handBones(x,y,u,P,side,live){
+  var dx=Math.sin(P.ang), dy=-Math.cos(P.ang);              /* along the hand, on screen */
+  var sq=1-0.62*P.flat, nx=-dy*sq, ny=dx*sq;                 /* across it, foreshortened when it lies flat */
+  var A0=ctx.globalAlpha;
+  if (u<8){                                                  /* far: a claw */
+    ctx.strokeStyle=BONE; ctx.lineWidth=Math.max(1,u*0.06); ctx.lineCap='round'; ctx.beginPath();
+    for (var f0=0;f0<4;f0++){ var o0=(f0-1.5)*0.13*u; ctx.moveTo(x+nx*o0*0.4,y+ny*o0*0.4); ctx.lineTo(x+dx*u*0.88+nx*o0,y+dy*u*0.88+ny*o0); }
+    ctx.stroke(); return;
+  }
+  if (live) glowDot(x+dx*u*0.5,y+dy*u*0.5,u*1.0,GOO,0.22*A0);
+  var w=Math.max(1.4,u*0.075), PALM=0.42*u, sp=P.spread, LEN=[0.92,1.0,0.96,0.80], SEG=[0.24,0.18,0.14];
+  var base=Math.atan2(dy,dx), bendDir=-side;                 /* fingers curl toward the road */
+  for (var f=0;f<4;f++){
+    var o=f-1.5, bx=x+nx*o*u*0.05, by=y+ny*o*u*0.05;
+    var kx=x+dx*PALM+nx*o*u*0.12*sp, ky=y+dy*PALM+ny*o*u*0.12*sp;
+    bone(bx,by,kx,ky,w*0.85);                                /* the palm's bones */
+    var an=base+o*0.10*sp, px=kx, py=ky;
+    for (var s=0;s<3;s++){
+      an+=(s===0?0.5:1)*P.curl*bendDir;
+      var ln=SEG[s]*u*LEN[f], ex=px+Math.cos(an)*ln, ey=py+Math.sin(an)*ln;
+      bone(px,py,ex,ey,w*(0.78-s*0.12));
+      px=ex; py=ey;
+    }
+  }
+  /* the thumb */
+  var tbx=x+nx*(-1.6)*u*0.05, tby=y+ny*(-1.6)*u*0.05;
+  var tkx=x+dx*PALM*0.45+nx*(-2.7)*u*0.12, tky=y+dy*PALM*0.45+ny*(-2.7)*u*0.12;
+  bone(tbx,tby,tkx,tky,w*0.8);
+  bone(tkx,tky,tkx+dx*u*0.17+nx*(-0.6)*u*0.11,tky+dy*u*0.17+ny*(-0.6)*u*0.11,w*0.66);
+  ctx.fillStyle=BONE; ctx.strokeStyle=INK; ctx.lineWidth=Math.max(1,w*0.4);   /* the wrist */
+  ctx.beginPath(); ctx.ellipse(x,y,u*0.10,u*0.075*(0.6+0.4*sq),P.ang,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.lineCap='butt';
+}
+function hwStar(x,y,r,rot){
+  ctx.beginPath();
+  for (var i=0;i<10;i++){ var an=rot+i*Math.PI/5-Math.PI/2, rr2=i%2?r*0.45:r; var px=x+Math.cos(an)*rr2, py=y+Math.sin(an)*rr2; if (i) ctx.lineTo(px,py); else ctx.moveTo(px,py); }
+  ctx.closePath(); ctx.fill();
+}
+/* the flattened car (or, if the hand missed, just the dent in the road) */
+function drawPancake(o){
+  var zr=o.z-position;
+  if (zr<=180||zr>MAXZ) return;
+  var p=proj(zr), u=p.ppu, a=(1-fogAt(zr))*clamp((PAN_LIFE-o.t)/0.8,0,1);
+  if (a<=0.01) return;
+  var x=W/2+u*(bend(zr)+o.x-playerX), gy=p.y, t=o.t, cw=CAR_W*u, A0=ctx.globalAlpha, k;
+  if (x<-cw*4||x>W+cw*4) return;
+  if (t<0.8){                                                /* the dust ring */
+    var q=t/0.8; ctx.globalAlpha=a*0.55*(1-q); ctx.strokeStyle='#b9a8c8'; ctx.lineWidth=Math.max(1,u*0.03*(1-q));
+    ctx.beginPath(); ctx.ellipse(x,gy,cw*(0.7+q*1.9),Math.max(1,cw*(0.14+q*0.36)),0,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.globalAlpha=a*0.75; ctx.strokeStyle='rgba(10,6,14,.85)'; ctx.lineWidth=Math.max(1,u*0.012);   /* cracks in the road */
+  ctx.beginPath();
+  for (k=0;k<6;k++){ var an=k/6*Math.PI*2+hashAt(o.seed+k,83)*0.6, r=cw*(0.75+0.6*hashAt(o.seed*3+k,83));
+    ctx.moveTo(x+Math.cos(an)*cw*0.38,gy+Math.sin(an)*cw*0.08); ctx.lineTo(x+Math.cos(an)*r,gy+Math.sin(an)*r*0.22); }
+  ctx.stroke();
+  if (!o.empty){
+    var sq=ease(t/0.09), w=cw*(1+0.32*sq), hh=Math.max(1,cw*0.66*(1-0.70*sq));
+    ctx.globalAlpha=a;
+    ctx.save(); ctx.translate(x,gy); ctx.rotate(Math.sin(t*9)*0.10*(o.v/o.v0)); ctx.translate(-x,-gy);   /* it spins a little as it skids */
+    ctx.fillStyle='#05030a';                                 /* wheels squashed out to the sides */
+    ctx.beginPath(); ctx.ellipse(x-w*0.50,gy-hh*0.3,w*0.12,Math.max(1,hh*0.5+u*0.01),0,0,Math.PI*2);
+    ctx.moveTo(x+w*0.62,gy-hh*0.3); ctx.ellipse(x+w*0.50,gy-hh*0.3,w*0.12,Math.max(1,hh*0.5+u*0.01),0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#100a1c'; rr(x-w/2,gy-hh,w,hh,Math.min(hh*0.45,w*0.1)); ctx.fill();
+    ctx.lineWidth=Math.max(1,cw*0.05); ctx.strokeStyle=o.col||BONE; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(x-w/2,gy-hh*0.6);              /* the crumpled roof */
+    for (k=1;k<=8;k++) ctx.lineTo(x-w/2+w*k/8, gy-hh*(k%2?1.15:0.62));
+    ctx.moveTo(x-w/2,gy); ctx.lineTo(x+w/2,gy); ctx.stroke(); ctx.lineJoin='miter';
+    ctx.fillStyle='#ff4747';                                 /* its tail lights, flattened */
+    ctx.fillRect(x-w*0.44,gy-hh*0.55,w*0.20,Math.max(1,hh*0.25)); ctx.fillRect(x+w*0.24,gy-hh*0.55,w*0.20,Math.max(1,hh*0.25));
+    ctx.restore();
+    if (t<0.9){                                              /* bits flying off */
+      for (k=0;k<7;k++){
+        var vx=(hashAt(o.seed*7+k,83)-0.5)*2.4, vy=1.2+hashAt(o.seed*11+k,83)*1.4;
+        var cx=x+vx*cw*t*2.2, cy=gy-hh-(vy*t-2.6*t*t)*u*0.9;
+        if (cy>gy) continue;
+        ctx.globalAlpha=a*(1-t/0.9); ctx.fillStyle=k%2?(o.col||BONE):'#3a3346';
+        var cs=Math.max(1,cw*0.07); ctx.fillRect(cx-cs/2,cy-cs/2,cs,cs);
+      }
+    }
+    if (t>0.2 && t<3.6 && cw>6){                             /* cartoon stars, it's seeing */
+      ctx.globalAlpha=a*Math.min(1,(t-0.2)/0.3)*Math.min(1,(3.6-t)/0.5); ctx.fillStyle='#ffd23f';
+      for (k=0;k<3;k++){ var sa=t*4.2+k*Math.PI*2/3; hwStar(x+Math.cos(sa)*w*0.42, gy-hh-cw*0.30+Math.sin(sa)*cw*0.08, Math.max(2,cw*0.13), t*3+k); }
+    }
+  }
+  ctx.globalAlpha=A0;
+}
+
+/* ---- sounds ---- */
+/* a classic ghost "booooo": a voice made of two saws (a few cents apart) and a triangle an octave down,
+   through the formants of "oo"; the lips open from closed (the B), the pitch rises, wobbles and slides
+   down; a breath of noise and a send to the reverb, like THE MIST's wail */
+function booSfx(){
+  if (!A||muted) return;
+  try{
+    var c=A.ctx, t=c.currentTime+0.005, D=SCARE_FACE, i;
+    var env=c.createGain();
+    env.gain.setValueAtTime(0.0001,t);
+    env.gain.linearRampToValueAtTime(BOO_VOL,t+0.07);
+    env.gain.linearRampToValueAtTime(BOO_VOL*0.85,t+0.45);
+    env.gain.linearRampToValueAtTime(BOO_VOL*0.65,t+0.95);
+    env.gain.exponentialRampToValueAtTime(0.0001,t+D);
+    env.connect(A.master);
+    if (A.verbIn){ var snd=c.createGain(); snd.gain.value=0.45; env.connect(snd); snd.connect(A.verbIn); }
+    var lip=c.createBiquadFilter(); lip.type='lowpass'; lip.Q.value=0.8;
+    lip.frequency.setValueAtTime(160,t); lip.frequency.exponentialRampToValueAtTime(1300,t+0.08);
+    lip.frequency.setValueAtTime(1300,t+0.85); lip.frequency.exponentialRampToValueAtTime(650,t+D);
+    var F=[[310,5,1.6],[820,8,0.9],[2350,10,0.25]];           /* "oo": frequency, Q, level */
+    for (i=0;i<F.length;i++){
+      var bp=c.createBiquadFilter(), bg=c.createGain();
+      bp.type='bandpass'; bp.frequency.value=F[i][0]; bp.Q.value=F[i][1]; bg.gain.value=F[i][2];
+      lip.connect(bp); bp.connect(bg); bg.connect(env);
+    }
+    var o1=c.createOscillator(), o2=c.createOscillator(), o3=c.createOscillator(), g3=c.createGain();
+    o1.type='sawtooth'; o2.type='sawtooth'; o3.type='triangle'; g3.gain.value=0.6;
+    var pts=[[0,150],[0.16,205],[0.42,196],[0.80,170],[D,112]];
+    var pc=function(o,m){ o.frequency.setValueAtTime(pts[0][1]*m,t); for (var k=1;k<pts.length;k++) o.frequency.linearRampToValueAtTime(pts[k][1]*m,t+pts[k][0]); };
+    pc(o1,1); pc(o2,1.006); pc(o3,0.5);
+    var lfo=c.createOscillator(), lg=c.createGain();
+    lfo.frequency.value=5.4; lg.gain.setValueAtTime(1.5,t); lg.gain.linearRampToValueAtTime(9,t+0.6); lg.gain.linearRampToValueAtTime(12,t+D);
+    lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
+    o1.connect(lip); o2.connect(lip); o3.connect(g3); g3.connect(lip);
+    var nz=noiseSrc(), ng=c.createGain();
+    ng.gain.setValueAtTime(0.0001,t); ng.gain.linearRampToValueAtTime(0.05,t+0.05); ng.gain.exponentialRampToValueAtTime(0.0001,t+D);
+    nz.connect(ng); ng.connect(lip);
+    o1.start(t); o2.start(t); o3.start(t); lfo.start(t); nz.start(t,0.61);
+    o1.stop(t+D+0.05); o2.stop(t+D+0.05); o3.stop(t+D+0.05); lfo.stop(t+D+0.05); nz.stop(t+D+0.05);
+  }catch(e){}
+  blip(80,0.22,'sine',0.14,0,0.6);                           /* a soft thump under the B */
+}
+/* a band of the shared noise bed sweeping f0 -> f1 */
+function hwNoise(f0,f1,dur,vol,q,pan,off){
+  if (!A||muted) return;
+  try{
+    var c=A.ctx, t=c.currentTime, n=noiseSrc(), bp=c.createBiquadFilter(), g=c.createGain(), dst=A.master;
+    bp.type='bandpass'; bp.Q.value=q; bp.frequency.setValueAtTime(f0,t); bp.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+dur*0.35); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    if (pan && c.createStereoPanner){ var pn=c.createStereoPanner(); pn.pan.value=clamp(pan,-1,1); pn.connect(A.master); dst=pn; }
+    n.connect(bp); bp.connect(g); g.connect(dst); n.start(t,off||0.3); n.stop(t+dur+0.05);
+  }catch(e){}
+}
+function scareWhoosh(){ hwNoise(300,1600,0.45,0.45,1.1,0,0.9); }   /* the ghost rushing at you */
+function handPan(h){ var zr=Math.max(200,h.zP-position), p=proj(zr); return clamp(p.ppu*(bend(zr)+h.side*HAND_LAT-playerX)/(W/2),-1,1)*0.7; }
+function handCreakSfx(h){                                    /* the ground groans, the bones clack */
+  if (!A||muted) return;
+  var pan=handPan(h);
+  try{
+    var c=A.ctx, t=c.currentTime, o=c.createOscillator(), f=c.createBiquadFilter(), g=c.createGain();
+    o.type='sawtooth'; o.frequency.setValueAtTime(48,t); o.frequency.linearRampToValueAtTime(66,t+0.5);
+    f.type='lowpass'; f.frequency.value=260;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.16,t+0.12); g.gain.exponentialRampToValueAtTime(0.0001,t+0.55);
+    o.connect(f); f.connect(g); g.connect(A.master); o.start(t); o.stop(t+0.6);
+  }catch(e){}
+  blip(1300,0.025,'square',0.05,pan);
+  setTimeout(function(){ blip(1100,0.025,'square',0.05,pan); },90);
+  setTimeout(function(){ blip(1450,0.025,'square',0.05,pan); },200);
+}
+function handWhooshSfx(h){ hwNoise(250,1400,0.30,0.65,1.3,handPan(h),0.2); }
+function handSlamSfx(squash,pan){
+  blip(64,0.55,'sine',0.30,pan,0.5);                         /* the thump */
+  hwNoise(900,300,0.30,0.42,0.8,pan,1.1);                    /* the crunch */
+  if (!squash) return;
+  blip(220,0.14,'square',0.10,pan,0.5);                      /* bent metal */
+  setTimeout(function(){ blip(330,0.10,'sawtooth',0.08,pan,0.6); },35);
+  setTimeout(function(){ blip(520,0.20,'triangle',0.12,pan,0.35); },60);   /* and a cartoon squish */
+}
+
 function drawDecor(){
   var first=Math.floor(position/DECO_SPACE)+1;
   var last =Math.floor((position+MAXZ)/DECO_SPACE);
@@ -4695,6 +6379,8 @@ function drawDecor(){
     var p=proj(zRel), a=1-fogAt(zRel);
     if (a<0.06||p.y<=horizonY||p.y>H) continue;
     var side=hashAt(idx,2)<0.5?-1:1;
+    if (lap>=HAIL_LAP && isHwAct(idx)){ hwActDraw(idx,zRel,p,a,side); continue; }   /* build 84: the Halloween activator */
+    if (ZN.look==='haunted' && isGiantHand(idx)){ drawHandSlot(idx,zRel,p,a,side); continue; }   /* build 87: the giant hand */
     var t=hashAt(idx,4);
     /* mast .22 | billboard .20 | kiosk .17 | tower .17 | dino .09 |
        obelisk .09 | alien .06 — the two new ones stay rare on purpose */
@@ -4731,16 +6417,19 @@ function drawDecor(){
     /* build 77: it waves, and its lamp flickers, only while a call can really be made */
     var hail = hailer && hailLive();
     if (hailer){
-      drawLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1);
+      if (ZN.lampKind==='gas') gasLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1,idx,HAIL_HEAD_X,hail,ZN.webs);   /* build 84 */
+      else drawLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1);
       ctx.globalAlpha=a;
     }
     var x=W/2+p.ppu*(bend(zRel)+lat-playerX);
     if (x<-p.ppu*7||x>W+p.ppu*7) continue;
+    if (type===6 && scare && scare.idx===idx) continue;   /* build 87: this ghost has left its spot */
     ctx.globalAlpha=a;
     if ((type<3||type===6) && p.ppu<5){                        
-      ctx.fillStyle=t<0.5?'#b06cff':'#21e6ff';
+      ctx.fillStyle=ZN.look==='haunted' ? (t<0.5?'#ff9a2e':'#efe6d2') : (t<0.5?'#b06cff':'#21e6ff');
       ctx.fillRect(x-1,p.y-Math.max(2,p.ppu*1.6),2,Math.max(2,p.ppu*1.6));
     }
+    else if (ZN.look==='haunted') hwDeco(type,x,p.y,p.ppu,idx,side,walk,hail,zRel);   /* build 84 */
     else if (type===0) decoMast(x,p.y,p.ppu,idx);
     else if (type===1) decoBillboard(x,p.y,p.ppu,idx);
     else if (type===2) decoKiosk(x,p.y,p.ppu,idx,side);
@@ -4777,6 +6466,7 @@ var CHEV_SHARP = 0.40*S_PEAK;        /* build 81: chevrons only where the bend i
 var CHEV_H     = 0.15*1.3;           /* chevron height in road units: build 80's plate (0.15) x 1.3 */
 var CHEV_LAT   = 1.18;               /* chevron lateral, just outside the road edge */
 var CHEV_AMBER='#ffe46e', CHEV_DIM='#d19d22', CHEV_SIDE='#8a5c0c', CHEV_CORE='#fff6d8', CHEV_DARK='#120a22';
+var CHEV_STD=[CHEV_AMBER,CHEV_DIM,CHEV_SIDE,CHEV_CORE];   /* build 84: a zone can recolour them (ZN.chev); setZone() applies it */
 
 function drawPosts(){
   var t=performance.now()/1000;
@@ -4856,7 +6546,9 @@ function postLamp(n,zRel){
   if (hailerAt(n*LAMP_SPACE,LAMP_SPACE*0.5)) return;     /* build 77: a hailer's own lamp stands here instead */
   var sl=slopeAt(n*LAMP_SPACE);
   /* build 81: never skipped in a bend; there it stands on the inside (the chevrons are on the outside) */
-  drawLampAt(zRel,p, Math.abs(sl)>=CHEV_S ? (sl>0?1:-1) : ((n&1)?-1:1), 1);
+  var sd=Math.abs(sl)>=CHEV_S ? (sl>0?1:-1) : ((n&1)?-1:1);
+  if (ZN.lampKind==='gas') gasLampAt(zRel,p,sd,1,n,GAS_HEAD,false,ZN.webs);   /* build 84: the crooked gas lamp */
+  else drawLampAt(zRel,p,sd,1);
 }
 
 /* One swan-neck lamp. s = side, k = how lit it is: 1 is the normal steady lamp (identical to build 76),
@@ -4910,6 +6602,88 @@ function drawLampAt(zRel,p,s,k){
   ctx.globalAlpha=a*(0.12+0.88*k); ctx.fillStyle='#fff6e6'; ctx.fillRect(hx-hw*0.4,top+hh,hw*0.8,Math.max(1,hh*0.7));
 }
 
+/* ---------------------------------------------------------------
+   THE CROOKED GAS LAMP (build 84, Carlos's pick A on the Halloween picker,
+   cobwebs on). Zones with lampKind 'gas' put it in every lamp slot, on the
+   same sides as the swan necks (build 81's rule). A bent iron post, a curled
+   bracket, a glass lantern with a live flame; a cobweb on every other lamp.
+   headLat is where the lantern hangs: 1.02 for an ordinary lamp (as on the
+   picker); a hitchhiker's lamp and the Halloween activator hang theirs over
+   the outer lane (HAIL_HEAD_X), on a longer arm with a brace, so "drive under
+   it" means what it says. live: the call can be made right now; the flame
+   turns ghost green and flickers (k = hailFlick), like the broken swan lamp.
+--------------------------------------------------------------- */
+var GAS_HEAD = 1.02;
+function lampFlame(t,n){ return 0.82+0.10*Math.sin(t*13+n*1.7)+0.08*Math.sin(t*31+n*0.9); }
+function cobweb(x,y,r,dirX,a){                    /* a corner web: spokes and sagging threads */
+  ctx.globalAlpha=a*0.45; ctx.strokeStyle='#e8e0ff'; ctx.lineWidth=Math.max(0.6,r*0.025);
+  var sp=5, i, j;
+  ctx.beginPath();
+  for (i=0;i<=sp;i++){ var an=i/sp*Math.PI/2; ctx.moveTo(x,y); ctx.lineTo(x+dirX*Math.cos(an)*r,y+Math.sin(an)*r); }
+  for (j=1;j<=3;j++){ var rj=r*j/3.4;
+    for (i=0;i<sp;i++){ var a0=i/sp*Math.PI/2, a1=(i+1)/sp*Math.PI/2, am=(a0+a1)/2;
+      var p0x=x+dirX*Math.cos(a0)*rj, p0y=y+Math.sin(a0)*rj, p1x=x+dirX*Math.cos(a1)*rj, p1y=y+Math.sin(a1)*rj;
+      if (i===0) ctx.moveTo(p0x,p0y);
+      ctx.quadraticCurveTo(x+dirX*Math.cos(am)*rj*0.82,y+Math.sin(am)*rj*0.82,p1x,p1y); } }
+  ctx.stroke(); ctx.globalAlpha=a;
+}
+function lampPool(x,y,ppu,k,a,col){
+  if (k<=0) return;
+  ctx.globalAlpha=a*0.16*k; ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(x,y,ppu*0.34,Math.max(1,ppu*0.07),0,0,Math.PI*2); ctx.fill();
+  if (ppu>=16){ ctx.globalAlpha=a*0.12*k; ctx.beginPath(); ctx.ellipse(x,y,ppu*0.17,Math.max(1,ppu*0.035),0,0,Math.PI*2); ctx.fill(); }
+}
+function gasLampAt(zRel,p,s,k,n,headLat,live,webs){
+  var a=1-fogAt(zRel), t=performance.now()/1000, u=p.ppu, cR=bend(zRel);
+  var x=W/2+u*(cR+s*1.28-playerX), lx=W/2+u*(cR+s*headLat-playerX);
+  if (Math.max(x,lx)<-80||Math.min(x,lx)>W+80) return;
+  var h=u*0.78, kk=live ? k : k*lampFlame(t,n);
+  var hot=live?'#9dff6a':'#ff9a2e', warm=live?'#c8ffb0':'#ffb050';
+  if (u<7){ ctx.globalAlpha=a*0.9; ctx.fillStyle='#140a14'; ctx.fillRect(x-1,p.y-h,2,h);
+    if (Math.abs(lx-x)>2) ctx.fillRect(Math.min(x,lx),p.y-h,Math.abs(lx-x)+1,1);
+    ctx.globalAlpha=a*(0.2+0.8*kk); ctx.fillStyle=warm; ctx.fillRect(lx-1,p.y-h*0.86,2,2); ctx.globalAlpha=1; return; }
+  lampPool(lx,p.y,u,kk,a,hot);
+  var w=Math.max(1,u*0.026), lean=s*u*0.05;
+  /* the post: base, a kink at 40 %, leaning top */
+  var bx=x, kx=x+lean*0.3, ky=p.y-h*0.42, tx=x-lean*0.5, ty=p.y-h;
+  var IRON='#21142a';
+  ctx.globalAlpha=a*0.96; ctx.strokeStyle=IRON; ctx.lineCap='round'; ctx.lineWidth=w*2;
+  ctx.beginPath(); ctx.moveTo(bx,p.y); ctx.lineTo(kx,ky); ctx.lineTo(tx,ty); ctx.stroke();
+  ctx.fillStyle=IRON; ctx.beginPath(); ctx.moveTo(bx-w*2.6,p.y); ctx.lineTo(bx+w*2.6,p.y); ctx.lineTo(bx+w*1.2,p.y-u*0.06); ctx.lineTo(bx-w*1.2,p.y-u*0.06); ctx.closePath(); ctx.fill();
+  if (u>=10){ ctx.globalAlpha=a*0.7*(0.4+0.6*kk); ctx.strokeStyle=hot; ctx.lineWidth=Math.max(0.8,w*0.5);   /* firelight on the road side */
+    ctx.beginPath(); ctx.moveTo(bx-s*w*0.8,p.y-u*0.06); ctx.lineTo(kx-s*w*0.8,ky); ctx.lineTo(tx-s*w*0.8,ty); ctx.stroke(); }
+  /* the bracket: out toward the road, a curl at its end; a long one gets a brace */
+  var ay=ty+u*0.02, cx2=lx, reach=Math.abs(lx-tx)/u;
+  ctx.globalAlpha=a*0.96; ctx.strokeStyle=IRON; ctx.lineWidth=w*1.6;
+  ctx.beginPath(); ctx.moveTo(tx,ay); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06,cx2,ay);
+  if (u>=16){ ctx.arc(cx2+s*-u*0.025,ay+u*0.02,u*0.025,-Math.PI/2,Math.PI*1.2,s>0); }
+  ctx.stroke();
+  if (reach>0.35){ ctx.lineWidth=w*0.9; ctx.beginPath(); ctx.moveTo(x-lean*0.3,p.y-h*0.80); ctx.quadraticCurveTo(tx+(cx2-tx)*0.25,ay+u*0.02,tx+(cx2-tx)*0.55,ay-u*0.035); ctx.stroke(); }
+  if (u>=10){                                     /* a pale rim along the arm and the post, so the iron reads on a dark sky,
+                                                    and the lantern's own light along the arm */
+    ctx.globalAlpha=a*0.55; ctx.strokeStyle='#cbb8f0'; ctx.lineWidth=Math.max(0.7,w*0.4);
+    ctx.beginPath(); ctx.moveTo(tx,ay-w*0.8); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06-w*0.8,cx2,ay-w*0.8);
+    ctx.moveTo(bx+s*w*0.9,p.y-u*0.06); ctx.lineTo(kx+s*w*0.9,ky); ctx.lineTo(tx+s*w*0.9,ty); ctx.stroke();
+    ctx.globalAlpha=a*0.65*(0.4+0.6*kk); ctx.strokeStyle=hot; ctx.lineWidth=Math.max(0.8,w*0.45);
+    ctx.beginPath(); ctx.moveTo(tx,ay-w*0.7); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06-w*0.7,cx2,ay-w*0.7); ctx.stroke(); }
+  ctx.lineCap='butt';
+  /* the lantern */
+  var lw=u*0.11, lh=u*0.16, ly=ay+u*0.05;
+  if (kk>0){ ctx.globalAlpha=1; glowDot(cx2,ly+lh*0.5,u*(live?0.40:0.32),hot,0.45*kk*a); }
+  ctx.globalAlpha=a; ctx.fillStyle=IRON;
+  ctx.beginPath(); ctx.moveTo(cx2-lw*0.7,ly); ctx.lineTo(cx2+lw*0.7,ly); ctx.lineTo(cx2+lw*0.35,ly-lh*0.28); ctx.lineTo(cx2-lw*0.35,ly-lh*0.28); ctx.closePath(); ctx.fill();
+  ctx.fillRect(cx2-w*0.5,ay,w,ly-ay-lh*0.2);
+  var gl=ctx.createLinearGradient(0,ly,0,ly+lh);
+  if (live){ gl.addColorStop(0,'rgba(220,255,200,'+(0.3+0.7*kk).toFixed(3)+')'); gl.addColorStop(1,'rgba(110,230,80,'+(0.25+0.6*kk).toFixed(3)+')'); }
+  else { gl.addColorStop(0,'rgba(255,214,140,'+(0.3+0.7*kk).toFixed(3)+')'); gl.addColorStop(1,'rgba(255,120,40,'+(0.25+0.6*kk).toFixed(3)+')'); }
+  ctx.fillStyle=gl; ctx.fillRect(cx2-lw/2,ly,lw,lh);
+  ctx.fillStyle=IRON; ctx.fillRect(cx2-lw*0.6,ly+lh,lw*1.2,Math.max(1,lh*0.14));
+  if (u>=20){ ctx.fillRect(cx2-w*0.3,ly,Math.max(1,w*0.6),lh);
+    ctx.fillStyle=live?'rgba(240,255,230,'+(0.5+0.5*kk).toFixed(3)+')':'rgba(255,250,220,'+(0.5+0.5*kk).toFixed(3)+')';   /* the flame */
+    ctx.beginPath(); ctx.ellipse(cx2+Math.sin(t*9+n)*lw*0.05,ly+lh*0.55,lw*0.12,lh*0.24*(0.8+0.2*kk),0,0,Math.PI*2); ctx.fill(); }
+  if (webs && u>=18 && (n%2===0)) cobweb(tx,ay+u*0.004,u*0.15,-s,a);
+  ctx.globalAlpha=1;
+}
 function drawGate(){
   var zRel=nextCP-position;
   if (zRel<=140||zRel>MAXZ) return;
@@ -5176,6 +6950,34 @@ function drawBlast(bl){
 }
 
 var UFO_W=0.62;
+/* build 85 (Carlos): during the abduction the saucer's dome stays just below the LAP/TIME panel (it ends at
+   y 74), not behind it. Its bob calms from 0.10 to 0.03 of its width over the lock, so it never pokes up. */
+var UFO_CUT_TOP=80;
+function ufoBobA(uf){ return uf.cutting && cut ? 0.10-0.07*clamp(cut.t/cut.dur/0.16,0,1) : 0.10; }
+function ufoCutMin(w,bobA){ return UFO_CUT_TOP+w*(0.30+bobA); }   /* the dome reaches 0.30 w above y */
+function ufoCutDrop(uf){                 /* how far the cut lowers it: the car rises that much less */
+  var p=proj(Math.max(181,uf.z-position)), w=Math.max(5,UFO_W*p.ppu);
+  return Math.max(0, ufoCutMin(w,0.03)-(p.y-uf.hover*p.ppu));
+}
+/* THE SAUCER (build 83: the Cutaway Lab v2's saucer, ported).
+   A metal hull with a rim light and a seam, an under-glow, a glass dome with
+   a small alien inside (the roadside glow-suit alien's head: it watches your
+   car and blinks), running lights, and a layered beam: outer cone, hot core,
+   edge lines, travelling rings, motes rising through it, a pool of light on
+   the road. The beam's width AT THE ROAD is still exactly the width the hunt
+   tests (UFO_BEAM_R), and the lock ring is build 82's code unchanged.
+   Detail steps down with size, so a far saucer costs what it did. */
+var ufoRgbC={};
+function ufoRgb(hex){
+  var c=ufoRgbC[hex]; if (c) return c;
+  var n=parseInt(hex.slice(1),16);
+  return (ufoRgbC[hex]=((n>>16)&255)+','+((n>>8)&255)+','+(n&255));
+}
+function ufoLite(rgb,m){                 /* the colour pushed toward white by m (0..1) */
+  var p=rgb.split(','), o=[];
+  for (var i=0;i<3;i++) o.push(Math.round(+p[i]+(255-p[i])*m));
+  return o.join(',');
+}
 function drawUfo(uf){
   var zRel=uf.z-position;
   if (zRel<=180||zRel>MAXZ) return;
@@ -5185,38 +6987,67 @@ function drawUfo(uf){
   var x=W/2+p.ppu*(bend(zRel)+uf.x-playerX);
   if (x<-w*3||x>W+w*3) return;
   var gy=p.y;
-  var y=gy-(uf.hover*p.ppu)-Math.sin(uf.bob*1.3)*w*0.10;
+  var bobA=ufoBobA(uf), base=gy-(uf.hover*p.ppu);
+  if (uf.cutting) base=Math.max(base, ufoCutMin(w,bobA));   /* build 85: below the LAP/TIME panel */
+  var y=base-Math.sin(uf.bob*1.3)*w*bobA-(uf.lift||0);
+  var tR=performance.now()/1000;
+  var rgb=ufoRgb(uf.color), hot=ufoLite(rgb,0.62), wht=ufoLite(rgb,0.86);
 
   var live = !!(uf.hunt||uf.cutting);
   if (uf.beamOn && (!live || uf.beamK>0.01)){
-    /* A hunter's beam is drawn at EXACTLY the width it is tested at, so
-       what you steer into is what catches you. The ambient saucer keeps
-       its old cosmetic cone, which happens to be almost the same size. */
     var k  = live ? uf.beamK : 1;
-    /* Drawn at the tested width in BOTH modes now. The old cosmetic cone
-       was 0.446 road units against a 0.46 test, which was close enough to
-       mislead: you could be a hair outside a beam that looked like it had
-       you. */
+    /* the beam is drawn at EXACTLY the width it is tested at (build 82) */
     var bw = live ? UFO_BEAM_R*p.ppu*(0.55+0.45*k) : UFO_BEAM_R*p.ppu;
-    ctx.globalAlpha=a*(live?0.26:0.14)*k; ctx.fillStyle=uf.color;
-    ctx.beginPath();
-    ctx.moveTo(x-w*0.20,y+dh*0.55); ctx.lineTo(x+w*0.20,y+dh*0.55);
-    ctx.lineTo(x+bw,gy); ctx.lineTo(x-bw,gy);
-    ctx.closePath(); ctx.fill();
-    ctx.globalAlpha=a*(live?0.42:0.30)*k;
-    ctx.beginPath(); ctx.ellipse(x,gy,bw,Math.max(1,bw*0.24),0,0,Math.PI*2); ctx.fill();
+    var top=y+dh*0.55, x0=w*0.20, s=(live?1:0.55)*k*a;
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    /* the pool of light on the road */
+    var pr=bw*1.25, pg=ctx.createRadialGradient(x,gy,1,x,gy,pr);
+    pg.addColorStop(0,'rgba('+wht+','+(0.42*s).toFixed(3)+')');
+    pg.addColorStop(0.55,'rgba('+rgb+','+(0.20*s).toFixed(3)+')');
+    pg.addColorStop(1,'rgba('+rgb+',0)');
+    ctx.fillStyle=pg; ctx.beginPath(); ctx.ellipse(x,gy,pr,Math.max(1,pr*0.26),0,0,Math.PI*2); ctx.fill();
+    /* outer cone: brighter under the saucer, thinner at the road */
+    var bg=ctx.createLinearGradient(0,top,0,gy);
+    bg.addColorStop(0,'rgba('+hot+','+(0.34*s).toFixed(3)+')');
+    bg.addColorStop(0.6,'rgba('+rgb+','+(0.16*s).toFixed(3)+')');
+    bg.addColorStop(1,'rgba('+rgb+','+(0.10*s).toFixed(3)+')');
+    ctx.fillStyle=bg;
+    ctx.beginPath(); ctx.moveTo(x-x0,top); ctx.lineTo(x+x0,top); ctx.lineTo(x+bw,gy); ctx.lineTo(x-bw,gy); ctx.closePath(); ctx.fill();
+    /* the hot core */
+    var cg=ctx.createLinearGradient(0,top,0,gy);
+    cg.addColorStop(0,'rgba('+wht+','+(0.38*s).toFixed(3)+')'); cg.addColorStop(1,'rgba('+hot+',0)');
+    ctx.fillStyle=cg;
+    ctx.beginPath(); ctx.moveTo(x-x0*0.45,top); ctx.lineTo(x+x0*0.45,top); ctx.lineTo(x+bw*0.42,gy); ctx.lineTo(x-bw*0.42,gy); ctx.closePath(); ctx.fill();
+    /* the two edges: what you steer away from */
+    ctx.strokeStyle='rgba('+wht+','+(0.55*s).toFixed(3)+')'; ctx.lineWidth=Math.max(1,w*0.012);
+    ctx.beginPath(); ctx.moveTo(x-x0,top); ctx.lineTo(x-bw,gy); ctx.moveTo(x+x0,top); ctx.lineTo(x+bw,gy); ctx.stroke();
+    /* motes rising through the beam (no state: each one is a phase of the clock) */
+    if (w>18){
+      var nm=live?16:7, bh=gy-top;
+      ctx.fillStyle='rgba('+wht+',1)';
+      for (var m=0;m<nm;m++){
+        var ph=((tR*(0.42+0.05*(m%3))+m*0.618)%1), yy=gy-ph*bh;
+        var hw=x0+(bw-x0)*(1-ph), xx=x+((m*0.371+0.13)%1-0.5)*2*hw*0.82+Math.sin(tR*2.1+m)*w*0.01;
+        var ms=Math.max(1,w*(0.010+0.006*(m%2)));
+        ctx.globalAlpha=0.85*s*Math.sin(ph*Math.PI);
+        ctx.fillRect(xx-ms/2,yy-ms/2,ms,ms);
+      }
+      ctx.globalAlpha=1;
+    }
+    ctx.restore();
 
     if (live){
       /* rings travelling down the cone, so the beam reads as pulling */
-      var tR=performance.now()/1000;
-      ctx.globalAlpha=a*0.30*k; ctx.strokeStyle=uf.color; ctx.lineWidth=Math.max(1,w*0.03);
+      ctx.strokeStyle='rgba('+wht+',1)'; ctx.lineWidth=Math.max(1,w*0.026);
       for (var r=0;r<4;r++){
         var rp=((tR*0.85+r*0.25)%1);
-        var ry=y+dh+rp*(gy-y-dh);
-        var rw2=bw*(0.30+rp*0.70);
+        var ry=top+rp*(gy-top);
+        var rw2=x0+(bw-x0)*rp;
+        ctx.globalAlpha=a*0.42*k*Math.sin(rp*Math.PI);
         ctx.beginPath(); ctx.ellipse(x,ry,rw2,Math.max(1,rw2*0.20),0,0,Math.PI*2); ctx.stroke();
       }
-      /* and the lock: the ring on the road closes as it takes hold */
+      /* and the lock: the ring on the road closes as it takes hold (build 82, unchanged) */
       if (uf.lock>0.02){
         var lk=clamp(uf.lock/UFO_LOCK,0,1);
         ctx.globalAlpha=a*0.95;
@@ -5231,30 +7062,199 @@ function drawUfo(uf){
     ctx.globalAlpha=1;
   }
 
-  ctx.globalAlpha=a;
-  ctx.fillStyle='rgba(185,232,255,.32)';      /* dome */
-  ctx.beginPath(); ctx.ellipse(x,y-dh*0.55,w*0.24,w*0.20,0,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.45)';
-  ctx.beginPath(); ctx.ellipse(x-w*0.09,y-dh*0.80,w*0.06,w*0.04,-0.5,0,Math.PI*2); ctx.fill();
+  /* under-glow, in the saucer's colour */
+  if (w>10){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    var ug=ctx.createRadialGradient(x,y+dh*0.6,1,x,y+dh*0.6,w*0.7);
+    ug.addColorStop(0,'rgba('+rgb+','+(a*(0.22+0.30*(uf.beamOn?(uf.beamK||0):0))).toFixed(3)+')');
+    ug.addColorStop(1,'rgba('+rgb+',0)');
+    ctx.fillStyle=ug; ctx.fillRect(x-w*0.7,y-w*0.3,w*1.4,w*1.0);
+    ctx.restore();
+  }
 
-  var g=ctx.createLinearGradient(x,y-dh,x,y+dh);   /* hull */
-  g.addColorStop(0,'#3a3157'); g.addColorStop(0.5,'#1a1430'); g.addColorStop(1,'#0b0818');
+  ctx.globalAlpha=a;
+  /* the hull: metal, lit from above, a seam, a thin rim in the saucer's colour */
+  var g=ctx.createLinearGradient(0,y-dh,0,y+dh);
+  g.addColorStop(0,'#6d5bb8'); g.addColorStop(0.45,'#3a2a6e'); g.addColorStop(1,'#120a24');
   ctx.fillStyle=g;
   ctx.beginPath(); ctx.ellipse(x,y,w*0.5,dh,0,0,Math.PI*2); ctx.fill();
-  ctx.lineWidth=Math.max(1,w*0.032); ctx.strokeStyle=uf.color;
-  ctx.shadowColor=uf.color; ctx.shadowBlur=blur(Math.min(20,w*0.36));
+  ctx.lineWidth=Math.max(1,w*0.020); ctx.strokeStyle='rgba('+rgb+',0.95)';
+  ctx.shadowColor=uf.color; ctx.shadowBlur=blur(Math.min(14,w*0.22));
   ctx.stroke(); ctx.shadowBlur=0;
+  if (w>14){
+    ctx.strokeStyle='rgba(190,175,255,.55)'; ctx.lineWidth=Math.max(1,w*0.012);
+    ctx.beginPath(); ctx.ellipse(x,y,w*0.47,dh*0.9,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(x-w*0.49,y-dh*0.06,w*0.98,Math.max(1,dh*0.12));
+    /* the belly lens */
+    ctx.fillStyle='rgba('+wht+','+(0.45+0.5*(uf.beamOn?(uf.beamK||0):0)).toFixed(3)+')';
+    ctx.beginPath(); ctx.ellipse(x,y+dh*0.62,w*0.11,Math.max(1,dh*0.24),0,0,Math.PI*2); ctx.fill();
+  }
 
-  if (w>12){                                  /* running lights round the rim */
-    for (var i=0;i<7;i++){
-      var ang=uf.spin+i*Math.PI*2/7;
-      var lx=x+Math.cos(ang)*w*0.41, ly=y+Math.sin(ang)*dh*0.62;
-      ctx.globalAlpha=a*(0.30+0.70*Math.max(0,Math.sin(ang)));
-      ctx.fillStyle=uf.color;
-      ctx.fillRect(lx-w*0.030,ly-w*0.020,Math.max(1.5,w*0.060),Math.max(1.5,w*0.040));
+  ctx.globalAlpha=a;
+  /* the dome: a dark collar, the glass, the pilot, the sheen */
+  var gx=x, gyD=y-dh*0.42, gw=w*0.20, gh=Math.max(1.5,w*0.22);
+  var dg=ctx.createLinearGradient(0,y-dh*1.2,0,y);
+  dg.addColorStop(0,'#5a43a0'); dg.addColorStop(1,'#22163f');
+  ctx.fillStyle=dg; ctx.beginPath(); ctx.ellipse(x,gyD+dh*0.08,w*0.29,dh*0.55,0,Math.PI,Math.PI*2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(gx,gyD,gw,gh,0,Math.PI,Math.PI*2); ctx.closePath();
+  ctx.fillStyle='rgba(8,26,44,.92)'; ctx.fill();
+  if (w>30){                                            /* the pilot, inside the glass */
+    ctx.clip();
+    var hr=w*0.068, hh=w*0.084, hx=gx+Math.sin(uf.bob*0.7)*w*0.012, hy=gyD-gh*0.38;
+    var look=clamp((playerX-uf.x)*0.9,-1,1);
+    ctx.fillStyle='#1a3d24';                            /* shoulders */
+    ctx.beginPath(); ctx.ellipse(hx,gyD+gh*0.05,hr*1.5,hh*0.75,0,Math.PI,Math.PI*2); ctx.fill();
+    var hg=ctx.createRadialGradient(hx-hr*0.3,hy-hh*0.6,hr*0.1,hx,hy-hh*0.2,hh*1.2);
+    hg.addColorStop(0,'#b6ff8a'); hg.addColorStop(1,'#3e9a2a');
+    ctx.fillStyle=hg;
+    ctx.beginPath(); ctx.ellipse(hx,hy-hh*0.25,hr,hh,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx-hr*0.55,hy+hh*0.35); ctx.lineTo(hx,hy+hh*0.95); ctx.lineTo(hx+hr*0.55,hy+hh*0.35); ctx.closePath(); ctx.fill();
+    var blink=((tR*0.31+uf.bob*0.1)%1)<0.035;
+    for (var e=-1;e<=1;e+=2){
+      ctx.save(); ctx.translate(hx+look*hr*0.22+e*hr*0.42,hy-hh*0.20); ctx.rotate(e*0.5);
+      ctx.fillStyle='#05030a';
+      ctx.beginPath(); ctx.ellipse(0,0,hr*0.40,blink?Math.max(0.6,hh*0.04):hh*0.24,0,0,Math.PI*2); ctx.fill();
+      if (!blink && w>44){ ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(-hr*0.13,-hh*0.08,Math.max(0.9,hr*0.12),0,Math.PI*2); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha=a;
+  var gg=ctx.createRadialGradient(gx-w*0.05,gyD-gh*0.9,1,gx,gyD-gh*0.3,w*0.22);  /* the glass over everything */
+  gg.addColorStop(0,'rgba(220,255,255,.55)'); gg.addColorStop(0.45,'rgba(33,230,255,.20)'); gg.addColorStop(1,'rgba(33,120,200,.28)');
+  ctx.fillStyle=gg; ctx.beginPath(); ctx.ellipse(gx,gyD,gw,gh,0,Math.PI,Math.PI*2); ctx.fill();
+  if (w>14){
+    ctx.strokeStyle='rgba(160,240,255,.55)'; ctx.lineWidth=Math.max(1,w*0.008);
+    ctx.beginPath(); ctx.ellipse(gx,gyD,gw,gh,0,Math.PI,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.60)';
+    ctx.beginPath(); ctx.ellipse(gx-gw*0.55,gyD-gh*0.55,gw*0.07,gh*0.15,-0.6,0,Math.PI*2); ctx.fill();
+  }
+
+  ctx.globalAlpha=a;
+  if (w>12){                                  /* running lights round the rim, front half lit */
+    for (var i=0;i<9;i++){
+      var ang=uf.spin+i*Math.PI*2/9, cs=Math.sin(ang);
+      if (cs<-0.2) continue;
+      var lx=x+Math.cos(ang)*w*0.45, ly=y+cs*dh*0.45, lit=(cs+0.2)/1.2, col=(i%2?'#ffffff':uf.color);
+      if (w>26){
+        ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=a*0.35*lit*GQ; ctx.fillStyle=col;
+        ctx.beginPath(); ctx.arc(lx,ly,w*0.05,0,Math.PI*2); ctx.fill(); ctx.restore();
+      }
+      ctx.globalAlpha=a*(0.4+0.6*lit); ctx.fillStyle=col;
+      var ls=Math.max(1.5,w*0.036);
+      ctx.fillRect(lx-ls/2,ly-ls/2,ls,ls);
     }
   }
   ctx.globalAlpha=1;
+}
+
+/* ---------------------------------------------------------------
+   SCREEN EFFECTS LAYER (build 83)
+   One small list of short-lived screen-space effects, shared by every
+   moment that wants one: today the abduction (the pulse ring when the beam
+   takes you, the landing dust), later the dino's slime drips, shockwaves,
+   flashes. Each effect is a plain object with a kind, a layer and a life:
+     layer 0  on the ground, under the car      (drawn before drawPlayer)
+     layer 1  above the car, still in the world (after the near-miss pops)
+     layer 2  over the whole frame, under the HUD (after drawCut)
+   It steps in update() (so a pause freezes it) and draws in three calls in
+   render(). It has its OWN random generator: the game's Math.random
+   sequence is untouched, so a run plays the same with or without effects.
+   Kinds:
+     dot   {x,y,vx,vy,g,drag,size,col,a,add,fadeIn}       a particle
+     ring  {x,y,r0,r1,sq,col,w,a,add}                       expanding ring (sq<1 = on the ground)
+     flash {col,a}                                          full-screen wash
+     flare {y,col,a,len}                                    anamorphic horizontal streak
+     drip  {x,len,w,col,a,v,delay}                          slime running down from the top edge
+--------------------------------------------------------------- */
+var fx=[], FX_MAX=260, fxSeed=0x2f6e2b1;
+function fxRnd(){ fxSeed=(fxSeed*1664525+1013904223)>>>0; return fxSeed/4294967296; }
+function fxAdd(o){
+  o.t=0; if (o.layer===undefined) o.layer=1; if (o.a===undefined) o.a=1;
+  if (fx.length>=FX_MAX) fx.shift();
+  fx.push(o); return o;
+}
+function fxClear(){ fx.length=0; }
+function fxStep(dt){
+  for (var i=fx.length-1;i>=0;i--){
+    var o=fx[i];
+    o.t+=dt;
+    if (o.t>=o.life){ fx.splice(i,1); continue; }
+    if (o.kind==='dot'){
+      var dr=Math.pow(Math.max(0.0001,1-(o.drag||0)*0.25),dt*4);
+      o.vx*=dr; o.vy=o.vy*dr+(o.g||0)*dt;
+      o.x+=o.vx*dt; o.y+=o.vy*dt;
+    }
+  }
+}
+/* n particles from one point; spread in px/s, up = extra upward speed */
+function fxBurst(x,y,n,o){
+  for (var i=0;i<n;i++){
+    var an=fxRnd()*Math.PI*2, sp=(o.spread||120)*(0.35+0.65*fxRnd());
+    fxAdd({kind:'dot', layer:o.layer===undefined?1:o.layer, x:x+(fxRnd()-0.5)*(o.w||0), y:y,
+           vx:Math.cos(an)*sp, vy:Math.sin(an)*sp*(o.flat||1)-(o.up||0)*(0.5+0.5*fxRnd()),
+           g:o.g||0, drag:o.drag||0, size:(o.size||2)*(0.6+0.8*fxRnd()), col:o.col||'#ffffff',
+           a:o.a===undefined?0.85:o.a, add:!!o.add, fadeIn:o.fadeIn||0, life:(o.life||0.8)*(0.6+0.8*fxRnd())});
+  }
+}
+/* the dino's future spit: n drips across the top of the screen */
+function fxDrips(n,col){
+  for (var i=0;i<n;i++)
+    fxAdd({kind:'drip', layer:2, x:W*(0.06+0.88*fxRnd()), len:40+fxRnd()*120, w:6+fxRnd()*12,
+           col:col||'#9dff6a', a:0.9, v:22+fxRnd()*60, delay:fxRnd()*0.5, life:2.6+fxRnd()*1.4});
+}
+function fxDraw(layer){
+  if (!fx.length) return;
+  for (var i=0;i<fx.length;i++){
+    var o=fx[i];
+    if (o.layer!==layer) continue;
+    var q=o.t/o.life, k=1-q;
+    if (o.kind==='dot'){
+      var fa=o.fadeIn ? Math.min(1,o.t/o.fadeIn) : 1;
+      ctx.globalAlpha=o.a*fa*k;
+      if (o.add) ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=o.col;
+      var s=o.size*(o.add?1:(0.6+0.4*k));
+      ctx.fillRect(o.x-s/2,o.y-s/2,s,s);
+      if (o.add) ctx.globalCompositeOperation='source-over';
+    } else if (o.kind==='ring'){
+      var e=1-Math.pow(1-q,3), r=o.r0+(o.r1-o.r0)*e;
+      ctx.globalAlpha=o.a*k*k;
+      if (o.add) ctx.globalCompositeOperation='lighter';
+      ctx.strokeStyle=o.col; ctx.lineWidth=Math.max(1,(o.w||3)*(0.4+0.6*k));
+      ctx.beginPath(); ctx.ellipse(o.x,o.y,r,Math.max(1,r*(o.sq||1)),0,0,Math.PI*2); ctx.stroke();
+      if (o.add) ctx.globalCompositeOperation='source-over';
+    } else if (o.kind==='flash'){
+      ctx.globalAlpha=o.a*k*k; ctx.fillStyle=o.col; ctx.fillRect(0,0,W,H);
+    } else if (o.kind==='flare'){
+      var fa2=o.a*Math.sin(Math.min(1,q)*Math.PI), L=(o.len||W)*(0.7+0.3*q);
+      ctx.globalAlpha=1; ctx.globalCompositeOperation='lighter';
+      var fg=ctx.createLinearGradient(W/2-L/2,0,W/2+L/2,0);
+      fg.addColorStop(0,hexA(o.col,0)); fg.addColorStop(0.5,hexA(o.col,(0.85*fa2).toFixed(3))); fg.addColorStop(1,hexA(o.col,0));
+      ctx.fillStyle=fg; ctx.fillRect(W/2-L/2,o.y-1.5,L,3);
+      ctx.globalAlpha=0.45; ctx.fillRect(W/2-L/2,o.y-7,L,1); ctx.fillRect(W/2-L/2,o.y+8,L,1);
+      ctx.globalCompositeOperation='source-over';
+    } else if (o.kind==='drip'){
+      if (o.t<o.delay) continue;
+      var tt=o.t-o.delay, run=Math.min(H*0.7, tt*o.v), fade=Math.min(1,(o.life-o.t)/0.8);
+      var top=-4, bot=top+o.len*Math.min(1,tt*3)+run, x0=o.x+Math.sin(tt*1.7+o.x)*1.2;
+      ctx.globalAlpha=o.a*fade;
+      var dg=ctx.createLinearGradient(0,top,0,bot);
+      dg.addColorStop(0,hexA(o.col,0.95)); dg.addColorStop(1,hexA(o.col,0.55));
+      ctx.fillStyle=dg;
+      ctx.beginPath();                                  /* a tapering string with a bulb at its end */
+      ctx.moveTo(x0-o.w*0.5,top);
+      ctx.quadraticCurveTo(x0-o.w*0.18,top+(bot-top)*0.55,x0-o.w*0.20,bot-o.w*0.3);
+      ctx.lineTo(x0+o.w*0.20,bot-o.w*0.3);
+      ctx.quadraticCurveTo(x0+o.w*0.18,top+(bot-top)*0.55,x0+o.w*0.5,top);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x0,bot,o.w*0.34,o.w*0.44,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,'+(0.55*o.a*fade).toFixed(3)+')';   /* wet highlight */
+      ctx.beginPath(); ctx.ellipse(x0-o.w*0.10,bot-o.w*0.12,o.w*0.08,o.w*0.13,0,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
 }
 
 function drawDinoPickup(pu){
@@ -5558,6 +7558,13 @@ function drawPlayer(){
   ctx.globalAlpha=(blink?0.42:1)*cutCar.alpha;
   var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
   paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn});
+  if (cutCar.lit>0.01 && ufo){            /* build 83: the beam lights the car */
+    var ph8=PW*0.62, lg=ctx.createRadialGradient(0,-ph8*0.55,2,0,-ph8*0.45,PW*0.75);
+    lg.addColorStop(0,hexA(ufo.color,(0.42*cutCar.lit).toFixed(3))); lg.addColorStop(1,hexA(ufo.color,0));
+    ctx.globalCompositeOperation='lighter'; ctx.fillStyle=lg;
+    ctx.fillRect(-PW*0.75,-ph8*1.3,PW*1.5,ph8*1.6);
+    ctx.globalCompositeOperation='source-over';
+  }
   ctx.restore();
   ctx.globalAlpha=1;
 }
@@ -6562,6 +8569,7 @@ function drawGroundFog(){
   if (ZN.groundFog<=0.01) return;
   var fg=fogSprite();                            /* build 70: painted once */
   blitDev(fg, 0, 0, fg.width, fg.height, 0, fogTop);
+  if (ZN.wisps) mistWisps(ZN.wisps);   /* build 84: HAUNTED HIGHWAY's drifting mist */
 }
 
 /* ---------------------------------------------------------------
@@ -6579,7 +8587,10 @@ function setZone(id, keepSong){
   if (!ZONES[id]) id='vapor';
   zoneI = id;
   ZN = ZONES[id];
+  hwSpookClear();                      /* build 87: the ghost and the hand belong to their zone */
   GB = ZN.bloom*ZN.bloomMul;
+  var cc=ZN.chev||CHEV_STD;            /* build 84: the zone's chevron colours */
+  if (cc){ CHEV_AMBER=cc[0]; CHEV_DIM=cc[1]; CHEV_SIDE=cc[2]; CHEV_CORE=cc[3]; }
   rebuildRows();
   applyGrade();
   if (ZN.song && !keepSong) musLoadSong(ZN.song);
@@ -6601,6 +8612,137 @@ function setZone(id, keepSong){
    back that the cutscene spends, which is the only fair reading: you
    did not choose to stop driving, the saucer stopped you.
 --------------------------------------------------------------- */
+/* ---------------------------------------------------------------
+   THE MIST (build 84): the ride into and out of HAUNTED HIGHWAY.
+   It runs on the abduction's machinery (state 'abduct', cutStep, endAbduct),
+   so the clock is held for the whole thing, nothing can hurt you, and the
+   map swaps under full cover; there is just no saucer.
+     0.00-0.12  the lantern flares green, a pulse ring under the car, a wail
+     0.08-0.44  a pale purple mist rises over the screen, bats burst out of it,
+                the car fades into it
+     0.55-0.70  swallowed: two yellow eyes open in the dark and blink; a
+                green flash, and the map swaps at 0.62
+     0.70-0.95  the mist parts from the middle and you drive out of it
+   Started by the Halloween activator (VAPOR -> HAUNTED HIGHWAY) and by a
+   hitchhiker in HAUNTED HIGHWAY (-> VAPOR).
+--------------------------------------------------------------- */
+function startMist(to){
+  cut = { kind:'mist', t:0, dur:CUTS.mist.dur, swapped:false, to:to };
+  state = 'abduct';
+  cutCarRest();
+  hailCool = HAIL_COOL;
+  shake=Math.max(shake,5);
+  fxAdd({kind:'ring', layer:0, x:W/2, y:PLAYER_Y, r0:PW*0.4, r1:PW*2.8, sq:0.26, col:'#9dff6a', w:4, a:0.9, add:true, life:0.9});
+  fxBurst(W/2, PLAYER_Y-10, 26, {layer:1, w:PW*0.9, spread:180, flat:0.5, up:90, g:-40, drag:1.6, size:2.4, col:'#9dff6a', a:0.75, add:true, life:1.1});
+  say(T('MIST_TAKE'), '#9dff6a', true, null, 1.3);   /* gone before CLOCK HELD comes up in the same place */
+  mistSfx();
+}
+/* a ghostly wail: two voices sliding up and down with a slow wobble, over a low thump */
+function mistSfx(){
+  if (!A||muted) return;
+  try{
+    var t=A.ctx.currentTime, g=A.ctx.createGain(), o=A.ctx.createOscillator(), o2=A.ctx.createOscillator();
+    var lfo=A.ctx.createOscillator(), lg=A.ctx.createGain();
+    o.type='sine'; o2.type='triangle';
+    o.frequency.setValueAtTime(330,t); o.frequency.linearRampToValueAtTime(620,t+0.7); o.frequency.linearRampToValueAtTime(250,t+1.9);
+    o2.frequency.setValueAtTime(334,t); o2.frequency.linearRampToValueAtTime(626,t+0.72); o2.frequency.linearRampToValueAtTime(247,t+1.9);
+    lfo.frequency.setValueAtTime(5.5,t); lg.gain.setValueAtTime(12,t);
+    lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.11,t+0.25);
+    g.gain.linearRampToValueAtTime(0.08,t+1.2); g.gain.exponentialRampToValueAtTime(0.0001,t+2.0);
+    o.connect(g); o2.connect(g); g.connect(A.master);
+    o.start(t); o2.start(t); lfo.start(t); o.stop(t+2.05); o2.stop(t+2.05); lfo.stop(t+2.05);
+  }catch(e){}
+  blip(96,0.55,'sine',0.20,0,0.5);
+}
+function mistScript(p,dt){
+  if (p<0.15) speed += (2600-speed)*Math.min(1,dt*2.4);
+  else if (p<0.62) speed += (1700-speed)*Math.min(1,dt*1.2);
+  else speed += (maxSpeedFor(lap)*0.55-speed)*Math.min(1,dt*1.3);
+  /* back onto the road if you went in beside the hitchhikers */
+  playerX += (clamp(playerX,-0.75,0.75)-playerX)*Math.min(1,dt*1.5);
+  if (p<0.15){ cutCar.alpha=1; cutCar.y=0; }
+  else if (p<0.62){
+    var e=(p-0.15)/0.47;
+    cutCar.y=-ease(e)*24; cutCar.tilt=Math.sin(e*6.2)*0.05;
+    cutCar.alpha=1-0.8*ease((p-0.32)/0.20);
+  } else {
+    var e2=(p-0.62)/0.38;
+    cutCar.alpha=0.2+0.8*ease((p-0.70)/0.14);
+    cutCar.y=-24*(1-bounceOut(e2*1.3)); cutCar.tilt=Math.sin(e2*9)*0.04*(1-e2);
+  }
+  if (!cut.boom && p>=0.62){                       /* the flash at the swap */
+    cut.boom=true; shake=Math.max(shake,4);
+    blip(70,0.7,'sawtooth',0.10,0,0.35);
+  }
+  if (!cut.out && p>=0.80){                        /* driving out: the mist breaks around the car */
+    cut.out=true;
+    fxAdd({kind:'ring', layer:0, x:W/2, y:PLAYER_Y+2, r0:PW*0.35, r1:PW*2.4, sq:0.22, col:'#d8c8f0', w:3, a:0.7, life:0.8});
+    fxBurst(W/2, PLAYER_Y, 22, {layer:1, w:PW*0.9, spread:240, flat:0.35, up:50, g:120, drag:2.0, size:3.2, col:'#cbb8e8', a:0.45, life:0.9});
+  }
+}
+function drawMistCut(p){
+  var t=performance.now()/1000, i, cover;
+  if (p<0.12){                                     /* the green flare */
+    var fl=Math.sin(p/0.12*Math.PI);
+    var vg=ctx.createRadialGradient(W/2,H*0.62,H*0.25,W/2,H*0.62,W*0.75);
+    vg.addColorStop(0,'rgba(157,255,106,0)'); vg.addColorStop(1,'rgba(157,255,106,'+(0.45*fl).toFixed(3)+')');
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  }
+  if (p<0.70){                                     /* the mist rising from the bottom and the sides */
+    cover=p<0.08?0:ease((p-0.08)/0.36);
+    if (cover>0){
+      var top=H-cover*(H+180);
+      var mg=ctx.createLinearGradient(0,top,0,top+180);
+      mg.addColorStop(0,'rgba(74,56,98,0)'); mg.addColorStop(1,'rgba(74,56,98,'+Math.min(1,cover*1.15).toFixed(3)+')');
+      ctx.fillStyle=mg; ctx.fillRect(0,top,W,180);
+      if (top+180<H){ ctx.fillStyle='rgba(74,56,98,'+Math.min(1,cover*1.15).toFixed(3)+')'; ctx.fillRect(0,top+180,W,H-top-180); }
+      for (i=0;i<2;i++){                           /* side curtains */
+        var sx=i?W:0, sg=ctx.createLinearGradient(sx,0,i?W-W*0.45*cover:W*0.45*cover,0);
+        sg.addColorStop(0,'rgba(74,56,98,'+(0.9*cover).toFixed(3)+')'); sg.addColorStop(1,'rgba(74,56,98,0)');
+        ctx.fillStyle=sg; ctx.fillRect(i?W-W*0.45*cover:0,0,W*0.45*cover,H);
+      }
+      for (i=0;i<6;i++){                           /* pale wisps riding the mist's edge */
+        var ww=180+i*40, wx=((t*(26+i*9)*(i%2?1:-1)+i*173)%(W+ww*2)+W+ww*2)%(W+ww*2)-ww, wy=Math.max(-40,top+60+i*18);
+        ctx.save(); ctx.translate(wx,wy); ctx.scale(1,0.22);
+        var wg=ctx.createRadialGradient(0,0,0,0,0,ww);
+        wg.addColorStop(0,'rgba(222,208,245,'+(0.30*cover).toFixed(3)+')'); wg.addColorStop(1,'rgba(222,208,245,0)');
+        ctx.fillStyle=wg; ctx.beginPath(); ctx.arc(0,0,ww,0,Math.PI*2); ctx.fill(); ctx.restore();
+      }
+    }
+    if (p>0.18 && p<0.64){                         /* bats bursting out toward the camera */
+      ctx.fillStyle='#07030c';
+      for (i=0;i<20;i++){
+        var q=(p-0.18-hashAt(i,71)*0.12)/0.34; if (q<=0||q>=1) continue;
+        var an=hashAt(i,72)*Math.PI*2, rd=q*q*(420+hashAt(i,73)*260);
+        batShape(W/2+Math.cos(an)*rd, H*0.55+Math.sin(an)*rd*0.6-q*60, 4+q*22, Math.sin(t*16+i*1.7));
+      }
+    }
+  } else {                                         /* the mist parting from the middle */
+    cover=p<0.95 ? 1-ease((p-0.70)/0.25) : 0;
+    if (cover>0){
+      var hole=(1-cover)*W*0.95, rg=ctx.createRadialGradient(W/2,H*0.60,hole*0.55,W/2,H*0.60,hole+60);
+      rg.addColorStop(0,'rgba(74,56,98,0)'); rg.addColorStop(1,'rgba(74,56,98,'+Math.min(1,cover*1.2).toFixed(3)+')');
+      ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+    }
+  }
+  if (p>=0.55 && p<0.72){                          /* swallowed: two yellow eyes in the dark, a blink, a flash */
+    var k=ease((p-0.55)/0.04)*ease((0.72-p)/0.04);
+    ctx.fillStyle='rgba(14,6,20,'+(0.85*k).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+    var bl=(p>0.60&&p<0.615)?0.1:1;
+    for (var e=-1;e<=1;e+=2){
+      var ex=W/2+e*66, ey=H*0.45;          /* under CLOCK HELD, even at phone size */
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      var eg=ctx.createRadialGradient(ex,ey,2,ex,ey,90); eg.addColorStop(0,'rgba(255,225,74,'+(0.45*k*bl).toFixed(3)+')'); eg.addColorStop(1,'rgba(255,225,74,0)');
+      ctx.fillStyle=eg; ctx.fillRect(ex-90,ey-90,180,180); ctx.restore();
+      ctx.globalAlpha=k; ctx.fillStyle='#ffe14a';
+      ctx.beginPath(); ctx.ellipse(ex,ey,34,15*bl*(0.6+0.4*k),e*-0.18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#160a04'; ctx.beginPath(); ctx.ellipse(ex,ey,4,13*bl*(0.6+0.4*k),0,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    if (p>0.62 && p<0.66){ ctx.fillStyle='rgba(200,255,170,'+(0.85*(1-(p-0.62)/0.04)).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
+  }
+}
 function callUfo(){
   /* build 77: a wandering saucer already ahead and within the hunter's start distance ANSWERS the call where
      it hangs (no pop); one out of reach is replaced by a fresh hunter, as before. */
@@ -6627,7 +8769,8 @@ function callUfo(){
    Adding one of the four LIVE cuts is a row here plus a case in cutScript()
    and one in drawCut(); nothing else in the game has to move. */
 var CUTS = {
-  abduct: { dur:5.4, swapAt:0.74, freeze:false }
+  abduct: { dur:5.4, swapAt:0.74, freeze:false },
+  mist:   { dur:4.2, swapAt:0.62, freeze:false }    /* build 84: HAUNTED HIGHWAY's ride */
 };
 
 function startCut(kind, to){
@@ -6636,13 +8779,16 @@ function startCut(kind, to){
   cutCarRest();
   ufo.hunt=false; ufo.cutting=true; ufo.lock=UFO_LOCK;
   shake=Math.max(shake,10);
+  /* build 83: a pulse ring off the car as the beam takes it */
+  fxAdd({kind:'ring', layer:0, x:W/2, y:PLAYER_Y, r0:PW*0.4, r1:PW*2.6, sq:0.26, col:ufo.color, w:4, a:0.9, add:true, life:0.9});
+  fxAdd({kind:'ring', layer:0, x:W/2, y:PLAYER_Y, r0:PW*0.2, r1:PW*1.8, sq:0.26, col:'#ffffff', w:2, a:0.7, add:true, life:0.7});
   blip(880,0.30,'sine',0.22);
   setTimeout(function(){ blip(1320,0.45,'sine',0.20); },160);
 }
 
 function endAbduct(){
   cut=null; cutCarRest();
-  ufo=null; ufoT=18; hailCool=HAIL_COOL;
+  ufo=null; ufoT=ufoWait(18); hailCool=HAIL_COOL;   /* build 85: the zone has swapped already */
   spinT=0; spinAng=0;                 /* never set down mid-spin */
   invT=Math.max(invT,1.2);            /* a beat to read the new road */
   state='playing';
@@ -6696,6 +8842,7 @@ function cutStep(dt){
 /* How each cut drives the world and the car sprite. */
 function cutScript(kind, p, dt){
   var e;
+  if (kind==='mist'){ mistScript(p,dt); return; }   /* build 84 */
   if (kind!=='abduct') return;
 
   /* 0.00-0.16 lock   — beam widens, throttle dies
@@ -6706,13 +8853,14 @@ function cutScript(kind, p, dt){
     ufo.z = position+Z_CAR+UFO_HOLD - UFO_HOLD*Math.min(1,p/0.16);
     ufo.spin += dt*3.1; ufo.bob += dt;
   }
+  cutCar.lit = p<0.16 ? clamp(p/0.16,0,1) : (p<0.80 ? 1 : 0);   /* build 83: lit by the beam */
   if (p<0.16){
     speed += (2100-speed)*Math.min(1,dt*2.6);
     if (ufo) playerX += (ufo.x-playerX)*Math.min(1,dt*1.6);
   } else if (p<0.62){
     e=(p-0.16)/0.46;
     speed += (900-speed)*Math.min(1,dt*1.4);
-    cutCar.y   = -ease(e)*430;
+    cutCar.y   = -ease(e)*(430-(ufo?ufoCutDrop(ufo):0));   /* build 85: into the saucer where it now hangs */
     cutCar.x   = Math.sin(e*7.2)*46*(1-e*0.35);
     cutCar.tilt= Math.sin(e*5.1)*0.30 + Math.sin(e*11)*0.06;
     cutCar.sc  = 1 - ease(e)*0.68;
@@ -6723,12 +8871,20 @@ function cutScript(kind, p, dt){
   } else {
     e=(p-0.80)/0.20;
     if (ufo) ufo.beamK = Math.max(0, 1-e*2);
-    cutCar.alpha = Math.min(1, e*2.4);
-    cutCar.sc    = 0.32 + ease(Math.min(1,e*1.3))*0.68;
-    cutCar.y     = -260*(1-ease(Math.min(1,e*1.15)));
-    cutCar.x     = Math.sin(e*9)*18*(1-e);
-    cutCar.tilt  = Math.sin(e*8)*0.10*(1-e);
+    /* build 83: the lab's landing: drops in, bounces, a dust ring; the saucer climbs away */
+    cutCar.alpha = Math.min(1, e*4);
+    cutCar.sc    = 0.62 + 0.38*easeOut(e*1.6);
+    cutCar.y     = -230*(1-bounceOut(e*1.12));
+    cutCar.x     = 0;
+    cutCar.tilt  = Math.sin(e*9)*0.07*(1-e);
     cutCar.spin  = 0;
+    if (ufo) ufo.lift = easeIn((p-0.86)/0.14)*420;
+    if (!cut.landed && e>0.325){
+      cut.landed=true;
+      shake=Math.max(shake,3.2);
+      fxAdd({kind:'ring', layer:0, x:W/2, y:PLAYER_Y+2, r0:PW*0.35, r1:PW*2.2, sq:0.22, col:'#e6ffd0', w:3, a:0.75, life:0.75});
+      fxBurst(W/2, PLAYER_Y, 22, {layer:1, w:PW*0.8, spread:260, flat:0.35, up:70, g:320, drag:2.2, size:2.6, col:'#d8d0f5', a:0.6, life:0.75});
+    }
     speed += (maxSpeedFor(lap)*0.62-speed)*Math.min(1,dt*1.5);
   }
 
@@ -6736,6 +8892,15 @@ function cutScript(kind, p, dt){
 
 /* The screen-space overlay for the running cut. */
 function drawCut(){
+  if (cut.kind==='mist'){               /* build 84 */
+    var pm=clamp(cut.t/cut.dur,0,1); drawMistCut(pm);
+    if (mode==='run' && pm>0.33 && pm<0.90){   /* after THE MIST TAKES YOU has gone */
+      ctx.globalAlpha=clamp((pm-0.33)/0.06,0,1)*clamp((0.90-pm)/0.10,0,1);
+      glowText(T('CLOCK_HELD'), W/2, 170, TS.LABEL*UI, '#9dff6a', 'center', 14);
+      ctx.globalAlpha=1;
+    }
+    return;
+  }
   if (cut.kind!=='abduct') return;
   var p=clamp(cut.t/cut.dur,0,1), b=0;
   if (p>0.62 && p<0.88) b=clamp((p-0.62)/0.12,0,1)*clamp((0.88-p)/0.14,0,1);
@@ -6746,11 +8911,17 @@ function drawCut(){
     g.addColorStop(1,'rgba(124,255,79,0)');
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,'+(b*b*0.9).toFixed(3)+')'; ctx.fillRect(0,0,W,H);
+    /* build 83: the lab's anamorphic flare across the bloom */
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    var fg=ctx.createLinearGradient(0,0,W,0);
+    fg.addColorStop(0,'rgba(33,230,255,0)'); fg.addColorStop(0.5,'rgba(200,255,255,'+(0.8*b).toFixed(3)+')'); fg.addColorStop(1,'rgba(33,230,255,0)');
+    ctx.fillStyle=fg; ctx.fillRect(0,horizonY+66,W,3); ctx.globalAlpha=0.5; ctx.fillRect(0,horizonY+60,W,1); ctx.fillRect(0,horizonY+76,W,1);
+    ctx.restore();
   }
   if (mode==='run' && p<0.90){
     ctx.globalAlpha=clamp(p/0.08,0,1)*clamp((0.90-p)/0.10,0,1);
     /* below the saucer and above the horizon: at y=96 it sat on the hull */
-    glowText(T('CLOCK_HELD'), W/2, 170, TS.LABEL*UI, '#21e6ff', 'center', 14);
+    glowText(T('CLOCK_HELD'), W/2, 196+10*UI, TS.LABEL*UI, '#21e6ff', 'center', 14);   /* build 85: under the lowered hull (206; 210 with the touch HUD's bigger text) */
     ctx.globalAlpha=1;
   }
 }
@@ -6796,6 +8967,7 @@ function render(){
   if (ufo)   sorted.push(ufo);
   for (var q=0;q<pshots.length;q++) sorted.push(pshots[q]);
   for (var q2=0;q2<blasts.length;q2++) sorted.push(blasts[q2]);
+  hwSpookSort(sorted);                 /* build 87 */
   sorted.sort(function(a,b){ return b.z-a.z; });
   for (var i=0;i<sorted.length;i++){
     if (sorted[i].kind==='heart')     drawHeart(sorted[i]);
@@ -6804,19 +8976,25 @@ function render(){
     else if (sorted[i].isUfo)   drawUfo(sorted[i]);
     else if (sorted[i].isShot)  drawShot(sorted[i]);
     else if (sorted[i].isBlast) drawBlast(sorted[i]);
+    else if (sorted[i].isSpook) drawSpook(sorted[i]);   /* build 87 */
     else                        drawTraffic(sorted[i]);
   }
 
   drawGroundFog();
+  fxDraw(0);                           /* build 83: effects on the ground, under the car */
   drawPlayer();
+  hwSpookNear();                       /* build 87 */
   drawWeather(lastDt);
   drawNearMissPops();
+  fxDraw(1);                           /* build 83: effects above the car */
   ctx.restore();
+  drawScareFace();                     /* build 87: the ghost's boo, see-through, under the HUD */
 
   if (flash>0){ ctx.fillStyle='rgba(124,255,79,'+(flash*0.28).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
   if (hitFlash>0){ ctx.fillStyle='rgba(255,60,90,'+(hitFlash*0.34).toFixed(3)+')'; ctx.fillRect(0,0,W,H); }
 
   if (state==='abduct') drawCut();
+  fxDraw(2);                             /* build 83: effects over the frame, under the HUD */
 
   if (state!=='garage' && state!=='info') drawHUD();
   if (state==='title'){   drawTitle(); drawMessages(); }   /* card on top (build 69) */
