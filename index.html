@@ -2695,7 +2695,7 @@ function musSched(){
 }
 
 /* ---------------------------------------------------------------
-   POWER-UP MUSIC LAYERS  (silent update to build 89)
+   POWER-UP MUSIC LAYERS  (silent update to build 89; levels trimmed in build 90)
    The dinosaur no longer plays the song backwards. The tune runs forward at the zone's own
    tempo (MUS_DINO_RATE = 1.00, one place to change it), and layers sit on top of it. Overdrive
    gets two too. Picked by Carlos
@@ -2714,7 +2714,7 @@ function musSched(){
    per-song trim, each a multiple of that song's own lead level, balanced by measurement so a
    layer sits at the same distance from the music in all three zones.
    --------------------------------------------------------------- */
-var PUP_DINO_LVL = 1.25, PUP_OD_LVL = 1.18;
+var PUP_DINO_LVL = 1.125, PUP_OD_LVL = 0.885;   /* build 90 (Carlos, by ear): overdrive layers 25 % quieter (x0.75, was 1.18), dino layers 10 % quieter (x0.90, was 1.25). These two numbers are the dials. */
 var PUP_KS = {
   vapor:  {giant:0.51, growl:0.688, spark:0.491, arp:0.71},
   alien:  {giant:0.75, growl:1.238, spark:0.797, arp:1.179},
