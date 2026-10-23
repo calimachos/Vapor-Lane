@@ -569,6 +569,7 @@
 
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var W = 800, H = 500; // Base logical resolution
+var BUILD_NO = 93;     /* build 93: the faint 'v.93' tag in a bottom corner. Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -703,6 +704,11 @@ var NM_CHAIN_T  = 1.6;    // seconds before the chain lapses
 var NM_BASE     = 55;     // points for one clean pass at chain 1
 var NM_MAX_MULT = 8;      // chain multiplier ceiling
 var NM_POP_LIFE = 1.5;    // seconds the closeness readout stays up
+/* build 91 (Carlos 10-21): a close call also fills the drift bar, straight into the BANK (cyan, safe: the pass is
+   already clean, so there is nothing to put at risk). Linear on the x-readout the player sees (rounded to 0.1):
+   x0.5 -> 2 %, x1.0 -> 4.5 %, x1.5 -> 7 % (0.5 % per 0.1). A full bar is a bolt, exactly as from a drift. */
+var NM_FILL_LO  = 0.02;   // bar share for x0.5 (the outer edge of the band)
+var NM_FILL_HI  = 0.07;   // bar share for x1.5 (a paint-scraping pass)
 /* Drifting charges a bolt, gated three ways so the meter cannot be farmed by
    waggling the wheel down an empty straight:
      1. BEND  — the rate scales with how hard the road curves where the car
@@ -1549,7 +1555,7 @@ var UFO_BAND   = 1500;   /* how far off station the beam still reaches      */
 var UFO_TOP    = 0.72;   /* share of top speed the hunter can manage        */
 var UFO_TRACK  = 1.15;   /* how hard the beam eases sideways onto you       */
 var UFO_BEAM_R = 0.46;   /* beam half-width in road units (a car is 0.26)   */
-var UFO_LOCK   = 2.0;    /* seconds inside the beam before it takes you     */
+var UFO_LOCK   = 4.0;    /* seconds inside the beam before it takes you (build 91: was 2.0; Carlos 10-21) */
 var UFO_NOTICE = 5400;   /* how close a WANDERING saucer lets you get first  */
 var UFO_HUNT_T = 20;     /* ...and how long it will keep trying             */
 var UFO_UP     = 11;     /* build 85: about how long a wandering saucer is up at racing speed (measured) */
@@ -1595,6 +1601,12 @@ function isHailer(idx){
 var HAIL_HEAD_X = 0.78;   /* the lamp head's lateral (road lamps use the same), over the outer lane at 0.75 */
 var HAIL_LAMP_R = 0.38;   /* pass within this of the head, along the road, to be "under" it */
 var hailPrevZ   = -1;     /* the car's z last frame; -1 = no previous frame (a new run) */
+/* build 91 (Carlos 10-21): every zone-change activator (this lamp in every zone, the Halloween group in VAPOR, the
+   hitchhikers' lamps in HAUNTED HIGHWAY) needs at least ACT_IN_SHARE of the car's width - or of the dino's - inside
+   the outer lane, which starts at 0.5 on that side. So the centre must be at least 0.5 - (0.5-share) x width out:
+   car 0.435, dino 0.345 (before: lamps 0.40 = 11 % of the car; Halloween 0.38 = 4 %, dino 0.25). */
+var ACT_IN_SHARE = 0.25;
+function actInner(){ return 0.5 - (0.5-ACT_IN_SHARE)*(dinoT>0?DINO_CAR_W:CAR_W); }
 function hailLive(){
   return !learn && lap>=HAIL_LAP && hailCool<=0 && !(ufo && (ufo.hunt||ufo.cutting));
 }
@@ -1776,8 +1788,8 @@ function hwActPass(){
   if (hwK<=0 || ZN.id!=='vapor' || lap<HAIL_LAP) return false;
   var zc=position+Z_CAR, i=Math.round(zc/DECO_SPACE);
   if (Math.abs(zc-i*DECO_SPACE)>HW_PASS_Z || !isHwAct(i)) return false;
-  var s=hashAt(i,2)<0.5?-1:1, half=(dinoT>0?DINO_CAR_W:CAR_W)/2;
-  return s*playerX >= Math.min(HW_PASS_IN, HW_PASS_LANE-half);
+  var s=hashAt(i,2)<0.5?-1:1;
+  return s*playerX >= actInner();   /* build 91: a quarter of the car (or the dino) in the outer lane */
 }
 /* ?zone=haunted (or alien) starts every run in that zone: a way to look at a zone without hunting
    for its activator. Without it every run starts in VAPOR, as before. */
@@ -3016,8 +3028,9 @@ window.addEventListener('keydown', function(e){
     if (state==='title'||state==='gameover'){ beginRun(); }
     else if (state==='paused'){ state='playing'; }
   }
-  if (c==='KeyG' && state!=='playing'){ garFrom=state; garRow=0; state='garage'; }
-  if (c==='KeyI' && state!=='playing' && state!=='garage'){ infoFrom=state; infoPage=0; state='info'; }
+  /* build 92: not during the abduction / MIST ride either */
+  if (c==='KeyG' && state!=='playing' && state!=='abduct'){ garFrom=state; garRow=0; state='garage'; }
+  if (c==='KeyI' && state!=='playing' && state!=='garage' && state!=='abduct'){ infoFrom=state; infoPage=0; state='info'; }
   if (c==='KeyP'){
     if (state==='playing') state='paused';
     else if (state==='paused') state='playing';
@@ -3561,11 +3574,11 @@ var PAD_ACTS={
   start:  function(){ beginRun(); },
   learn:  function(){ startLearn(); },
   resume: function(){ state='playing'; },
-  garage: function(){ garFrom=state; garRow=0; state='garage'; },
-  info:   function(){ infoFrom=state; infoPage=0; state='info'; },
+  garage: function(){ if (!SLAB_ST[state]) return; garFrom=state; garRow=0; state='garage'; },   /* build 92: menus only */
+  info:   function(){ if (!SLAB_ST[state]) return; infoFrom=state; infoPage=0; state='info'; },
   infoPrev: function(){ infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES; },
   infoNext: function(){ infoPage=(infoPage+1)%INFO_PAGES; },
-  back:   function(){ state = (state==='garage') ? garFrom : infoFrom; },
+  back:   function(){ if (state==='garage') state=garFrom; else if (state==='info') state=infoFrom; },   /* build 92 */
   menu:   function(){ saveGame(); learn=false; state='title'; },
   sound:  function(){ cycleAudio(); },
   lang:   function(){ toggleLang(); padState=null; },
@@ -3624,6 +3637,9 @@ function syncPad(){
   padMenu.classList.toggle('cross', state==='garage');
   padMenu.classList.toggle('slabs', !!SLAB_ST[state]);
   if (driving) return;
+  /* build 92: no menu strip outside a menu screen. The fallback below used to put a lone BACK on any other
+     screen, and the abduction / MIST ride ('abduct') was the only one: BACK left the ride mid-cut. */
+  if (!SLAB_ST[state] && state!=='garage' && state!=='info'){ padMenu.style.display='none'; padMenu.innerHTML=''; return; }
   padMenu.innerHTML='';
 
   /* Title, pause and game over all share one shape, so the buttons never
@@ -4099,6 +4115,10 @@ function update(dt){
         var nmSide=(c.x>playerX?1:-1);
         nmPops.push({m:closeMul, t:0, side:nmSide});
         if (nmPops.length>5) nmPops.shift();
+        /* build 91: and the drift bar, by the number on screen (closeMul.toFixed(1)) */
+        var nmShown=Math.round(closeMul*10)/10;
+        dBank += NM_FILL_LO + (NM_FILL_HI-NM_FILL_LO)*(nmShown-0.5);
+        while (dBank>=1){ dBank-=1; giveBolt(); }
         /* the chirp comes from the side the car went by and slides down as it
            passes: a Doppler read for the one thing you cannot see happening */
         blip(760+Math.min(8,chain)*90, 0.05, 'sine', 0.07, nmSide*0.8, 0.78);
@@ -4223,7 +4243,7 @@ function update(dt){
     var hwAct=false;                    /* build 88: the activator is tested above (build 84: isHwAct(iNow)) */
     if (iNow>Math.floor(zcPrev/DECO_SPACE) && (hwAct || isHailer(iNow))){
       var hSide=hashAt(iNow,2)<0.5?-1:1;
-      if (Math.abs(hSide*HAIL_HEAD_X - playerX) < HAIL_LAMP_R ||
+      if ((hSide*playerX >= actInner() && hSide*playerX < HAIL_HEAD_X+HAIL_LAMP_R) ||   /* build 91: inner edge = a quarter in the outer lane */
           Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R){
         if (hwAct){ if (state==='playing'){ startMist('haunted'); return; } }
         else if (ZN.look==='haunted'){ if (state==='playing'){ startMist('vapor'); return; } }   /* a hitchhiker: back to VAPOR */
@@ -9498,8 +9518,29 @@ function render(){
   if (state==='gameover') drawOver();
   if (state==='garage')   drawGarage();
   if (state==='info')     drawInfo();
+  drawBuildTag();                        /* build 93 */
   if (state==='tutorial') tutLayout();   /* build 72/73: keep the closing card where it belongs */
   tutFxVis();                            /* build 73: the boxes and the dim only while driving */
+}
+
+/* BUILD TAG (build 93). A faint "v.93" so the build on itch / GitHub can be checked at a glance.
+   Bottom-right on both (Carlos: the same side on desktop and phone), clear of the stage's rounded corner: under the
+   title's right key column on a desktop, under NEXT LAP while driving.
+   Only on the title, driving, pause and game over screens. */
+var BUILD_TAG_A = 0.45;               /* how faint: 0 = gone, 1 = full */
+function drawBuildTag(){
+  if (state!=='title' && state!=='playing' && state!=='paused' && state!=='gameover') return;
+  var fs = TOUCH ? TS.MICRO*UI : 12, txt = 'v.'+BUILD_NO;
+  var x = TOUCH ? W-20 : W-22, y = TOUCH ? H-11 : H-10;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.font = '700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  /* a soft dark edge so it stays legible when a road stripe runs under it */
+  ctx.globalAlpha = Math.min(1, BUILD_TAG_A*1.5); ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(6,2,14,.9)'; ctx.lineWidth = 3; ctx.strokeText(txt, x, y);
+  ctx.globalAlpha = BUILD_TAG_A; ctx.fillStyle = '#cfd6ff'; ctx.fillText(txt, x, y);
+  ctx.restore();
 }
 
 /* ---------------------------------------------------------------
