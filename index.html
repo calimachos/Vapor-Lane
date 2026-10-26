@@ -433,6 +433,123 @@
                     grid-auto-rows:30px; gap:4px }
     #padMenu.cross .backbtn{ height:28px }
   }
+  /* ------------------------------------------------------------------
+     BUILD 97: THE A SHOWROOM GARAGE's phone buttons (#padMenu.gar).
+     Upright: one column under the stage (tabs, part chips, three cards
+     with big arrows, slots + SAVE + random + photo, BACK + DRIVE).
+     Sideways: categories + BACK in the left strip, arrows / slots / tools /
+     DRIVE in the right strip; the cards and part chips are drawn on the
+     stage there and tapped on the canvas.
+     ------------------------------------------------------------------ */
+  #padMenu.gar{ display:flex; flex-direction:column; flex-wrap:nowrap; gap:8px; align-items:stretch; padding:0 }
+  #padMenu.gar .tbtn{ min-width:0; height:auto; padding:0; flex:0 0 auto; border-radius:9px; letter-spacing:.06em }
+  #padMenu.gar svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.9;
+                    stroke-linecap:round; stroke-linejoin:round }
+  #padMenu.gar .gTabs{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px }
+  #padMenu.gar .gTab{ height:54px; flex-direction:column; gap:3px; font-size:8px; position:relative; letter-spacing:.02em }
+  #padMenu.gar .gTab .lab{ display:block; max-width:100%; overflow:hidden; white-space:nowrap }
+  #padMenu.gar .gTab.sel{ border-color:#21e6ff; color:#fff;
+    background:linear-gradient(180deg,rgba(33,230,255,.28),rgba(33,230,255,.10)); box-shadow:0 0 14px rgba(33,230,255,.5) }
+  #padMenu .gTab .nt, #padMenu .newTag{ display:none; position:absolute; top:-6px; right:-3px; padding:1px 4px; border-radius:4px;
+    background:#ff2fbe; color:#14061f; font:900 8px "Arial Black","VL Display",system-ui,sans-serif; letter-spacing:.04em;
+    animation:vlNewTag 1.3s ease-in-out infinite alternate }
+  #padMenu .gTab.new .nt{ display:block }
+  #padMenu .tbtn.slab .newTag{ display:inline-block; position:static; margin-left:9px; font-size:9px; padding:2px 5px }
+  @keyframes vlNewTag{ from{ opacity:.4 } to{ opacity:1 } }
+  #padMenu.gar .gParts{ display:flex; flex-wrap:wrap; justify-content:center; gap:5px }
+  #padMenu.gar .gPart{ height:30px; padding:0 10px; font-size:10px; position:relative }
+  #padMenu.gar .gPart.sel{ border-color:#21e6ff; color:#fff; background:rgba(33,230,255,.22) }
+  #padMenu.gar .gPart.new::after{ content:''; position:absolute; top:-4px; right:-4px; width:12px; height:12px; border-radius:50%;
+    background:#ff2fbe; box-shadow:0 0 6px #ff2fbe; animation:vlNewTag 1.3s ease-in-out infinite alternate }
+  #padMenu.gar .gPart.mod::before, #padMenu.gar .gTab.mod::before{ content:''; position:absolute; top:-4px; left:-4px; width:12px;
+    height:12px; border-radius:50%; background:#7cff4f; box-shadow:0 0 6px #7cff4f; border:1.5px solid #0a0418; box-sizing:border-box }
+  #padMenu.gar .gTab.mod::before{ top:-5px; left:2px }
+  #padMenu.gar .gCards{ display:flex; gap:6px; align-items:stretch; justify-content:center; touch-action:none;
+    -webkit-user-select:none; user-select:none; position:relative; min-height:96px }
+  #padMenu.gar .gArr{ width:40px; font-size:18px; color:#21e6ff; border-color:rgba(33,230,255,.7) }
+  #padMenu.gar .gCard{ flex:1 1 0; min-width:0; max-width:108px; position:relative; border:2px solid rgba(124,58,237,.6);
+    border-radius:9px; background:rgba(14,8,30,.92); display:flex; flex-direction:column; align-items:center; overflow:hidden }
+  #padMenu.gar .gCard canvas{ width:100%; height:66px; display:block }
+  #padMenu.gar .gCard .nm{ font:700 9px ui-monospace,Menlo,monospace; color:#cfd6ff; padding:4px 3px 0; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; max-width:100% }
+  #padMenu.gar .gCard.sel{ border-color:#21e6ff; box-shadow:0 0 14px rgba(33,230,255,.55); background:rgba(33,230,255,.12) }
+  #padMenu.gar .gCard.sel .nm{ color:#fff }
+  #padMenu.gar .gCard.lock .nm{ color:#8a7ec4 }
+  #padMenu.gar .gCard .nw{ display:none; position:absolute; top:3px; left:3px; padding:0 4px; border-radius:3px; background:#ff2fbe;
+    color:#14061f; font:900 8px "Arial Black","VL Display",system-ui,sans-serif }
+  #padMenu.gar .gCard.new .nw{ display:block }
+  #padMenu.gar .gCard .ck{ display:none; position:absolute; top:1px; right:4px; color:#7cff4f; font:900 14px system-ui,sans-serif;
+    text-shadow:0 0 6px rgba(124,255,79,.8) }
+  #padMenu.gar .gCard.worn .ck{ display:block }
+  #padMenu.gar .gCard .ow{ display:none; position:absolute; left:5px; top:4px; color:#7cff4f;
+    font:900 7px "Arial Black","VL Display",system-ui,sans-serif }
+  #padMenu.gar .gCard.own .ow{ display:block }
+  #padMenu.gar .gCard .bar{ display:none; position:absolute; left:6px; right:6px; top:61px; height:3px; background:rgba(255,255,255,.16) }
+  #padMenu.gar .gCard .bar b{ display:block; height:100%; width:0; background:#ff6ad5 }
+  #padMenu.gar .gCard.lock .bar{ display:block }
+  #padMenu.gar .gCards.dim .gCard, #padMenu.gar .gCards.dim .gArr{ opacity:.4 }
+  #padMenu.gar .gCards.idle .gCard{ opacity:.45 }
+  #padMenu.gar .gPart.idle:not(.sel){ opacity:.5 }
+  #padMenu.gar .gCards.pt .gCard, #padMenu.gar .gCards.pt .gArr{ display:none }
+  #padMenu.gar .gPtNote{ display:none; position:absolute; left:0; right:0; bottom:10px; text-align:center;
+    font:700 10px ui-monospace,Menlo,monospace; color:#8a7ec4 }
+  #padMenu.gar .gCards.pt .gPtNote{ display:block }
+  #padMenu.gar .gArrs{ display:none }
+  #padMenu.gar .gRow1{ display:flex; gap:6px }
+  #padMenu.gar .gSlots{ display:flex; gap:6px; flex:1 1 auto }
+  #padMenu.gar .gTools{ display:flex; gap:6px }
+  #padMenu.gar .gSlot{ width:44px; height:44px; font-size:18px; font-weight:900 }
+  #padMenu.gar .gSlot.empty{ opacity:.32; pointer-events:none; border-style:dashed }
+  #padMenu.gar .gSlot.full{ border-color:#21e6ff; color:#fff }
+  #padMenu.gar .gSlot.on{ background:#21e6ff; color:#071018; border-color:#bff6ff; animation:tutGlow .9s ease-in-out infinite }
+  #padMenu.gar .gSlot.pick{ border-color:#ffd23f; color:#ffd23f; opacity:1; pointer-events:auto; border-style:solid;
+    animation:vlNewTag .7s ease-in-out infinite alternate }
+  #padMenu.gar .gSlot.ow{ background:rgba(255,210,63,.3) }
+  #padMenu.gar .gSave{ flex:1 1 auto; height:44px; font-size:12px; border-color:#21e6ff; color:#fff }
+  #padMenu.gar .gSave.pick{ border-color:#ffd23f; color:#ffd23f; background:rgba(255,210,63,.18) }
+  #padMenu.gar .dimmed{ opacity:.32; pointer-events:none }
+  #padMenu.gar .gCam.locked{ opacity:.32 }
+  #padMenu.gar .gRnd{ width:48px; height:44px; color:#ffd23f; border-color:rgba(255,210,63,.8) }
+  #padMenu.gar .gCam{ width:48px; height:44px; color:#7cff4f; border-color:rgba(124,255,79,.8) }
+  #padMenu.gar .gRnd svg, #padMenu.gar .gCam svg{ width:24px; height:24px }
+  #padMenu.gar .gRow2{ display:flex; gap:8px }
+  #padMenu.gar .gBack{ flex:1 1 0; height:48px; font-size:13px; border-radius:24px }
+  #padMenu.gar .gDrive{ flex:2 1 0; height:48px; font-size:17px; letter-spacing:.2em; border-radius:24px; background:#7cff4f;
+    color:#071a02; border-color:#b8ff9a; box-shadow:0 0 18px rgba(124,255,79,.55) }
+  @media (orientation: landscape) and (pointer: coarse){
+    #padMenu.gar{ display:grid; position:fixed; left:0; right:0; top:0; bottom:0; transform:none; max-width:none; width:auto;
+      grid-template-columns:152px minmax(0,1fr) 160px; grid-template-rows:1fr auto auto auto auto 1fr;
+      grid-template-areas:". . ." "tabs . arrs" "tabs . slots" "tabs . tools" "back . drive" ". . .";
+      column-gap:0; row-gap:6px; align-items:center;
+      padding:4px calc(6px + env(safe-area-inset-right,0px)) calc(4px + env(safe-area-inset-bottom,0px))
+              calc(6px + env(safe-area-inset-left,0px));
+      pointer-events:none }
+    #padMenu.gar > *{ pointer-events:auto }
+    #padMenu.gar .gRow1, #padMenu.gar .gRow2{ display:contents }
+    #padMenu.gar .gParts, #padMenu.gar .gCards{ display:none !important }
+    #padMenu.gar .gTabs{ grid-area:tabs; grid-template-columns:1fr; gap:5px; align-self:center }
+    #padMenu.gar .gTab{ height:34px; flex-direction:row; justify-content:flex-start; gap:8px; padding:0 10px; font-size:10px }
+    #padMenu.gar .gTab svg{ width:18px; height:18px; flex:0 0 auto }
+    #padMenu .gTab .nt{ top:50%; transform:translateY(-50%); right:5px }
+    #padMenu.gar .gArrs{ grid-area:arrs; display:flex; gap:6px }
+    #padMenu.gar .gArrs .gArr{ flex:1 1 0; height:54px; width:auto; font-size:22px }
+    #padMenu.gar .gSlots{ grid-area:slots; flex-wrap:wrap; pointer-events:auto }
+    #padMenu.gar .gSlot{ flex:1 1 0; width:auto; height:38px }
+    #padMenu.gar .gSave{ flex:1 1 100%; height:32px; font-size:11px }
+    #padMenu.gar .gTools{ grid-area:tools; pointer-events:auto }
+    #padMenu.gar .gRnd, #padMenu.gar .gCam{ flex:1 1 0; width:auto; height:38px }
+    #padMenu.gar .gBack{ grid-area:back; height:36px; border-radius:18px; pointer-events:auto }
+    #padMenu.gar .gDrive{ grid-area:drive; height:44px; pointer-events:auto }
+  }
+  @media (orientation: landscape) and (pointer: coarse) and (max-width: 740px){
+    #padMenu.gar{ grid-template-columns:128px minmax(0,1fr) 128px; row-gap:5px }
+    #padMenu.gar .gTab{ height:30px; font-size:9px; padding:0 7px; gap:6px }
+    #padMenu.gar .gArrs .gArr{ height:44px }
+    #padMenu.gar .gSlot{ height:32px }
+    #padMenu.gar .gSave{ height:28px }
+    #padMenu.gar .gRnd, #padMenu.gar .gCam{ height:32px }
+    #padMenu.gar .gDrive{ height:38px; font-size:14px }
+  }
   /* The trigger is its own thing, not a pedal — white so it never reads as
      one of the three coloured wedges above it. */
   #bFire.on, #bFire:active{
@@ -569,7 +686,7 @@
 
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 93;     /* build 93: the faint 'v.93' tag in a bottom corner. Bump it with every build. */
+var BUILD_NO = 102;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -998,7 +1115,7 @@ function maxSpeedFor(l){
    so ramming and shooting can never drift apart. */
 /* Every point in the game goes through here, so a zone multiplier is one
    line instead of seven. */
-function addScore(n){ if (learn) return; score += n*ZN.mult; }   /* build 72: a lesson scores nothing */
+function addScore(n){ if (learn) return; score += n*ZN.mult; prSet('score', score|0); }   /* build 96 */   /* build 72: a lesson scores nothing */
 function killScore(){ return 300*(1+0.2*(lap-1))*(dinoT>0?2:1); }
 /* Shorter than before at the start — the first checkpoint now lands at ~17s
    instead of 21s — and longer than before at the end. 520k rather than 620k:
@@ -1067,20 +1184,52 @@ var NEONS=[
   {n:'ICE',     c:'#eaf6ff'},
   {n:'CRIMSON', c:'#ff3b5c'}
 ];
+/* build 94: bright paints (the old six were all near-black). A save wearing a dropped
+   paint moves to the nearest kept one by hue (PAINT_OLD below). */
 var PAINTS=[
+  {n:'HOT PINK',    a:'#ff6acb', b:'#b3157a'},
+  {n:'CHERRY',      a:'#ff4a5e', b:'#8c1028'},
+  {n:'TANGERINE',   a:'#ff9a3c', b:'#c2410c'},
+  {n:'GOLD RUSH',   a:'#ffe27a', b:'#c47a12'},
+  {n:'TOXIC LIME',  a:'#c6ff52', b:'#3d9a1e'},
+  {n:'MIAMI TEAL',  a:'#4ff0dc', b:'#0c7d84'},
+  {n:'GRAPE SODA',  a:'#b57bff', b:'#4a1a9e'},
+  {n:'PEARL',       a:'#ffffff', b:'#b8b0dc'},
   {n:'VOID VIOLET', a:'#2a1145', b:'#120a20'},
-  {n:'MIDNIGHT',    a:'#12203f', b:'#080d1a'},
-  {n:'CARBON',      a:'#26262f', b:'#0d0d12'},
-  {n:'OXBLOOD',     a:'#3c1022', b:'#170710'},
-  {n:'JADE',        a:'#0f3229', b:'#061512'},
-  {n:'RUST',        a:'#3d1c0e', b:'#170a06'}
+  {n:'CARBON',      a:'#26262f', b:'#0d0d12'}
 ];
+/* build 93's paint list, by save index -> the kept paint it becomes */
+var PAINT_OLD=['VOID VIOLET','VOID VIOLET','CARBON','CHERRY','MIAMI TEAL','TANGERINE'];
+/* TOPPER row = today's seven bar shapes + hats. lk:1 = locked (build 96: PR_RULES says how to earn it). */
 var BARS=[
-  {n:'BAR'},{n:'SAWTOOTH'},{n:'SPIKES'},{n:'CROWN'},{n:'HORNS'},{n:'HALO'},{n:'PULSE'}
+  {n:'BAR'},{n:'SAWTOOTH'},{n:'SPIKES'},{n:'CROWN'},{n:'HORNS'},{n:'HALO'},{n:'PULSE'},
+  {n:'PARTY HAT',k:'PARTY'},{n:'COWBOY',k:'COWBOY'},{n:'CAT EARS',k:'CATEARS'},{n:'SHARK FIN',k:'SHARK'},
+  {n:'TRAFFIC CONE',k:'CONE'},
+  {n:'PUNK MOHAWK',k:'MOHAWK',lk:1},{n:'DINO SPIKES',k:'DINO',lk:1},{n:'MINI UFO',k:'MINIUFO',lk:1},
+  {n:'WITCH HAT',k:'WITCH',lk:1},{n:'ANTENNA BALL',k:'ANTENNA',lk:1},{n:'TOP HAT',k:'TOPHAT',lk:1},
+  {n:'PROPELLER',k:'PROPELLER',lk:1}
 ];
+/* FACE row = today's seven eyes + new faces */
 var EYES=[
-  {n:'NONE'},{n:'WIDE'},{n:'ANGRY'},{n:'SLEEPY'},{n:'DIZZY'},{n:'CYCLOPS'},{n:'VISOR'}
+  {n:'NONE'},{n:'WIDE'},{n:'ANGRY'},{n:'SLEEPY'},{n:'DIZZY'},{n:'CYCLOPS'},{n:'VISOR'},
+  {n:'SHADES',k:'SHADES'},{n:'LED SCREEN',k:'LED'},{n:'ROBOT',k:'ROBO'},
+  {n:'HEART EYES',k:'HEARTS',lk:1},{n:'HAPPY',k:'HAPPY',lk:1},{n:'STAR EYES',k:'STARS',lk:1}
 ];
+/* build 94: the new rows. The first item of each is today's look. */
+var FINISHES=[{n:'STOCK',k:''},{n:'CHROME',k:'CHROME'},   /* build 98: PEARLESCENT and MATTE removed (Carlos) */
+  {n:'NEON GLOW',k:'NEONGLOW'},{n:'METAL',k:'METAL',lk:1}];
+var LIVERIES=[{n:'NONE',k:''},{n:'STRIPES',k:'STRIPES'},{n:'TWO-TONE',k:'TWOTONE'},{n:'CHECKER',k:'CHECKER'},
+  {n:'TIGER',k:'TIGER'},{n:'HAZARD',k:'HAZARD'},{n:'FLAMES',k:'FLAMES',lk:1},{n:'NEON GRID',k:'GRID',lk:1},
+  {n:'PIXEL CAMO',k:'CAMO',lk:1},{n:'SYNTH SUN',k:'SYNTHSUN',lk:1},{n:'PAINT SPLAT',k:'SPLAT',lk:1}];
+var SPOILERS=[{n:'NONE',k:''},{n:'DUCKTAIL',k:'DUCK'},{n:'TWIN DECK',k:'TWIN'},{n:'JET FINS',k:'FINS',lk:1}];
+var TAILS=[{n:'BARS',k:''},{n:'RINGS',k:'RINGS'},{n:'ARROWS',k:'ARROWS'},{n:'FULL STRIP',k:'STRIP'},
+  {n:'HEARTS',k:'HEARTS',lk:1},{n:'PIXEL',k:'PIXEL',lk:1}];
+var PLATES=[{n:'CLASSIC',k:'CLASSIC'},{n:'AMARILLA',k:'YELLOW'},{n:'NEON',k:'NEON'},{n:'HOLO',k:'HOLO'},
+  {n:'NONE',k:''},{n:'RANDOM',k:'RANDOM'}];
+var EXHAUSTS=[{n:'NONE',k:''},{n:'TWIN',k:'TWIN'},{n:'QUAD',k:'QUAD'},{n:'AFTERBURN',k:'FLAME',lk:1}];
+var GLOWS=[{n:'NONE',k:''},{n:'RIM GLOW',k:'RIM'},{n:'UNDERGLOW',k:'UNDER'}];
+var TRAILS=[{n:'NONE',k:''},{n:'NEON RIBBON',k:'RIBBON'},{n:'SPARKS',k:'SPARKS'},{n:'HEARTS',k:'HEARTS'},
+  {n:'PIXEL SMOKE',k:'PIXEL'},{n:'RAINBOW',k:'RAINBOW'},{n:'GHOST FIRE',k:'GHOST'},{n:'MUSIC NOTES',k:'NOTES',lk:1}];
 /* The one garage row that isn't cosmetic. Every value is a multiplier on an
    existing tuned constant, so the balance work already done still holds — a
    chassis bends the curve, it doesn't replace it. `hp` is absolute, not a
@@ -1091,7 +1240,8 @@ var CHASSIS=[
   {n:'TANK',     spd:0.93, grip:1.00, hp:5, c:'#7cff4f'},
   {n:'GLASS',    spd:1.16, grip:1.12, hp:2, c:'#ff2fbe'}
 ];
-var trimI=0, lightI=1, paintI=0, shapeI=0, eyeI=0, chassisI=0;
+var trimI=0, lightI=1, wrapcI=1, paintI=8, shapeI=0, eyeI=0, chassisI=0;   /* build 94: paint 8 = VOID VIOLET, today's default; 101: wrapcI = WRAP COLOUR */
+var finishI=0, liveryI=0, spoilerI=0, tailI=0, plateI=0, plateTxt='', exhaustI=0, glowI=0, trailI=0, reactOn=true;
 var garRow=0, garFrom='title', infoFrom='paused';
 var lang='en';
 var mode='run';                 /* 'run' = the timed game, 'cruise' = no fail */
@@ -1175,9 +1325,27 @@ var STR={
     PU_DINO1B:'s:',
     PU_DINO2:'anything you touch is scrap.',
     GARAGE:'GARAGE', GAR_HINT:'UP / DOWN pick a part      LEFT / RIGHT change it',
-    GAR_TRIM:'TRIM', GAR_BARCOL:'BAR COLOUR', GAR_BARSHAPE:'BAR SHAPE',
-    GAR_EYES:'EYES', GAR_PAINT:'PAINT', GAR_BACK:'ENTER \u2014 BACK',
+    GAR_TRIM:'NEON EDGE', GAR_BARCOL:'TOPPER COLOUR', GAR_WRAPCOL:'WRAP COLOUR', GAR_BARSHAPE:'TOPPER',
+    G_OWNCOL:'# HAS ITS OWN COLOURS', G_OWNCOL_S:'OWN COLOURS', G_NOWRAP:'PICK A WRAP FIRST',
+    G_TINT_GLOW:'THIS COLOUR STILL TINTS YOUR GLOW', G_TINT_TRAIL:'THIS COLOUR STILL TINTS YOUR RIBBON',
+    GAR_EYES:'FACE', GAR_PAINT:'PAINT', GAR_BACK:'ENTER \u2014 BACK',
     GAR_CHASSIS:'CHASSIS', GAR_SPD:'SPD', GAR_GRIP:'GRIP', GAR_HP:'HP',
+    GAR_REACT:'REACTIONS', GAR_FINISH:'FINISH', GAR_LIVERY:'WRAP', GAR_SPOILER:'SPOILER', GAR_TAILS:'TAIL LIGHTS',
+    GAR_PLATE:'PLATE', GAR_PTEXT:'PLATE TEXT', GAR_EXHAUST:'EXHAUST', GAR_GLOW:'GLOW', GAR_TRAIL:'TRAIL',
+    GAR_PLATE_BAD:'TRY ANOTHER PLATE', GAR_TYPE_DESK:'TYPE A-Z 0-9   BACKSPACE DELETES',
+    UNLOCKED:'UNLOCKED!', LK_LOCKED:'LOCKED', LK_OWNED:'UNLOCKED', LK_BEST:'BEST', LK_WEEK:'THIS WEEK',
+    LK_TRY:'PREVIEW ONLY  \u00b7  UNLOCK IT TO RACE IT',
+    GC_PAINT:'PAINT', GC_LIVERY:'WRAP', GC_PARTS:'MODS', GC_TOPPER:'TOPPER', GC_FACE:'FACE', GC_TRAIL:'TRAIL', GC_CHASSIS:'CHASSIS',
+    G_SIGN:'VAPOR GARAGE', G_SAVED:'SAVED BUILDS', G_SAVE:'SAVE', G_RANDOM:'RANDOM', G_PHOTO:'PHOTO', G_BACK:'BACK', G_DRIVE:'DRIVE',
+    G_NEW:'NEW', G_OWNED:'OWNED', G_ON:'ON', G_OFF:'OFF', G_SLOT:'SLOT',
+    G_PICK_K:'SAVE: PRESS 1, 2 OR 3   (S CANCELS)', G_PICK_T:'SAVE: TAP 1, 2 OR 3',
+    G_OVER_K:'SLOT # HAS A CAR. OVERWRITE IT? PRESS # AGAIN', G_OVER_T:'SLOT # HAS A CAR. OVERWRITE IT? TAP # AGAIN',
+    G_LOOK_K:'SLOT # · LOOK ONLY · PRESS # FOR YOUR BUILD', G_LOOK_T:'SLOT # · LOOK ONLY · TAP # FOR YOUR BUILD',
+    G_SAVED_TO:'SAVED TO SLOT #', G_LOCK_LEFT:'LOCKED ITEMS LEFT OUT', G_RANDOMED:'RANDOM BUILD (CHASSIS KEPT)',
+    G_PHOTO_OK:'PHOTO SAVED', G_PHOTO_NO:'NO PHOTO HERE, SORRY', G_PHOTO_LOCK:'UNLOCK IT FIRST TO TAKE A PHOTO',
+    GK_CAT:'category', GK_PART:'part', GK_PICK:'pick', GK_RND:'random', GK_PHOTO:'photo', GK_SLOT:'slot', GK_SAVE:'save',
+    GK_TYPE:'type', GK_DEL:'delete',
+    GAR_TYPE_TOUCH:'TAP THE BOX TO TYPE   \u25C0 DELETES', GAR_PT_OFF:'NOT SHOWN WITH NONE / RANDOM',
     MODE_RUN:'TIMED RUN', MODE_CRUISE:'CRUISE',
     T_CHAIN:'CHAIN x', NEARMISS:'NEAR MISS',
     OVER_WRECKED:'WRECKED', OVER_TIMEUP:'TIME UP', OVER_FINAL:'FINAL SCORE',
@@ -1331,9 +1499,27 @@ var STR={
     PU_DINO1B:'s:',
     PU_DINO2:'todo lo que toques queda destruido.',
     GARAGE:'GARAJE', GAR_HINT:'ARRIBA / ABAJO elige una pieza      IZQ. / DER. c\u00e1mbiala',
-    GAR_TRIM:'ACABADO', GAR_BARCOL:'COLOR DE BARRA', GAR_BARSHAPE:'FORMA DE BARRA',
-    GAR_EYES:'OJOS', GAR_PAINT:'PINTURA', GAR_BACK:'ENTER \u2014 VOLVER',
+    GAR_TRIM:'BORDE NEÓN', GAR_BARCOL:'COLOR DE ADORNO', GAR_WRAPCOL:'COLOR DE VINILO', GAR_BARSHAPE:'ADORNO',
+    G_OWNCOL:'# TIENE SUS PROPIOS COLORES', G_OWNCOL_S:'COLORES PROPIOS', G_NOWRAP:'ELIGE UN VINILO PRIMERO',
+    G_TINT_GLOW:'ESTE COLOR AÚN TIÑE TU BRILLO', G_TINT_TRAIL:'ESTE COLOR AÚN TIÑE TU CINTA',
+    GAR_EYES:'CARA', GAR_PAINT:'PINTURA', GAR_BACK:'ENTER \u2014 VOLVER',
     GAR_CHASSIS:'CHASIS', GAR_SPD:'VEL', GAR_GRIP:'AGARRE', GAR_HP:'SAL',
+    GAR_REACT:'REACCIONES', GAR_FINISH:'TEXTURA', GAR_LIVERY:'VINILO', GAR_SPOILER:'ALER\u00d3N', GAR_TAILS:'LUCES TRASERAS',
+    GAR_PLATE:'PLACA', GAR_PTEXT:'TEXTO PLACA', GAR_EXHAUST:'ESCAPE', GAR_GLOW:'BRILLO', GAR_TRAIL:'ESTELA',
+    GAR_PLATE_BAD:'PRUEBA OTRA PLACA', GAR_TYPE_DESK:'ESCRIBE A-Z 0-9   RETROCESO BORRA',
+    UNLOCKED:'\u00a1DESBLOQUEADO!', LK_LOCKED:'BLOQUEADO', LK_OWNED:'DESBLOQUEADO', LK_BEST:'MEJOR', LK_WEEK:'ESTA SEMANA',
+    LK_TRY:'SOLO VISTA PREVIA  \u00b7  DESBLOQU\u00c9ALO PARA CORRER',
+    GC_PAINT:'PINTURA', GC_LIVERY:'VINILO', GC_PARTS:'EXTRAS', GC_TOPPER:'ADORNO', GC_FACE:'CARA', GC_TRAIL:'ESTELA', GC_CHASSIS:'CHASIS',
+    G_SIGN:'GARAJE VAPOR', G_SAVED:'CARROS GUARDADOS', G_SAVE:'GUARDAR', G_RANDOM:'AL AZAR', G_PHOTO:'FOTO', G_BACK:'VOLVER', G_DRIVE:'CONDUCIR',
+    G_NEW:'NUEVO', G_OWNED:'GANADO', G_ON:'SÍ', G_OFF:'NO', G_SLOT:'ESPACIO',
+    G_PICK_K:'GUARDAR: PULSA 1, 2 O 3   (S CANCELA)', G_PICK_T:'GUARDAR: TOCA 1, 2 O 3',
+    G_OVER_K:'EL ESPACIO # TIENE UN CARRO. ¿REEMPLAZARLO? PULSA # OTRA VEZ', G_OVER_T:'EL ESPACIO # TIENE UN CARRO. ¿REEMPLAZARLO? TOCA # OTRA VEZ',
+    G_LOOK_K:'ESPACIO # · SOLO PARA VER · PULSA # PARA TU CARRO', G_LOOK_T:'ESPACIO # · SOLO PARA VER · TOCA # PARA TU CARRO',
+    G_SAVED_TO:'GUARDADO EN EL ESPACIO #', G_LOCK_LEFT:'SIN LAS PIEZAS BLOQUEADAS', G_RANDOMED:'CARRO AL AZAR (MISMO CHASIS)',
+    G_PHOTO_OK:'FOTO GUARDADA', G_PHOTO_NO:'AQUÍ NO SE PUEDE HACER LA FOTO', G_PHOTO_LOCK:'DESBLOQU\u00c9ALO PRIMERO PARA LA FOTO',
+    GK_CAT:'categoría', GK_PART:'pieza', GK_PICK:'elige', GK_RND:'azar', GK_PHOTO:'foto', GK_SLOT:'espacio', GK_SAVE:'guardar',
+    GK_TYPE:'escribe', GK_DEL:'borra',
+    GAR_TYPE_TOUCH:'TOCA LA CAJA PARA ESCRIBIR   \u25C0 BORRA', GAR_PT_OFF:'NO SE VE CON NONE / RANDOM',
     MODE_RUN:'CONTRARRELOJ', MODE_CRUISE:'PASEO',
     T_CHAIN:'CADENA x', NEARMISS:'ROCE',
     OVER_WRECKED:'DESTRUIDO', OVER_TIMEUP:'TIEMPO AGOTADO', OVER_FINAL:'PUNTUACI\u00d3N FINAL',
@@ -1465,6 +1651,273 @@ function pickIdx(v,n,def){
   v=parseInt(v,10);
   return (isFinite(v)&&v>=0&&v<n)?v:def;
 }
+function pickName(v,list,def){
+  if (typeof v==='string') for (var i=0;i<list.length;i++) if (list[i].n===v) return i;
+  return def;
+}
+/* ---------------------------------------------------------------
+   BUILD 96: PROGRESS AND LOCKS (garage step 2 of 3)
+   Counters by mode ('run' = timed, 'cruise', 'learn' = the tutorial), kept for
+   the whole life of the save (PR.t) and for this run only (R). One rule per
+   locked item (PR_RULES). A rule is checked the moment its counter moves; an
+   unlock shows "UNLOCKED!" in the race, goes in the game-over list and is
+   saved at once. Counting starts with this build: nothing done before it
+   counts, nobody is given anything for old play.
+     sc 'tot' = added up over every run, 'run' = in one run (the best run is
+                kept in PR.b for the progress bar), 'wk' = HAPPY's play days.
+     md        = the modes that count: r timed, c cruise, l tutorial.
+     ev        = the counter; 'kill@vaporEdit' = that counter in ALIEN PLAINS.
+   Definitions (Carlos 10-25): a crash = a hit that costs health or spins you
+   (rear taps are their own counter, and also break ANTENNA BALL); a destroyed
+   car = your shots, overdrive fire or the dino (not the giant hand); overdrive
+   = every time it lights AND every refresh; an overcharge = overdrive lit or
+   refreshed by a bolt from a drift or a near miss; a beam-up = the UFO ride
+   only; a HAUNTED visit = arriving there through THE MIST; a play = starting a
+   tutorial, timed or cruise run, counted per day on the player's own clock,
+   the week Monday 00:00 to Sunday 23:59.
+--------------------------------------------------------------- */
+var PR_RULES=[
+ {row:'fin',  n:'METAL',        ev:'crash',          to:25,     sc:'tot', md:'rc',  en:'CRASH 25 TIMES', es:'CHOCA 25 VECES'},
+ {row:'liv',  n:'FLAMES',       ev:'od',             to:7,      sc:'tot', md:'r',   en:'LIGHT OVERDRIVE 7 TIMES (REFRESHES COUNT)', es:'ACTIVA OVERDRIVE 7 VECES (RECARGAS CUENTAN)'},
+ {row:'liv',  n:'NEON GRID',    ev:'lap5',           to:5,      sc:'tot', md:'r',   en:'REACH LAP 5 IN 5 DIFFERENT RUNS', es:'LLEGA A LA VUELTA 5 EN 5 CARRERAS'},
+ {row:'liv',  n:'PIXEL CAMO',   ev:'kill',           to:77,     sc:'run', md:'r',   en:'DESTROY 77 CARS IN ONE RUN', es:'DESTRUYE 77 CARROS EN UNA CARRERA'},
+ {row:'liv',  n:'SYNTH SUN',    ev:'score',          to:222000, sc:'run', md:'c',   en:'SCORE 222,000 IN ONE RUN', es:'HAZ 222.000 PUNTOS EN UNA CARRERA'},
+ {row:'liv',  n:'PAINT SPLAT',  ev:'kill@vaporEdit', to:100,    sc:'tot', md:'r',   en:'DESTROY 100 CARS IN ALIEN PLAINS', es:'DESTRUYE 100 CARROS EN ALIEN PLAINS'},
+ {row:'spo',  n:'JET FINS',     ev:'nm',             to:20,     sc:'run', md:'c',   en:'20 NEAR MISSES IN ONE RUN', es:'20 ROCES EN UNA CARRERA'},
+ {row:'tail', n:'HEARTS',       ev:'heart@vaporEdit',to:4,      sc:'run', md:'rc',  en:'4 HEARTS IN ALIEN PLAINS IN ONE RUN', es:'4 CORAZONES EN ALIEN PLAINS EN UNA CARRERA'},
+ {row:'tail', n:'PIXEL',        ev:'crash',          to:7,      sc:'run', md:'r',   en:'CRASH 7 TIMES IN ONE RUN', es:'CHOCA 7 VECES EN UNA CARRERA'},
+ {row:'exh',  n:'AFTERBURN',    ev:'score',          to:400000, sc:'run', md:'c',   en:'SCORE 400,000 IN ONE RUN', es:'HAZ 400.000 PUNTOS EN UNA CARRERA'},
+ {row:'shape',n:'PUNK MOHAWK',  ev:'dino',           to:30,     sc:'tot', md:'rc',  en:'PICK UP THE DINO 30 TIMES', es:'AGARRA EL DINO 30 VECES'},
+ {row:'shape',n:'DINO SPIKES',  ev:'dino',           to:15,     sc:'tot', md:'rc',  en:'PICK UP THE DINO 15 TIMES', es:'AGARRA EL DINO 15 VECES'},
+ {row:'shape',n:'MINI UFO',     ev:'beam',           to:20,     sc:'tot', md:'r',   en:'GET BEAMED UP BY THE UFO 20 TIMES', es:'DEJA QUE EL OVNI TE ABDUZCA 20 VECES'},
+ {row:'shape',n:'WITCH HAT',    ev:'haunt',          to:5,      sc:'tot', md:'rc',  en:'VISIT HAUNTED HIGHWAY 5 TIMES', es:'VISITA HAUNTED HIGHWAY 5 VECES'},
+ {row:'shape',n:'ANTENNA BALL', ev:'cleanlap',       to:6,      sc:'run', md:'rcl', en:'REACH LAP 6 WITH NO CRASHES AND NO REAR TAPS', es:'LLEGA A LA VUELTA 6 SIN CHOQUES NI GOLPES TRASEROS'},
+ {row:'shape',n:'TOP HAT',      ev:'nklap',          to:8,      sc:'run', md:'r',   en:'REACH LAP 8 WITHOUT DESTROYING A CAR', es:'LLEGA A LA VUELTA 8 SIN DESTRUIR UN CARRO'},
+ {row:'shape',n:'PROPELLER',    ev:'tutfin',         to:1,      sc:'tot', md:'l',   en:'FINISH THE TUTORIAL', es:'TERMINA EL TUTORIAL'},
+ {row:'eye',  n:'HEART EYES',   ev:'heart',          to:6,      sc:'run', md:'rc',  en:'PICK UP 6 HEARTS IN ONE RUN', es:'AGARRA 6 CORAZONES EN UNA CARRERA'},
+ {row:'eye',  n:'HAPPY',        ev:'days',           to:3,      sc:'wk',  md:'rcl', en:'PLAY ON 3 DIFFERENT DAYS IN ONE WEEK (MON-SUN)', es:'JUEGA 3 DÍAS DISTINTOS EN UNA SEMANA (LUN-DOM)'},
+ {row:'eye',  n:'STAR EYES',    ev:'score',          to:333000, sc:'run', md:'r',   en:'SCORE 333,000 IN ONE RUN', es:'HAZ 333.000 PUNTOS EN UNA CARRERA'},
+ {row:'trail',n:'MUSIC NOTES',  ev:'oc',             to:3,      sc:'tot', md:'rcl', en:'OVERCHARGE 3 TIMES: OVERDRIVE FROM A DRIFT OR A NEAR MISS', es:'SOBRECARGA 3 VECES: OVERDRIVE CON UN DERRAPE O UN ROCE'}
+];
+var PR_MC={run:'r', cruise:'c', learn:'l'};
+var PR_ZONED={kill:1, heart:1};             /* the counters also kept per zone */
+var PR_BY={};                               /* counter -> its rules */
+(function(){ for (var i=0;i<PR_RULES.length;i++){ var b=PR_RULES[i].ev.split('@')[0]; (PR_BY[b]=PR_BY[b]||[]).push(PR_RULES[i]); } })();
+function prBlank(){ return { t:{run:{}, cruise:{}, learn:{}}, b:{}, got:{}, seen:{}, wk:{mon:'', days:[]} }; }
+var PR=prBlank();
+var R={un:[], cl:true, nk:true};            /* this run: counters, unlocked list, no-crash / no-kill flags */
+var PR_NOW=function(){ return new Date(); };   /* the tests swap in a fixed clock */
+var garOwn={};                              /* garage: the last owned item of each row */
+
+function prMode(){ return learn ? 'learn' : (mode==='cruise' ? 'cruise' : 'run'); }
+function prKey(row,n){ return row+':'+n; }
+function prRuleFor(row,n){ for (var i=0;i<PR_RULES.length;i++) if (PR_RULES[i].row===row && PR_RULES[i].n===n) return PR_RULES[i]; return null; }
+function prOwns(row,item){ return !item || !item.lk || !!PR.got[prKey(row,item.n)]; }
+function prRunReset(){ R={un:[], cl:true, nk:true}; }
+
+/* a counter moved by n (most move by 1) */
+function prAdd(ev,n){
+  n=n||1;
+  var m=prMode(), t=PR.t[m];
+  t[ev]=(t[ev]|0)+n; R[ev]=(R[ev]|0)+n;
+  if (PR_ZONED[ev]){ var z=ev+'@'+zoneI; t[z]=(t[z]|0)+n; R[z]=(R[z]|0)+n; }
+  prCheck(ev);
+}
+/* a this-run value that only goes up: the score, the lap reached clean / without a kill */
+function prSet(ev,v){
+  if (v>(R[ev]|0)){ R[ev]=v; prCheck(ev); }
+}
+/* how far along a rule is right now (for the bars). 'run' rules show the best single run. */
+function prVal(r){
+  if (r.sc==='wk') return prWeekDays();
+  if (r.sc==='run') return PR.b[prKey(r.row,r.n)]|0;
+  var v=0;
+  for (var m in PR_MC) if (r.md.indexOf(PR_MC[m])>=0) v+=(PR.t[m][r.ev]|0);
+  return v;
+}
+function prCheck(ev){
+  var list=PR_BY[ev]; if (!list) return;
+  var mc=PR_MC[prMode()];
+  for (var i=0;i<list.length;i++){
+    var r=list[i], k=prKey(r.row,r.n);
+    if (PR.got[k] || r.md.indexOf(mc)<0) continue;   /* this mode doesn't count for it */
+    if (r.sc==='run'){
+      var v=R[r.ev]|0;
+      if (v>(PR.b[k]|0)) PR.b[k]=v;
+      if (v>=r.to) prUnlock(r);
+    } else if (prVal(r)>=r.to) prUnlock(r);
+  }
+}
+function prUnlock(r){
+  var k=prKey(r.row,r.n);
+  if (PR.got[k]) return;
+  PR.got[k]=1;
+  delete PR.seen[k];                        /* NEW again until the player stops on it (build 97's badge) */
+  R.un.push(r.n);
+  say(T('UNLOCKED')+'  '+r.n, '#7cff4f', false, null, 2.8);
+  blip(660,0.08,'square',0.16);
+  setTimeout(function(){ blip(990,0.08,'square',0.16); },80);
+  setTimeout(function(){ blip(1320,0.22,'square',0.16); },160);
+  saveGame();
+}
+
+/* the hooks the game calls */
+function prOd(src){ prAdd('od'); if (src==='drift' || src==='nm') prAdd('oc'); }
+function prCrash(rear){ R.cl=false; prAdd(rear ? 'rear' : 'crash'); }
+function prKill(){ R.nk=false; prAdd('kill'); }
+function prLap(){
+  if (lap===5) prAdd('lap5');
+  if (R.cl) prSet('cleanlap', lap);
+  if (R.nk) prSet('nklap', lap);
+  saveGame();                               /* a lap is a good moment to keep the totals */
+}
+
+/* HAPPY: play days in the current Monday-Sunday week, on the player's own clock */
+function prPad2(n){ return (n<10?'0':'')+n; }
+function prDay(d){ return d.getFullYear()+'-'+prPad2(d.getMonth()+1)+'-'+prPad2(d.getDate()); }
+function prMonday(d){
+  var m=new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  m.setDate(m.getDate()-((m.getDay()+6)%7));
+  return prDay(m);
+}
+function prWeekDays(){ return PR.wk.mon===prMonday(PR_NOW()) ? PR.wk.days.length : 0; }
+function prPlay(){                          /* a tutorial, timed or cruise run just started */
+  var d=PR_NOW(), mon=prMonday(d), day=prDay(d);
+  if (PR.wk.mon!==mon) PR.wk={mon:mon, days:[]};
+  if (PR.wk.days.indexOf(day)<0) PR.wk.days.push(day);
+  var r=prRuleFor('eye','HAPPY');
+  if (!PR.got[prKey(r.row,r.n)] && PR.wk.days.length>=r.to) prUnlock(r);
+  saveGame();
+}
+
+/* ---- locks in the garage: try a locked item on, but never race it ---- */
+function prRowOwned(row,i){ return prOwns(row.id, row.list[i]); }
+function prGarEnter(){
+  for (var r=0;r<GROWS.length;r++){ var row=GROWS[r]; if (row.list && row.id!=='react') garOwn[row.id]=row.get(); }
+}
+function prGarSet(row){                     /* the cursor stopped on an item */
+  if (!row.list || row.id==='react') return;
+  var i=row.get();                          /* build 97: seen = shown GAR_DWELL s on the turntable (garTick) */
+  if (prRowOwned(row,i)) garOwn[row.id]=i;
+}
+/* every row back to an item the player owns: the last one shown, else the row's first (today's look) */
+function prEnforce(){
+  for (var r=0;r<GROWS.length;r++){
+    var row=GROWS[r]; if (!row.list || row.id==='react') continue;
+    if (prRowOwned(row,row.get())) continue;
+    var o=garOwn[row.id];
+    row.set((typeof o==='number' && o>=0 && o<row.list.length && prRowOwned(row,o)) ? o : 0);
+  }
+}
+function prGarLeave(){ prEnforce(); saveGame(); }
+
+/* ---- the save ('pr' inside vaporlane.save) ---- */
+function prSaveObj(){
+  var got=[], seen=[], k;
+  for (k in PR.got) got.push(k);
+  for (k in PR.seen) seen.push(k);
+  return { v:1, t:PR.t, b:PR.b, got:got, seen:seen, wk:PR.wk };
+}
+function prNum(v){ v=parseInt(v,10); return (isFinite(v) && v>0) ? Math.min(v, 1e9) : 0; }
+var PR_DAY_RE=/^\d{4}-\d\d-\d\d$/;
+function prLoad(p, hadSave){
+  PR=prBlank();
+  if (p && typeof p==='object'){
+    var m, k, i;
+    if (p.t && typeof p.t==='object')
+      for (m in PR.t) if (p.t[m] && typeof p.t[m]==='object')
+        for (k in p.t[m]){ var n=prNum(p.t[m][k]); if (n) PR.t[m][k]=n; }
+    if (p.b && typeof p.b==='object')
+      for (k in p.b){ var nb=prNum(p.b[k]); if (nb) PR.b[k]=nb; }
+    if (Array.isArray(p.got))
+      for (i=0;i<p.got.length;i++){ var gs=String(p.got[i]).split(':'); if (gs.length===2 && prRuleFor(gs[0],gs[1])) PR.got[p.got[i]]=1; }
+    if (Array.isArray(p.seen))
+      for (i=0;i<p.seen.length && i<400;i++) if (typeof p.seen[i]==='string' && p.seen[i].length<40) PR.seen[p.seen[i]]=1;
+    for (i=0;i<NEONS.length;i++) if (PR.seen[prKey('light',NEONS[i].n)]) PR.seen[prKey('livc',NEONS[i].n)]=1;   /* build 101 */
+    if (p.wk && typeof p.wk==='object' && PR_DAY_RE.test(p.wk.mon) && Array.isArray(p.wk.days)){
+      PR.wk.mon=p.wk.mon;
+      for (i=0;i<p.wk.days.length && PR.wk.days.length<7;i++)
+        if (PR_DAY_RE.test(p.wk.days[i]) && PR.wk.days.indexOf(p.wk.days[i])<0) PR.wk.days.push(p.wk.days[i]);
+    }
+  } else if (hadSave) prSeedSeen();
+}
+/* A save from before build 96: the designs it already had count as seen, so on the update day
+   NEW shows only on what is new (a player with no save at all sees NEW on everything). */
+function prSeedSeen(){
+  var i, s=function(row,n){ PR.seen[prKey(row,n)]=1; };
+  for (i=0;i<NEONS.length;i++){ s('trim',NEONS[i].n); s('light',NEONS[i].n); s('livc',NEONS[i].n); }
+  for (i=0;i<7;i++){ s('shape',BARS[i].n); s('eye',EYES[i].n); }
+  for (i=0;i<CHASSIS.length;i++) s('chassis',CHASSIS[i].n);
+  s('paint','VOID VIOLET'); s('paint','CARBON');
+  s('fin',FINISHES[0].n); s('liv',LIVERIES[0].n); s('spo',SPOILERS[0].n); s('tail',TAILS[0].n);
+  s('plate',PLATES[0].n); s('exh',EXHAUSTS[0].n); s('glow',GLOWS[0].n); s('trail',TRAILS[0].n);
+}
+
+/* ---- drawing (temporary, build 97's showroom replaces it) ---- */
+function prLockIcon(cx,cy,s,col){           /* a small padlock, s = body width */
+  ctx.save();
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.2,s*0.16);
+  ctx.beginPath(); ctx.arc(cx, cy-s*0.30, s*0.30, Math.PI, 0); ctx.lineTo(cx+s*0.30, cy-s*0.05);
+  ctx.moveTo(cx-s*0.30, cy-s*0.30); ctx.lineTo(cx-s*0.30, cy-s*0.05); ctx.stroke();
+  ctx.fillStyle=col; ctx.fillRect(cx-s*0.5, cy-s*0.08, s, s*0.72);
+  ctx.fillStyle='rgba(10,5,22,.85)'; ctx.fillRect(cx-s*0.07, cy+s*0.12, s*0.14, s*0.26);
+  ctx.restore();
+}
+function prFmt(n){
+  var s=String(Math.max(0,n|0)), sep=(lang==='es')?'.':',', o='';
+  while (s.length>3){ o=sep+s.slice(-3)+o; s=s.slice(0,-3); }
+  return s+o;
+}
+function prText(r){
+  var t=(lang==='es') ? r.es : r.en;
+  if (r.md==='r') t+='  ·  '+T('MODE_RUN');
+  else if (r.md==='c') t+='  ·  '+T('MODE_CRUISE');
+  return t;
+}
+function prWrap(txt,maxW){
+  var words=txt.split(' '), lines=[], cur='';
+  for (var i=0;i<words.length;i++){
+    var t=cur ? cur+' '+words[i] : words[i];
+    if (cur && ctx.measureText(t).width>maxW){ lines.push(cur); cur=words[i]; } else cur=t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+/* the panel beside the garage car while the picked item is a locked one */
+function prGarPanel(row){
+  if (!row || !row.list || row.id==='react') return false;
+  var item=row.list[row.get()]; if (!item || !item.lk) return false;
+  var r=prRuleFor(row.id,item.n); if (!r) return false;
+  var x=508, y=104, own=!!PR.got[prKey(r.row,r.n)];
+  if (own){
+    monoText(T('LK_OWNED'), x, y, TS.LABEL, '#7cff4f');
+    return false;
+  }
+  prLockIcon(x+7, y-5, 12, '#ff6ad5');
+  monoText(T('LK_LOCKED'), x+20, y, TS.LABEL, '#ff6ad5');
+  ctx.font='700 '+TS.MICRO+'px ui-monospace,Menlo,"Courier New",monospace';
+  var lines=prWrap(prText(r), 272), i;
+  for (i=0;i<lines.length && i<3;i++) monoText(lines[i], x, y+20+i*15, TS.MICRO, '#cfd6ff');
+  var by=y+24+Math.min(3,lines.length)*15, v=Math.min(prVal(r), r.to), bw=180;
+  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(x, by, bw, 7);
+  ctx.fillStyle='#ff6ad5'; ctx.fillRect(x, by, Math.round(bw*v/r.to), 7);
+  var lab = r.sc==='wk' ? T('LK_WEEK') : (r.sc==='run' ? T('LK_BEST') : '');
+  monoText((lab?lab+' ':'')+prFmt(v)+' / '+prFmt(r.to), x+bw+8, by+7, TS.MICRO, '#ffffff');
+  monoText(T('LK_TRY'), x, by+24, TS.MICRO, '#8a7ec4');
+  return true;
+}
+/* the names unlocked this run, fitted to one line */
+function prUnLine(maxW, size){
+  if (!R.un.length) return '';
+  ctx.font='700 '+size+'px ui-monospace,Menlo,"Courier New",monospace';
+  var n=R.un.length, s;
+  for (var k=n;k>=1;k--){
+    s=T('UNLOCKED')+'  '+R.un.slice(0,k).join('  ·  ')+(k<n ? '  +'+(n-k) : '');
+    if (ctx.measureText(s).width<=maxW) return s;
+  }
+  return T('UNLOCKED')+'  +'+n;
+}
+
 function loadGame(){
   if (!saveOK) return;
   var raw,d;
@@ -1482,7 +1935,24 @@ function loadGame(){
   shapeI=pickIdx(d.shape, BARS.length  , shapeI);
   eyeI  =pickIdx(d.eye  , EYES.length  , eyeI);
   lightI=pickIdx(d.light, NEONS.length , lightI);
-  paintI=pickIdx(d.paint, PAINTS.length, paintI);
+  /* build 94: the look is saved by name (lk); a build-93 save only has the old paint index */
+  var lk=(d.lk && typeof d.lk==='object') ? d.lk : null;
+  if (lk && typeof lk.paint==='string') paintI=pickName(lk.paint, PAINTS, paintI);
+  else { var op=parseInt(d.paint,10); if (isFinite(op) && op>=0 && op<PAINT_OLD.length) paintI=pickName(PAINT_OLD[op], PAINTS, paintI); }
+  if (lk){
+    finishI =pickName(lk.fin , FINISHES, finishI);
+    liveryI =pickName(lk.liv , LIVERIES, liveryI);
+    spoilerI=pickName(lk.spo , SPOILERS, spoilerI);
+    tailI   =pickName(lk.tail, TAILS   , tailI);
+    plateI  =pickName(lk.plate,PLATES  , plateI);
+    exhaustI=pickName(lk.exh , EXHAUSTS, exhaustI);
+    glowI   =pickName(lk.glow, GLOWS   , glowI);
+    trailI  =pickName(lk.trail,TRAILS  , trailI);
+    var pt=plClean(lk.ptxt); plateTxt=plateBad(pt)?'':pt;
+    reactOn = (lk.react!==0);
+  }
+  /* build 101: the wrap's own colour; a save from before 101 starts it at the bar colour (same look) */
+  wrapcI = (lk && typeof lk.livc==='string') ? pickName(lk.livc, NEONS, lightI) : lightI;
   chassisI=pickIdx(d.chassis, CHASSIS.length, chassisI);
   lang = (d.lang==='es') ? 'es' : 'en';
   mode = (d.mode==='cruise') ? 'cruise' : 'run';
@@ -1491,14 +1961,23 @@ function loadGame(){
             : (d.music===false ? AUD_NOMUSIC : AUD_ALL);   /* legacy save */
   applyAudioMode();
   sawLandscape = !!d.sawLand;
+  prLoad(d.pr, true);                 /* build 96: progress; a save from before 96 starts at zero */
+  prEnforce();                        /* build 96: a locked item worn in 94 / 95 goes back to the row's first */
+  garLoad(d.gs);                      /* build 97: saved slots, the one showing, the build in progress */
 }
 function saveGame(){
   if (!saveOK) return;
   try{
     store.setItem(SAVE_KEY, JSON.stringify({
       v:SAVE_V, best:Math.max(0,best|0),
-      trim:trimI, light:lightI, paint:paintI, shape:shapeI, eye:eyeI, lang:lang,
-      chassis:chassisI, mode:mode, sawLand:sawLandscape, audio:audioMode
+      trim:trimI, light:lightI, paint:Math.max(0,PAINT_OLD.indexOf(PAINTS[paintI].n)), shape:shapeI, eye:eyeI, lang:lang,
+      chassis:chassisI, mode:mode, sawLand:sawLandscape, audio:audioMode,
+      /* build 94: the look by name; 'paint' above stays an index build 93 can read */
+      lk:{ paint:PAINTS[paintI].n, fin:FINISHES[finishI].n, liv:LIVERIES[liveryI].n, spo:SPOILERS[spoilerI].n,
+           tail:TAILS[tailI].n, plate:PLATES[plateI].n, ptxt:plateTxt, exh:EXHAUSTS[exhaustI].n,
+           glow:GLOWS[glowI].n, trail:TRAILS[trailI].n, react:reactOn?1:0, livc:NEONS[wrapcI].n },
+      pr:prSaveObj(),                 /* build 96: counters, best runs, earned, seen, play days */
+      gs:garSaveObj()                 /* build 97: slots 1 2 3, the slot showing, the build in progress */
     }));
   }catch(e){ saveOK=false; }                          /* quota or perms lost */
 }
@@ -1835,6 +2314,9 @@ function reset(){
   dBank=0; dPot=0; drifting=false;
   ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5; hailPrevZ=-1;
   fxClear();                           /* build 83 */
+  rx=null; trl.length=0; trlA=0;       /* build 94: reactions and trails */
+  prRunReset(); prEnforce();           /* build 96: this run's counters; never race a locked item */
+  if (PLATES[plateI].k==='RANDOM') rollPlate();
   hwSpookClear();                      /* build 87 */
   cut=null; cutCarRest();
   hwK=(HW_SEASON_K!==null) ? HW_SEASON_K : hwSeasonK(new Date());   /* build 84: the Halloween season, read once a run */
@@ -2987,30 +3469,11 @@ function musMix(){
 var MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
          KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
 
-function garageKey(code){
-  if (code==='ArrowUp'){   garRow=(garRow+5)%6; blip(520,0.05,'square',0.10); return; }
-  if (code==='ArrowDown'){ garRow=(garRow+1)%6; blip(520,0.05,'square',0.10); return; }
-  if (code==='ArrowLeft'||code==='ArrowRight'){
-    var d=code==='ArrowRight'?1:-1;
-    if (garRow===0) trimI =(trimI +d+NEONS.length)%NEONS.length;
-    if (garRow===1) lightI=(lightI+d+NEONS.length)%NEONS.length;
-    if (garRow===2) shapeI=(shapeI+d+BARS.length)%BARS.length;
-    if (garRow===3) eyeI  =(eyeI  +d+EYES.length)%EYES.length;
-    if (garRow===4) paintI=(paintI+d+PAINTS.length)%PAINTS.length;
-    if (garRow===5) chassisI=(chassisI+d+CHASSIS.length)%CHASSIS.length;
-    blip(880,0.05,'square',0.12);
-    saveGame();
-    return;
-  }
-  if (code==='Enter'||code==='Space'||code==='Escape'||code==='KeyG'){
-    state=garFrom; blip(660,0.09,'square',0.14);
-  }
-}
-
 window.addEventListener('keydown', function(e){
+  if (plateIn && e.target===plateIn) return;   /* build 94: typing in the plate field */
   audioInit();
   var c=e.code;
-  if (c.indexOf('Arrow')===0 || c==='Space') e.preventDefault();
+  if (c.indexOf('Arrow')===0 || c==='Space' || (c==='Tab' && state==='garage')) e.preventDefault();   /* build 97: Tab = next category */
 
   if (state==='garage'){ garageKey(c); return; }
   if (state==='tutorial'){ tutKey(c); return; }     /* build 72 */
@@ -3029,7 +3492,7 @@ window.addEventListener('keydown', function(e){
     else if (state==='paused'){ state='playing'; }
   }
   /* build 92: not during the abduction / MIST ride either */
-  if (c==='KeyG' && state!=='playing' && state!=='abduct'){ garFrom=state; garRow=0; state='garage'; }
+  if (c==='KeyG' && state!=='playing' && state!=='abduct'){ garOpen(state); }   /* build 97 */
   if (c==='KeyI' && state!=='playing' && state!=='garage' && state!=='abduct'){ infoFrom=state; infoPage=0; state='info'; }
   if (c==='KeyP'){
     if (state==='playing') state='paused';
@@ -3574,11 +4037,11 @@ var PAD_ACTS={
   start:  function(){ beginRun(); },
   learn:  function(){ startLearn(); },
   resume: function(){ state='playing'; },
-  garage: function(){ if (!SLAB_ST[state]) return; garFrom=state; garRow=0; state='garage'; },   /* build 92: menus only */
+  garage: function(){ if (!SLAB_ST[state]) return; garOpen(state); },   /* build 92: menus only; 97: garOpen */
   info:   function(){ if (!SLAB_ST[state]) return; infoFrom=state; infoPage=0; state='info'; },
   infoPrev: function(){ infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES; },
   infoNext: function(){ infoPage=(infoPage+1)%INFO_PAGES; },
-  back:   function(){ if (state==='garage') state=garFrom; else if (state==='info') state=infoFrom; },   /* build 92 */
+  back:   function(){ if (state==='garage') garBack(); else if (state==='info') state=infoFrom; },   /* build 92; 97: garBack */
   menu:   function(){ saveGame(); learn=false; state='title'; },
   sound:  function(){ cycleAudio(); },
   lang:   function(){ toggleLang(); padState=null; },
@@ -3633,8 +4096,9 @@ function syncPad(){
   padDrive.style.display = driving ? 'flex' : 'none';
   /* The garage lays its arrows out as a cross, which needs grid rather than
      the wrapping row the remaining screens use. */
-  padMenu.style.display  = driving ? 'none' : (state==='garage' ? 'grid' : 'flex');
-  padMenu.classList.toggle('cross', state==='garage');
+  padMenu.style.display  = driving ? 'none' : (state==='garage' ? '' : 'flex');   /* build 97: the CSS lays the garage out */
+  padMenu.classList.toggle('cross', false);
+  padMenu.classList.toggle('gar', state==='garage');
   padMenu.classList.toggle('slabs', !!SLAB_ST[state]);
   if (driving) return;
   /* build 92: no menu strip outside a menu screen. The fallback below used to put a lone BACK on any other
@@ -3664,7 +4128,13 @@ function syncPad(){
                [T('MOB_MAIN_MENU'),'menu'],
                [T('MOB_GARAGE'),'garage']]);
     var cl=document.createElement('div'); cl.className='col l';
-    L.forEach(function(d,i){ cl.appendChild(padBtn(d[0],d[1],'slab'+(i?'':' big')+(d[1]==='learn'?' tut':''))); });
+    L.forEach(function(d,i){
+      var sb=padBtn(d[0],d[1],'slab'+(i?'':' big')+(d[1]==='learn'?' tut':''));
+      if (d[1]==='garage' && garAnyNew()){       /* build 97: something in the garage not looked at yet */
+        var nt=document.createElement('span'); nt.className='newTag'; nt.textContent=T('G_NEW'); sb.appendChild(nt);
+      }
+      cl.appendChild(sb);
+    });
     /* build 74: NEW HERE? under the TUTORIAL slab on the title, arrow pointing up.
        Absolutely placed below the column, so the slabs and tiles do not move. */
     if (state==='title'){
@@ -3685,10 +4155,8 @@ function syncPad(){
     return;
   }
 
+  if (state==='garage'){ garPadBuild(); return; }   /* build 97: the showroom's buttons */
   var defs =
-    state==='garage'   ? [['\u25B2','rowUp','nav up'],['\u25C0','prev','nav left'],
-                          ['\u25B6','next','nav right'],['\u25BC','rowDn','nav down'],
-                          [T('MOB_BACK'),'back','backbtn']] :
     state==='info'     ? [['\u25C0','infoPrev','nav'],['\u25B6','infoNext','nav'],
                           [T('MOB_BACK'),'back','']] :
                          [[T('MOB_BACK'),'back','']];
@@ -3700,6 +4168,10 @@ function syncPad(){
 cv.addEventListener('pointerdown', function(e){
   audioInit();
   if (state==='title'||state==='gameover'){ beginRun(); }
+  else if (state==='garage' && e){         /* build 97: tabs, chips, cards, slots... drawn on the stage */
+    var gr0=cv.getBoundingClientRect();
+    if (gr0.width>0 && gr0.height>0) garTap((e.clientX-gr0.left)*W/gr0.width, (e.clientY-gr0.top)*H/gr0.height);
+  }
   else if (state==='paused' && e){
     /* build 71: the FPS METER line on the pause screen is a button */
     var r=cv.getBoundingClientRect();
@@ -3760,16 +4232,18 @@ function fire(){
 
 /* One bolt, from wherever it came: a pickup, or a drift you banked. Kept in
    one place so the drift award cannot drift out of step with the pickup. */
-function giveBolt(){
+function giveBolt(src){             /* build 96: src = 'pickup' / 'drift' / 'nm' (near miss) */
   if (odT>0){                       /* already lit: top it back up */
-    odT=OD_TIME; addScore(500);
+    odT=OD_TIME; addScore(500); react('fire');   /* build 94 */
+    prOd(src);                        /* build 96 */
     say(T('T_OD_REFRESH'),'#ffd23f',true,'bolt');
     overdriveSfx();
     return;
   }
   shots++;
   if (shots>=MAX_SHOTS){            /* the third one tips you over */
-    shots=0; odT=OD_TIME; odShotN=0; flash=1;
+    shots=0; odT=OD_TIME; odShotN=0; flash=1; react('fire');   /* build 94 */
+    prOd(src);                        /* build 96 */
     shake=Math.max(shake,7);
     say(T('T_OD_ON')+OD_TIME+'s','#ffd23f',true,'bolt');
     overdriveSfx();
@@ -3814,10 +4288,13 @@ function crash(rear){
                                         far too short to be a free battering ram */
     crashSfx();
     say(T('T_REAR'),'#ffd23f',false,null,1.3);
+    prCrash(true);                   /* build 96: a rear tap (breaks ANTENNA BALL) */
     return;                          /* no health, no clock, dPot untouched */
   }
 
   dPot=0;                         /* a drift you crash out of pays nothing */
+  react('dizzy');                 /* build 94 */
+  prCrash(false);                 /* build 96: a crash, counted before a crash can end the run */
   invT=2.3;
   if (odT>0){
     /* no invulnerability, but the aura carries you through: half your speed
@@ -3842,7 +4319,7 @@ function crash(rear){
   if (health<=0){
     endReason='WRECKED'; state='gameover'; best=Math.max(best,score|0); saveGame();
   } else if (timeLeft<=0){
-    endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
+    endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame(); react('tears');
   } else {
     say(T('T_CRASH')+CRASH_TIME+T('T_CRASH_S'),'#ff5d5d',true);
   }
@@ -3860,6 +4337,8 @@ function update(dt){
   hitFlash=Math.max(0,hitFlash-dt*2.6);
   flash   =Math.max(0,flash-dt*1.8);
   fxStep(dt);                          /* build 83: the screen-effects layer */
+  garTick(dt);                         /* build 97: the showroom's clock (NEW, trail preview) */
+  trailStep(dt);                       /* build 94 */
   for (i=msgs.length-1;i>=0;i--){ msgs[i].life-=dt; if (msgs[i].life<=0) msgs.splice(i,1); }
 
   /* The cutscene owns the frame. Everything below this line — the clock,
@@ -3963,7 +4442,7 @@ function update(dt){
 
   if (wasDrift && !drifting && dPot>0){
     dBank += dPot; dPot=0;
-    while (dBank>=1){ dBank-=1; giveBolt(); }
+    while (dBank>=1){ dBank-=1; giveBolt('drift'); }
   }
 
   speed=clamp(speed,0,maxS);
@@ -4005,7 +4484,7 @@ function update(dt){
   if (mode==='run' && !learn){
     timeLeft-=dt;
     if (timeLeft<=0){
-      timeLeft=0; endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
+      timeLeft=0; endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame(); react('tears');
     }
   }
 
@@ -4013,7 +4492,8 @@ function update(dt){
     tutGate();                          /* build 72: the lesson's gate: no lap, no award */
   } else if (position+Z_CAR >= nextCP){
     lap++;
-    if (lap>=5) tutSkill();                      /* build 73: reaching lap 5 once ends the game-over offer */
+    if (lap>=5) tutSkill();
+    prLap();                                     /* build 96 */                      /* build 73: reaching lap 5 once ends the game-over offer */
     cpStart=nextCP; cpLen=lapLength(lap); nextCP=cpStart+cpLen;
     var award=cpBonus(lap);
     timeLeft += award;
@@ -4114,11 +4594,13 @@ function update(dt){
         addScore(NM_BASE*closeMul*mult*(1+0.2*(lap-1)));
         var nmSide=(c.x>playerX?1:-1);
         nmPops.push({m:closeMul, t:0, side:nmSide});
+        react('wink');                    /* build 94 */
+        prAdd('nm');                      /* build 96 */
         if (nmPops.length>5) nmPops.shift();
         /* build 91: and the drift bar, by the number on screen (closeMul.toFixed(1)) */
         var nmShown=Math.round(closeMul*10)/10;
         dBank += NM_FILL_LO + (NM_FILL_HI-NM_FILL_LO)*(nmShown-0.5);
-        while (dBank>=1){ dBank-=1; giveBolt(); }
+        while (dBank>=1){ dBank-=1; giveBolt('nm'); }
         /* the chirp comes from the side the car went by and slides down as it
            passes: a Doppler read for the one thing you cannot see happening */
         blip(760+Math.min(8,chain)*90, 0.05, 'sine', 0.07, nmSide*0.8, 0.78);
@@ -4176,6 +4658,7 @@ function update(dt){
       if (inBox && lat<DINO_HIT){
         blasts.push({z:c.z, x:c.x, t:0, isBlast:true});
         addScore(killScore());
+        prKill();                         /* build 96: the dino */
         cars.splice(i,1);
         blip(150,0.20,'sawtooth',0.16);
         shake=Math.max(shake,6);
@@ -4206,15 +4689,18 @@ function update(dt){
       pickups.splice(i,1); flash=1;
       if (learn) tutGot(pk.kind);                /* build 73 */
       if (pk.kind==='heart'){
+        react('heart');                   /* build 94 */
+        prAdd('heart');                   /* build 96 */
         if (health<CH_().hp){ health++; say(T('T_HULL_UP'),'#ff6ad5',true,'heart'); }
         else { addScore(10000); say(T('T_HULL_FULL'),'#ff6ad5',true,'heart'); }
         blip(740,0.09,'sine',0.2);
         setTimeout(function(){ blip(988,0.09,'sine',0.2); },90);
         setTimeout(function(){ blip(1319,0.20,'sine',0.2); },180);
       } else if (pk.kind==='bolt'){
-        giveBolt();
+        giveBolt('pickup');
       } else {
         dinoT=DINO_TIME; shake=Math.max(shake,8);
+        prAdd('dino');                    /* build 96 */
         say(T('T_RAMPAGE_ON')+DINO_TIME+'s','#7cff4f',true,'dino');
         roar();
       }
@@ -4366,6 +4852,7 @@ function update(dt){
         blasts.push({z:tc.z, x:tc.x, t:0, isBlast:true});
         addScore(killScore());
         if (learn) tutShot(tc);                  /* build 73: a bolt destroyed this car */
+        prKill();                                /* build 96: shots and overdrive fire */
         cars.splice(j,1);
         blip(150,0.20,'sawtooth',0.16);
       }
@@ -4487,7 +4974,7 @@ var bdCv=null, bdKey='', orbCv=null, orbKey='', orbHalf=0, fogCv=null, fogKey=''
    cached layers are painted once, so they have to be told. Without this the
    sun, fog, haze and sky stayed blank for the rest of the zone. */
 function dropCaches(){ bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; moonKey=''; ridgeKey=''; glowCv={}; wispCv=null;
-  glowB={}; pkHaloCv=null; wispSpK=''; }   /* build 88 */
+  glowB={}; pkHaloCv=null; wispSpK=''; bodyCv={}; bodyN=0; trlGhostCv=null; }   /* build 88, 94 */
 function offCv(c, w, h, opaque){
   if (!c){
     c=document.createElement('canvas');
@@ -7830,6 +8317,7 @@ function drawBoost(bb){
 /* The strip across the roof. Everything is drawn from the same anchor so a
    shape can be swapped without touching the rest of the car. */
 function drawLightBar(pw,ph,col,shape){
+  if (shape>=7){ lkTopper(pw,ph,(BARS[shape]&&BARS[shape].k)||'',col); return; }   /* build 94 */
   var y=-ph-pw*0.076, w=pw*0.92, x0=-pw*0.46, th=pw*0.054, i, s, cx;
   var t=performance.now();
   ctx.fillStyle=col; ctx.strokeStyle=col;
@@ -7893,9 +8381,11 @@ function drawLightBar(pw,ph,col,shape){
 }
 
 /* A face in the rear window. Blinks now and then, and squints under braking. */
-function drawEyes(pw,ph,style,braking){
+function drawEyes(pw,ph,style,braking,rx){
   if (style===0) return;
   var t=performance.now(), blink=(t%4300)<130;
+  if (style>=7){ lkFace(pw,ph,(EYES[style]&&EYES[style].k)||'',blink,rx); return; }   /* build 94 */
+  var wk=(rx&&rx.k==='wink')?rx.a:0;                   /* build 94: a near miss winks */
   var ex=pw*0.15, ey=-ph*0.76, r=pw*0.055, s, cx;
   var col='#eaf6ff';
   ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=blur(pw*0.09);
@@ -7904,13 +8394,14 @@ function drawEyes(pw,ph,style,braking){
     ctx.fillStyle='#ff3b5c'; ctx.shadowColor='#ff3b5c';
     ctx.fillRect(-pw*0.25, ey-pw*0.021, pw*0.50, pw*0.042);
     ctx.fillStyle='#ffffff';
-    ctx.fillRect(Math.sin(t/300)*pw*0.19-pw*0.035, ey-pw*0.021, pw*0.07, pw*0.042);
+    if (wk>0){ var vw=pw*(0.07+0.10*wk); ctx.fillRect(Math.sin(t/300)*pw*0.19*(1-wk)+pw*0.15*wk-vw/2, ey-pw*0.021, vw, pw*0.042); }
+    else ctx.fillRect(Math.sin(t/300)*pw*0.19-pw*0.035, ey-pw*0.021, pw*0.07, pw*0.042);
     ctx.shadowBlur=0; return;
   }
   if (style===5){                                   /* CYCLOPS */
     var R=pw*0.082;
     ctx.fillStyle=col;
-    if (blink){ ctx.fillRect(-R,ey-pw*0.011,R*2,pw*0.022); }
+    if (blink || wk>0.4){ ctx.fillRect(-R,ey-pw*0.011,R*2,pw*0.022); }
     else {
       ctx.beginPath(); ctx.arc(0,ey,R*(braking?0.72:1),0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#0d0818';
@@ -7920,6 +8411,11 @@ function drawEyes(pw,ph,style,braking){
   }
   for (s=-1;s<=1;s+=2){
     cx=s*ex;
+    if (s===1 && wk>0.4){                          /* build 94: the right eye winks */
+      ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.3,pw*0.022); ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(cx,ey+r*0.5,r*0.9,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+      continue;
+    }
     if (style===4){                                 /* DIZZY */
       ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.3,pw*0.021); ctx.lineCap='round';
       ctx.beginPath();
@@ -7994,45 +8490,720 @@ function drawAura(pw,ph,fade){
   ctx.restore();
 }
 
+/* ---------------------------------------------------------------
+   BUILD 94: THE LOOKS (garage redesign, step 1 of 3)
+   Everything the car can wear. paintCar reads one LOOK object (lookNow())
+   so the garage can draw a car wearing an item it isn't wearing yet.
+   The default look draws today's car plus the paint fix: a dark keyline
+   under the trim and a dark tinted rear window (so faces read on bright paint).
+   Painted body layers with a livery or a finish are cached offscreen per
+   size (bodyCv), so a busy livery costs one blit a frame, not 150 rects.
+--------------------------------------------------------------- */
+function lookNow(){
+  var pk=PLATES[plateI].k, ps=pk, pt=plateTxt;
+  if (pk==='RANDOM'){ if (!plateRnd) rollPlate(); ps=plateRndS; pt=plateRnd; }
+  return { trim:NEONS[trimI].c, light:NEONS[lightI].c, wrapc:NEONS[wrapcI].c, paint:PAINTS[paintI], shape:shapeI, eye:eyeI,
+           fin:FINISHES[finishI].k, liv:LIVERIES[liveryI].k, spo:SPOILERS[spoilerI].k, tail:TAILS[tailI].k,
+           plate:ps, ptxt:pt, exh:EXHAUSTS[exhaustI].k, glow:GLOWS[glowI].k };
+}
+function lkSeeded(s){ return function(){ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
+function lkBody(pw,ph){ rr(-pw/2,-ph,pw,ph,pw*0.10); }
+function lkStar(x,y,r,col){
+  ctx.fillStyle=col; ctx.beginPath();
+  for (var k=0;k<10;k++){ var a=-Math.PI/2+k*Math.PI/5, q=k%2?r*0.45:r; ctx.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q); }
+  ctx.closePath(); ctx.fill();
+}
+function lkHeart(x,y,s,col){
+  ctx.fillStyle=col; ctx.beginPath();
+  ctx.moveTo(x,y+s*0.35);
+  ctx.bezierCurveTo(x-s*1.0,y-s*0.3,x-s*0.45,y-s*1.0,x,y-s*0.45);
+  ctx.bezierCurveTo(x+s*0.45,y-s*1.0,x+s*1.0,y-s*0.3,x,y+s*0.35);
+  ctx.fill();
+}
+
+/* liveries (WRAP), clipped to the body. c1 = WRAP COLOUR (build 101; was BAR COLOUR), c2 = TRIM (NEON EDGE) */
+function lkLivery(pw,ph,kind,c1,c2){
+  var i,j,x,y,r=lkSeeded(7), dk='#14061f';
+  ctx.save(); lkBody(pw,ph); ctx.clip();
+  if (kind==='STRIPES'){
+    ctx.fillStyle=c1;
+    ctx.fillRect(-pw*0.13,-ph,pw*0.08,ph); ctx.fillRect(pw*0.05,-ph,pw*0.08,ph);
+  } else if (kind==='TWOTONE'){
+    ctx.fillStyle=c1; ctx.fillRect(-pw/2,-ph*0.50,pw,ph*0.5);
+    ctx.fillStyle=c2; ctx.fillRect(-pw/2,-ph*0.52,pw,ph*0.035);
+  } else if (kind==='CHECKER'){
+    var s=pw*0.0625;
+    for (i=0;i<16;i++) for (j=0;j<3;j++){ ctx.fillStyle=((i+j)%2)?c1:dk; ctx.fillRect(-pw/2+i*s,-s*3+j*s,s+0.3,s+0.3); }
+  } else if (kind==='FLAMES'){
+    var g=ctx.createLinearGradient(0,0,0,-ph*0.8);
+    g.addColorStop(0,'#ff2d2d'); g.addColorStop(0.5,'#ff8a1f'); g.addColorStop(1,'#ffe34d');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(-pw/2,0);
+    for (i=0;i<7;i++){
+      var x0=-pw/2+i*pw/7, x1=x0+pw/7, h=ph*(0.45+0.35*((i*37)%5)/4);
+      ctx.quadraticCurveTo(x0+pw/7*0.1,-h*0.6,x0+pw/7*0.55,-h);
+      ctx.quadraticCurveTo(x0+pw/7*0.45,-h*0.45,x1,-ph*0.12);
+    }
+    ctx.lineTo(pw/2,0); ctx.closePath(); ctx.fill();
+  } else if (kind==='SYNTHSUN'){
+    var g2=ctx.createLinearGradient(0,-ph,0,0);
+    g2.addColorStop(0,'#ffe066'); g2.addColorStop(0.5,'#ff7a59'); g2.addColorStop(1,'#ff2fbe');
+    ctx.fillStyle=g2; ctx.fillRect(-pw/2,-ph,pw,ph);
+    ctx.fillStyle='#1a0a2e';
+    for (i=0;i<6;i++){ y=-ph*0.48+i*ph*0.085; ctx.fillRect(-pw/2,y,pw,ph*0.012+i*ph*0.008); }
+  } else if (kind==='CAMO'){
+    var cols=[c1,c2,'#0d0d12'], s2=pw*0.05;
+    for (y=-ph;y<0;y+=s2) for (x=-pw/2;x<pw/2;x+=s2){
+      if (r()<0.45) continue;
+      ctx.fillStyle=cols[Math.floor(r()*3)]; ctx.fillRect(x,y,s2+0.3,s2+0.3);
+    }
+  } else if (kind==='TIGER'){
+    ctx.fillStyle=c1;
+    for (i=0;i<6;i++){
+      y=-ph*0.92+i*ph*0.16;
+      for (var sd=-1;sd<=1;sd+=2){
+        ctx.beginPath(); ctx.moveTo(sd*pw/2,y); ctx.quadraticCurveTo(sd*pw*0.3,y+ph*0.03,sd*pw*(0.16+0.06*(i%2)),y+ph*0.07);
+        ctx.quadraticCurveTo(sd*pw*0.3,y+ph*0.09,sd*pw/2,y+ph*0.10); ctx.fill();
+      }
+    }
+  } else if (kind==='GRID'){
+    ctx.strokeStyle=c1; ctx.lineWidth=Math.max(1,pw*0.012); ctx.shadowColor=c1; ctx.shadowBlur=pw*0.05;
+    for (i=0;i<5;i++){ y=-ph*0.45+i*i*ph*0.025+i*ph*0.03; ctx.beginPath(); ctx.moveTo(-pw/2,y); ctx.lineTo(pw/2,y); ctx.stroke(); }
+    for (i=-5;i<=5;i++){ ctx.beginPath(); ctx.moveTo(i*pw*0.03,-ph*0.45); ctx.lineTo(i*pw*0.16,0); ctx.stroke(); }
+    ctx.shadowBlur=0;
+  } else if (kind==='SPLAT'){
+    var sc=[c1,c2,'#7cff4f','#21e6ff'];
+    for (i=0;i<7;i++){
+      x=(r()-0.5)*pw*0.95; y=-r()*ph*0.95; var rad=pw*(0.05+r()*0.08);
+      ctx.fillStyle=sc[i%4]; ctx.beginPath();
+      for (var k=0;k<=14;k++){ var a=k/14*Math.PI*2, q=rad*(k%2?0.62:1.0+r()*0.4);
+        if (k===0) ctx.moveTo(x+Math.cos(a)*q,y+Math.sin(a)*q); else ctx.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillRect(x-rad*0.12,y,rad*0.24,rad*1.6);
+    }
+  } else if (kind==='HAZARD'){
+    ctx.fillStyle=c1; ctx.fillRect(-pw/2,-ph*0.20,pw,ph*0.20);
+    ctx.fillStyle=dk;
+    for (i=-6;i<12;i++){ x=-pw/2+i*pw*0.09; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+pw*0.045,0);
+      ctx.lineTo(x+pw*0.045+ph*0.2,-ph*0.2); ctx.lineTo(x+ph*0.2,-ph*0.2); ctx.closePath(); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+/* finishes, over paint + livery, clipped to the body. STOCK ('') draws nothing. */
+function lkFinish(pw,ph,f,p){
+  ctx.save(); lkBody(pw,ph); ctx.clip();
+  if (f==='METAL'){
+    for (var i=0;i<40;i++){ ctx.fillStyle='rgba(255,255,255,'+(0.04+((i*13)%7)/80).toFixed(3)+')'; ctx.fillRect(-pw/2,-ph+i*ph/40,pw,ph/80); }
+    var g2=ctx.createLinearGradient(-pw/2,-ph,pw/2,0);
+    g2.addColorStop(0.3,'rgba(255,255,255,0)'); g2.addColorStop(0.45,'rgba(255,255,255,.35)'); g2.addColorStop(0.6,'rgba(255,255,255,0)');
+    ctx.fillStyle=g2; ctx.fillRect(-pw/2,-ph,pw,ph);
+  } else if (f==='CHROME'){
+    var g3=ctx.createLinearGradient(0,-ph,0,0);
+    g3.addColorStop(0,'#ffffff'); g3.addColorStop(0.35,'#9aa3c7'); g3.addColorStop(0.5,'#2b2f4a');
+    g3.addColorStop(0.55,'#e6ecff'); g3.addColorStop(0.8,'#7f86ad'); g3.addColorStop(1,'#d9defa');
+    ctx.globalAlpha=0.55; ctx.fillStyle=g3; ctx.fillRect(-pw/2,-ph,pw,ph); ctx.globalAlpha=1;
+  } else if (f==='NEONGLOW'){
+    ctx.globalCompositeOperation='lighter';
+    var g5=ctx.createRadialGradient(0,-ph*0.45,2,0,-ph*0.45,pw*0.6);
+    g5.addColorStop(0,hexA(p.a,0.55)); g5.addColorStop(1,hexA(p.a,0));
+    ctx.fillStyle=g5; ctx.fillRect(-pw/2,-ph,pw,ph);
+    ctx.globalCompositeOperation='source-over';
+  }
+  ctx.restore();
+}
+function lkBodyLive(pw,ph,L){
+  var p=L.paint, bg=ctx.createLinearGradient(0,-ph,0,0);
+  bg.addColorStop(0,p.a); bg.addColorStop(1,p.b);
+  ctx.fillStyle=bg; lkBody(pw,ph); ctx.fill();
+  if (L.liv) lkLivery(pw,ph,L.liv,L.wrapc||L.light,L.trim);
+  if (L.fin) lkFinish(pw,ph,L.fin,p);
+}
+var bodyCv={}, bodyN=0;
+function lkBodyDraw(pw,ph,L){
+  if (!L.liv && !L.fin){ lkBodyLive(pw,ph,L); return; }      /* today's plain body: drawn as before */
+  var sc=dpr;
+  try{ if (ctx.getTransform){ var m=ctx.getTransform(); sc=Math.sqrt(m.a*m.a+m.b*m.b); } }catch(_){}
+  sc=Math.min(4,Math.max(1,Math.round(sc*4)/4));
+  var key=L.paint.n+'|'+L.liv+'|'+L.fin+'|'+(L.wrapc||L.light)+'|'+L.trim+'|'+pw.toFixed(1)+'|'+sc, e=bodyCv[key];
+  if (!e){
+    if (bodyN>=48){ bodyCv={}; bodyN=0; }
+    e=null;
+    try{
+      var mg=1, c=offCv(null, Math.ceil((pw+2*mg)*sc), Math.ceil((ph+2*mg)*sc)), g=c.getContext('2d');
+      g.setTransform(sc,0,0,sc,(pw/2+mg)*sc,(ph+mg)*sc);
+      var keep=ctx; ctx=g;
+      try{ lkBodyLive(pw,ph,L); } finally { ctx=keep; }
+      e={c:c, w:c.width/sc, h:c.height/sc, mg:mg};
+    }catch(_){ e=null; }
+    bodyCv[key]=e; bodyN++;
+  }
+  if (e) ctx.drawImage(e.c, -pw/2-e.mg, -ph-e.mg, e.w, e.h);
+  else lkBodyLive(pw,ph,L);
+}
+
+/* spoilers: painted in the paint's darker colour, edged in the trim */
+function lkSpoiler(pw,ph,kind,col,trim){
+  ctx.fillStyle=col; ctx.strokeStyle=trim; ctx.lineWidth=Math.max(1.2,pw*0.016);
+  ctx.shadowColor=trim; ctx.shadowBlur=blur(pw*0.06);
+  if (kind==='DUCK'){
+    ctx.beginPath(); ctx.moveTo(-pw*0.52,-ph*0.50); ctx.lineTo(-pw*0.57,-ph*0.60);
+    ctx.quadraticCurveTo(0,-ph*0.53,pw*0.57,-ph*0.60); ctx.lineTo(pw*0.52,-ph*0.50); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (kind==='TWIN'){
+    ctx.fillStyle='#0b0714'; ctx.fillRect(-pw*0.17,-ph*0.62,pw*0.04,ph*0.20); ctx.fillRect(pw*0.13,-ph*0.62,pw*0.04,ph*0.20);
+    ctx.fillStyle=col;
+    rr(-pw*0.60,-ph*0.53,pw*1.20,ph*0.07,pw*0.02); ctx.fill(); ctx.stroke();
+    rr(-pw*0.66,-ph*0.65,pw*1.32,ph*0.065,pw*0.02); ctx.fill(); ctx.stroke();
+  } else if (kind==='FINS'){
+    for (var s=-1;s<=1;s+=2){
+      ctx.beginPath(); ctx.moveTo(s*pw*0.44,-ph*0.55); ctx.lineTo(s*pw*0.66,-ph*1.28);
+      ctx.lineTo(s*pw*0.60,-ph*0.55); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+  ctx.shadowBlur=0;
+}
+
+/* tail lights. BARS ('') is today's code exactly. */
+function lkTails(pw,ph,kind,braking){
+  ctx.shadowColor=braking?'#ff2020':'#ff5a5a';
+  ctx.shadowBlur=blur(braking?pw*0.24:pw*0.11);
+  var col=braking?'#ff2626':'#c53a4a';
+  ctx.fillStyle=col; ctx.strokeStyle=col;
+  var y0=-ph*0.42, h=ph*0.17, s, cx, i, j;
+  if (!kind){ ctx.fillRect(-pw*0.42,y0,pw*0.22,h); ctx.fillRect(pw*0.20,y0,pw*0.22,h); }
+  else if (kind==='RINGS'){
+    ctx.lineWidth=pw*0.022;
+    for (s=-1;s<=1;s+=2) for (var k=0;k<2;k++){ cx=s*(pw*0.25+k*pw*0.11); ctx.beginPath(); ctx.arc(cx,y0+h/2,pw*0.042,0,Math.PI*2); ctx.stroke(); }
+  } else if (kind==='HEARTS'){
+    for (s=-1;s<=1;s+=2) lkHeart(s*pw*0.31,y0+h*0.55,pw*0.10,col);
+  } else if (kind==='ARROWS'){
+    ctx.lineWidth=pw*0.03; ctx.lineCap='round'; ctx.lineJoin='round';
+    for (s=-1;s<=1;s+=2) for (var a=0;a<2;a++){ cx=s*(pw*0.24+a*pw*0.09);
+      ctx.beginPath(); ctx.moveTo(cx,y0+h*0.05); ctx.lineTo(cx+s*pw*0.05,y0+h/2); ctx.lineTo(cx,y0+h*0.95); ctx.stroke(); }
+    ctx.lineCap='butt'; ctx.lineJoin='miter';
+  } else if (kind==='PIXEL'){
+    var q=pw*0.045;
+    for (s=-1;s<=1;s+=2) for (i=0;i<4;i++) for (j=0;j<2;j++){
+      ctx.globalAlpha=((i+j)%2)?0.55:1;
+      ctx.fillRect(s>0?pw*0.21+i*q*1.15:-pw*0.21-(i+1)*q*1.15,y0+j*q*1.15,q,q);
+    }
+    ctx.globalAlpha=1;
+  } else if (kind==='STRIP'){
+    ctx.fillRect(-pw*0.44,y0+h*0.35,pw*0.88,h*0.30);
+    ctx.fillRect(-pw*0.44,y0,pw*0.05,h); ctx.fillRect(pw*0.39,y0,pw*0.05,h);
+  }
+  ctx.shadowBlur=0;
+}
+
+/* plates. CLASSIC with no text is today's plain plate exactly. */
+function lkPlate(pw,ph,style,txt){
+  if (!style) return;                                          /* NONE */
+  if (style==='CLASSIC' && !txt){ ctx.fillStyle='#e9e6ff'; ctx.fillRect(-pw*0.11,-ph*0.24,pw*0.22,ph*0.13); return; }
+  var w=pw*0.36, h=ph*0.20, x=-w/2, y=-ph*0.235;
+  if (TOUCH && txt && txt!==' '){ w=pw*0.39; h=ph*0.22; x=-w/2; }   /* build 95: phones get a slightly bigger plate */
+  var bg='#f2f0ff', fg='#1b1030', bd='#9a93c0';
+  if (style==='YELLOW'){ bg='#ffd21f'; fg='#111111'; bd='#111111'; }
+  if (style==='NEON'){ bg='#0b0714'; fg='#21e6ff'; bd='#ff2fbe'; }
+  if (style==='HOLO'){ bg='#dcd3ff'; fg='#3b1a7a'; bd='#ff6acb'; }
+  ctx.fillStyle=bg; rr(x,y,w,h,pw*0.015); ctx.fill();
+  if (style==='HOLO'){ var g=ctx.createLinearGradient(x,y,x+w,y+h);
+    g.addColorStop(0,'rgba(255,120,220,.5)'); g.addColorStop(0.5,'rgba(120,240,255,.5)'); g.addColorStop(1,'rgba(220,255,140,.5)');
+    ctx.fillStyle=g; ctx.fill(); }
+  ctx.lineWidth=Math.max(1,pw*0.008); ctx.strokeStyle=bd; ctx.stroke();
+  if (!txt) return;
+  ctx.font=(TOUCH?'900 ':'800 ')+(h*(TOUCH?0.76:0.72)).toFixed(2)+'px ui-monospace,Menlo,"Courier New",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle=fg;
+  if (style==='NEON'){ ctx.shadowColor=fg; ctx.shadowBlur=blur(pw*0.04); }
+  ctx.fillText(txt,0,y+h*0.55,w*(TOUCH?0.92:0.9)); ctx.shadowBlur=0;
+  if (TOUCH){ ctx.strokeStyle=fg; ctx.lineWidth=Math.max(0.5,h*0.05); ctx.lineJoin='round';   /* build 95: bolder on phones */
+    ctx.strokeText(txt,0,y+h*0.55,w*0.92); ctx.lineJoin='miter'; }
+  ctx.textBaseline='alphabetic';
+}
+
+/* exhausts; AFTERBURN's flame flickers and grows on the gas */
+function lkExhaust(pw,ph,kind,gas){
+  if (!kind) return;
+  function pipe(x,r){
+    ctx.fillStyle='#d6d9ee'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=blur(4);
+    ctx.beginPath(); ctx.ellipse(x,ph*0.02,r,r*0.8,0,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='#120a1e'; ctx.beginPath(); ctx.ellipse(x,ph*0.02,r*0.6,r*0.48,0,0,Math.PI*2); ctx.fill();
+  }
+  function flame(x,r,k){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    var L=r*(2.2+1.6*k), g=ctx.createRadialGradient(x,ph*0.05,0,x,ph*0.05+L*0.5,L);
+    g.addColorStop(0,'rgba(255,255,230,1)'); g.addColorStop(0.25,'rgba(90,200,255,.95)');
+    g.addColorStop(0.6,'rgba(60,90,255,.5)'); g.addColorStop(1,'rgba(40,60,255,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(x,ph*0.05+L*0.5,r*1.5,L,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+  if (kind==='TWIN'){ pipe(-pw*0.30,pw*0.05); pipe(pw*0.30,pw*0.05); }
+  if (kind==='QUAD'){ pipe(-pw*0.36,pw*0.042); pipe(-pw*0.26,pw*0.042); pipe(pw*0.26,pw*0.042); pipe(pw*0.36,pw*0.042); }
+  if (kind==='FLAME'){
+    var t=performance.now()/1000, k=(gas?0.75:0.25)+0.2*Math.sin(t*41)+0.1*Math.sin(t*67+1);
+    pipe(-pw*0.30,pw*0.05); pipe(pw*0.30,pw*0.05);
+    flame(-pw*0.30,pw*0.05,k); flame(pw*0.30,pw*0.05,k+0.08*Math.sin(t*53));
+  }
+}
+
+/* toppers past today's seven bar shapes (BARS[7..]). y = the roof. */
+function lkTopper(pw,ph,kind,col){
+  var y=-ph, t=performance.now()/1000, i, s;
+  ctx.save();
+  if (kind==='PARTY'){
+    ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(-pw*0.13,y); ctx.lineTo(pw*0.02,y-pw*0.34); ctx.lineTo(pw*0.15,y); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.fillStyle='#ffd23f'; for (i=0;i<4;i++) ctx.fillRect(-pw*0.2,y-pw*(0.05+i*0.085),pw*0.4,pw*0.03); ctx.restore();
+    ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(pw*0.02,y-pw*0.35,pw*0.035,0,Math.PI*2); ctx.fill();
+  } else if (kind==='COWBOY'){
+    ctx.fillStyle='#b8742e';
+    ctx.beginPath(); ctx.ellipse(0,y-pw*0.01,pw*0.42,pw*0.045,0,0,Math.PI*2); ctx.fill();
+    rr(-pw*0.18,y-pw*0.20,pw*0.36,pw*0.19,pw*0.06); ctx.fill();
+    ctx.fillStyle='#7a4416'; ctx.fillRect(-pw*0.18,y-pw*0.06,pw*0.36,pw*0.04);
+    ctx.fillStyle='#8f5520'; ctx.fillRect(-pw*0.02,y-pw*0.20,pw*0.04,pw*0.08);
+  } else if (kind==='WITCH'){
+    ctx.fillStyle='#1d0f33';
+    ctx.beginPath(); ctx.ellipse(0,y-pw*0.01,pw*0.36,pw*0.04,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-pw*0.15,y-pw*0.02); ctx.quadraticCurveTo(-pw*0.02,y-pw*0.30,pw*0.22,y-pw*0.40);
+    ctx.quadraticCurveTo(pw*0.04,y-pw*0.24,pw*0.15,y-pw*0.02); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#b06cff'; ctx.lineWidth=Math.max(1,pw*0.012); ctx.shadowColor='#b06cff'; ctx.shadowBlur=blur(pw*0.05); ctx.stroke(); ctx.shadowBlur=0;
+    ctx.fillStyle='#ff8a1f'; ctx.fillRect(-pw*0.15,y-pw*0.07,pw*0.30,pw*0.04);
+    ctx.strokeStyle='#7cff4f'; ctx.lineWidth=1; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=blur(6);
+    ctx.beginPath(); ctx.ellipse(0,y-pw*0.01,pw*0.36,pw*0.04,0,0,Math.PI*2); ctx.stroke();
+  } else if (kind==='ANTENNA'){
+    var sw=Math.sin(t*3.1)*pw*0.025;
+    ctx.strokeStyle='#c7c9e0'; ctx.lineWidth=Math.max(1,pw*0.012);
+    ctx.beginPath(); ctx.moveTo(pw*0.32,y); ctx.lineTo(pw*0.36+sw,y-pw*0.36); ctx.stroke();
+    var bx=pw*0.36+sw;
+    ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(bx,y-pw*0.39,pw*0.06,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#1a0a2e'; ctx.fillRect(bx-pw*0.025,y-pw*0.41,pw*0.012,pw*0.02); ctx.fillRect(bx+pw*0.013,y-pw*0.41,pw*0.012,pw*0.02);
+    ctx.strokeStyle='#1a0a2e'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(bx,y-pw*0.385,pw*0.03,0.3,Math.PI-0.3); ctx.stroke();
+  } else if (kind==='SHARK'){
+    ctx.fillStyle='#6f7da8'; ctx.beginPath(); ctx.moveTo(-pw*0.05,y); ctx.quadraticCurveTo(-pw*0.04,y-pw*0.22,pw*0.02,y-pw*0.30);
+    ctx.quadraticCurveTo(pw*0.03,y-pw*0.12,pw*0.07,y); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#c9d3f2'; ctx.beginPath(); ctx.moveTo(-pw*0.035,y); ctx.quadraticCurveTo(-pw*0.03,y-pw*0.15,0,y-pw*0.22); ctx.lineTo(0,y); ctx.fill();
+  } else if (kind==='CONE'){
+    ctx.fillStyle='#ff6a1f'; ctx.beginPath(); ctx.moveTo(-pw*0.13,y-pw*0.02); ctx.lineTo(-pw*0.03,y-pw*0.33); ctx.lineTo(pw*0.03,y-pw*0.33); ctx.lineTo(pw*0.13,y-pw*0.02); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ffffff'; ctx.fillRect(-pw*0.085,y-pw*0.15,pw*0.17,pw*0.05); ctx.fillRect(-pw*0.055,y-pw*0.25,pw*0.11,pw*0.035);
+    ctx.fillStyle='#d4520f'; ctx.fillRect(-pw*0.19,y-pw*0.03,pw*0.38,pw*0.035);
+  } else if (kind==='PROPELLER'){
+    ctx.fillStyle='#21e6ff'; ctx.beginPath(); ctx.ellipse(0,y,pw*0.16,pw*0.12,0,Math.PI,0); ctx.fill();
+    ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.moveTo(0,y-pw*0.12); ctx.lineTo(-pw*0.16,y); ctx.lineTo(0,y); ctx.fill();
+    ctx.fillStyle='#ff2fbe'; ctx.beginPath(); ctx.moveTo(0,y-pw*0.12); ctx.lineTo(pw*0.16,y); ctx.lineTo(0,y); ctx.fill();
+    ctx.fillStyle='#ffffff'; ctx.fillRect(-pw*0.005,y-pw*0.19,pw*0.01,pw*0.07);
+    var sp=Math.cos(t*14);                                     /* the blades turn */
+    ctx.fillStyle='#ff3b5c'; ctx.beginPath(); ctx.ellipse(-pw*0.09*sp,y-pw*0.195,Math.max(0.5,pw*0.09*Math.abs(sp)),pw*0.018,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#7cff4f'; ctx.beginPath(); ctx.ellipse(pw*0.09*sp,y-pw*0.195,Math.max(0.5,pw*0.09*Math.abs(sp)),pw*0.018,0,0,Math.PI*2); ctx.fill();
+  } else if (kind==='CATEARS'){
+    for (s=-1;s<=1;s+=2){
+      ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(s*pw*0.12,y+2); ctx.lineTo(s*pw*0.28,y-pw*0.20); ctx.lineTo(s*pw*0.38,y+2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#ffc2ec'; ctx.beginPath(); ctx.moveTo(s*pw*0.18,y); ctx.lineTo(s*pw*0.28,y-pw*0.13); ctx.lineTo(s*pw*0.33,y); ctx.closePath(); ctx.fill();
+    }
+  } else if (kind==='MINIUFO'){
+    var yy=y-pw*0.24+Math.sin(t*2.4)*pw*0.012;
+    ctx.globalAlpha=0.25; ctx.fillStyle='#7cff4f'; ctx.beginPath(); ctx.moveTo(-pw*0.05,yy+pw*0.03); ctx.lineTo(pw*0.05,yy+pw*0.03); ctx.lineTo(pw*0.16,y); ctx.lineTo(-pw*0.16,y); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(160,255,200,.7)'; ctx.beginPath(); ctx.ellipse(0,yy-pw*0.02,pw*0.07,pw*0.06,0,Math.PI,0); ctx.fill();
+    ctx.fillStyle='#7cff4f'; ctx.beginPath(); ctx.arc(0,yy-pw*0.035,pw*0.018,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#9aa3c7'; ctx.beginPath(); ctx.ellipse(0,yy,pw*0.17,pw*0.04,0,0,Math.PI*2); ctx.fill();
+    for (var k=-2;k<=2;k++){ ctx.fillStyle=((k+2+Math.floor(t*5))%3===0)?'#ffffff':'#ffd23f';
+      ctx.beginPath(); ctx.arc(k*pw*0.06,yy+pw*0.005,pw*0.012,0,Math.PI*2); ctx.fill(); }
+  } else if (kind==='DINO'){
+    ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=blur(pw*0.06);
+    for (var d=0;d<5;d++){ var cx=-pw*0.28+d*pw*0.14, hh=pw*(0.10+0.06*(d===2?1:(d%2?0.5:0)));
+      ctx.beginPath(); ctx.moveTo(cx-pw*0.06,y+1); ctx.lineTo(cx,y-hh); ctx.lineTo(cx+pw*0.06,y+1); ctx.closePath(); ctx.fill(); }
+  } else if (kind==='TOPHAT'){
+    ctx.fillStyle='#120a1e'; ctx.beginPath(); ctx.ellipse(0,y-pw*0.01,pw*0.26,pw*0.035,0,0,Math.PI*2); ctx.fill();
+    ctx.fillRect(-pw*0.14,y-pw*0.30,pw*0.28,pw*0.29);
+    ctx.fillStyle='#ff2fbe'; ctx.fillRect(-pw*0.14,y-pw*0.09,pw*0.28,pw*0.04);
+    ctx.strokeStyle='#21e6ff'; ctx.lineWidth=1; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=blur(6); ctx.strokeRect(-pw*0.14,y-pw*0.30,pw*0.28,pw*0.29);
+  } else if (kind==='MOHAWK'){
+    var cc=['#ff2fbe','#ffd23f','#7cff4f','#21e6ff','#b06cff'];
+    for (var m=0;m<5;m++){ ctx.fillStyle=cc[m]; ctx.shadowColor=cc[m]; ctx.shadowBlur=blur(pw*0.05);
+      ctx.beginPath(); ctx.moveTo(-pw*0.15+m*pw*0.06,y+1); ctx.lineTo(-pw*0.10+m*pw*0.065,y-pw*(0.20+0.06*Math.sin(m))); ctx.lineTo(-pw*0.09+m*pw*0.06,y+1); ctx.closePath(); ctx.fill(); }
+  }
+  ctx.restore();
+  ctx.shadowBlur=0;
+}
+
+/* faces past today's seven (EYES[7..]). wk = how far into a wink (0..1),
+   rk/ra = the reaction showing (LED SCREEN spells it instead of an overlay). */
+function lkFace(pw,ph,kind,blink,rx){
+  var ey=-ph*0.76, ex=pw*0.15, r=pw*0.055, s, col='#eaf6ff';
+  var wk=(rx&&rx.k==='wink')?rx.a:0;
+  ctx.save(); ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=blur(pw*0.09); ctx.fillStyle=col; ctx.strokeStyle=col;
+  ctx.lineWidth=Math.max(1.4,pw*0.024); ctx.lineCap='round'; ctx.lineJoin='round';
+  function shut(cx){ ctx.strokeStyle=col; ctx.shadowColor='#bfe9ff'; ctx.beginPath(); ctx.arc(cx,ey+r*0.5,r*0.9,Math.PI*1.15,Math.PI*1.85); ctx.stroke(); }
+  function flat(cx){ ctx.fillStyle=col; ctx.shadowColor='#bfe9ff'; ctx.fillRect(cx-r,ey-pw*0.010,r*2,pw*0.020); }   /* build 95: a blink, like WIDE's */
+  if (kind==='HEARTS'){
+    ctx.shadowColor='#ff2fbe';
+    for (s=-1;s<=1;s+=2){
+      if (s===1 && wk>0.4){ shut(s*ex); continue; }
+      if (blink){ flat(s*ex); continue; }
+      lkHeart(s*ex,ey+r*0.2,r*1.15,'#ff4fa8');
+    }
+  } else if (kind==='HAPPY'){
+    for (s=-1;s<=1;s+=2){
+      if (s===1 && wk>0.4){ ctx.fillRect(s*ex-r,ey-pw*0.010,r*2,pw*0.020); continue; }
+      ctx.beginPath(); ctx.arc(s*ex,ey+r*0.5,r*0.9,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+    }
+  } else if (kind==='SHADES'){
+    ctx.shadowBlur=0; ctx.fillStyle='#0b0714';
+    for (s=-1;s<=1;s+=2){ rr(s*ex-r*1.4,ey-r*0.8,r*2.8,r*1.7,r*0.6); ctx.fill(); }
+    ctx.fillRect(-ex+r,ey-r*0.6,2*(ex-r),r*0.35);
+    ctx.fillStyle='rgba(255,255,255,.65)'; for (s=-1;s<=1;s+=2) ctx.fillRect(s*ex-r*0.9,ey-r*0.5,r*0.6,r*0.25);
+    if (wk>0){                                   /* near miss: a glint sweeps both lenses */
+      ctx.save(); ctx.beginPath();
+      for (s=-1;s<=1;s+=2) rr(s*ex-r*1.4,ey-r*0.8,r*2.8,r*1.7,r*0.6);
+      ctx.clip();
+      var gx=-ex-r*2+(2*ex+r*4)*rx.p*1.3;
+      ctx.globalAlpha=0.85*wk; ctx.fillStyle='#ffffff';
+      ctx.beginPath(); ctx.moveTo(gx,ey-r); ctx.lineTo(gx+r*0.7,ey-r); ctx.lineTo(gx+r*0.1,ey+r); ctx.lineTo(gx-r*0.6,ey+r); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.strokeStyle='#ff2fbe'; ctx.lineWidth=1; ctx.shadowColor='#ff2fbe'; ctx.shadowBlur=blur(6);
+    for (s=-1;s<=1;s+=2){ rr(s*ex-r*1.4,ey-r*0.8,r*2.8,r*1.7,r*0.6); ctx.stroke(); }
+  } else if (kind==='STARS'){
+    ctx.shadowColor='#ffd23f';
+    for (s=-1;s<=1;s+=2){
+      if (s===1 && wk>0.4){ shut(s*ex); continue; }
+      if (blink){ flat(s*ex); continue; }
+      lkStar(s*ex,ey,r*1.3,'#ffd23f');
+    }
+  } else if (kind==='LED'){
+    var txt='GG';
+    if (rx && rx.a>0.3){ txt = rx.k==='wink' ? ';)' : rx.k==='dizzy' ? '@_@' : rx.k==='tears' ? 'T_T' : rx.k==='fire' ? '>_<' : 'GG'; }
+    ctx.shadowColor='#7cff4f'; ctx.fillStyle='#7cff4f';
+    ctx.font='900 '+(ph>0?ph*0.22:pw*0.13).toFixed(2)+'px ui-monospace,Menlo,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(txt,0,ey+ph*0.01);
+    ctx.textBaseline='alphabetic';
+    ctx.shadowBlur=0; ctx.globalAlpha=0.35; ctx.fillStyle='#0b0714';
+    for (var i=0;i<8;i++) ctx.fillRect(-pw*0.3,ey-ph*0.14+i*ph*0.04,pw*0.6,ph*0.012);
+    ctx.globalAlpha=1;
+  } else if (kind==='ROBO'){
+    ctx.shadowColor='#21e6ff'; ctx.fillStyle='#21e6ff';
+    for (s=-1;s<=1;s+=2){
+      if ((s===1 && wk>0.4) || blink) continue;            /* one eye light blinks off */
+      ctx.fillRect(s*ex-r*1.1,ey-r*0.45,r*2.2,r*0.9);
+    }
+    ctx.fillStyle='#0b0714'; for (s=-1;s<=1;s+=2) ctx.fillRect(s*ex-r*1.1,ey-r*0.05,r*2.2,r*0.15);
+  }
+  ctx.restore();
+  ctx.shadowBlur=0;
+}
+
+/* ---- reactions: a short overlay on the face being worn, never a face swap ---- */
+var rx=null, rxCool=0;
+var RX_IN=0.10, RX_HOLD=0.60, RX_OUT=0.18, RX_PRI={wink:1, heart:2, fire:3, dizzy:4, tears:5};
+function react(k){
+  if (!reactOn) return;
+  var now=performance.now()/1000, T=RX_IN+RX_HOLD+RX_OUT;
+  if (rx){
+    var age=now-rx.t0;
+    if (age>=0 && age<T){
+      if (RX_PRI[k]<RX_PRI[rx.k]) return;                  /* crash > overdrive > heart > near miss */
+      if (k===rx.k){ if (age>RX_IN) rx.t0=now-RX_IN; return; }   /* the same one again: keep holding */
+    }
+  }
+  if (k==='wink' && now<rxCool) return;                    /* a near-miss chain doesn't flicker */
+  rx={k:k, t0:now};
+  if (k==='wink') rxCool=now+T+0.35;
+}
+function rxEnv(age){
+  var T=RX_IN+RX_HOLD+RX_OUT; if (age<0 || age>=T) return 0;
+  var a = age<RX_IN ? age/RX_IN : (age<RX_IN+RX_HOLD ? 1 : 1-(age-RX_IN-RX_HOLD)/RX_OUT);
+  return a*a*(3-2*a);
+}
+function rxNow(){
+  if (!rx || !reactOn) return null;
+  var age=performance.now()/1000-rx.t0, T=RX_IN+RX_HOLD+RX_OUT;
+  if (age>=T || age<0){ rx=null; return null; }
+  return {k:rx.k, a:rxEnv(age), p:age/T};
+}
+/* the garage's REACTIONS row plays them in turn */
+var RX_DEMO=['wink','dizzy','fire','heart','tears'];
+function rxDemo(){
+  if (!reactOn) return null;
+  var T=RX_IN+RX_HOLD+RX_OUT+0.45, t=performance.now()/1000, n=Math.floor(t/T), age=t-n*T;
+  return {k:RX_DEMO[n%RX_DEMO.length], a:rxEnv(age), p:Math.min(1,age/(RX_IN+RX_HOLD+RX_OUT))};
+}
+function lkSpiral(cx,cy,R,rot){
+  ctx.beginPath();
+  for (var i=0;i<=26;i++){ var q=i/26, an=rot+q*Math.PI*4, rr2=R*q;
+    if (i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx+Math.cos(an)*rr2, cy+Math.sin(an)*rr2); }
+  ctx.stroke();
+}
+function rxOverlay(pw,ph,style,R){
+  if (!R || R.a<=0.01 || style===0) return;
+  var ey=-ph*0.76, ex=pw*0.15, r=pw*0.055, s, t=performance.now()/1000;
+  var k=R.k, kind=(EYES[style]&&EYES[style].k)||'';
+  if (k==='wink' || k==='heart') return;                   /* the wink is drawn by the face itself */
+  if (kind==='LED' && k!=='fire') return;                   /* LED SCREEN spells it */
+  var xs = (style===5) ? [0] : [-ex, ex];                   /* CYCLOPS has one eye */
+  var cover = (kind!=='SHADES' && kind!=='LED' && style!==6);
+  ctx.save();
+  ctx.globalAlpha=R.a;
+  if ((k==='dizzy' || k==='fire') && cover){
+    ctx.fillStyle='#0e081e';
+    xs.forEach(function(x){ ctx.beginPath(); ctx.arc(x,ey,r*(style===5?1.7:1.45),0,Math.PI*2); ctx.fill(); });
+  }
+  if (k==='dizzy'){
+    ctx.strokeStyle='#eaf6ff'; ctx.lineWidth=Math.max(1.2,pw*0.018); ctx.lineCap='round';
+    ctx.shadowColor='#bfe9ff'; ctx.shadowBlur=blur(pw*0.06);
+    xs.forEach(function(x,i){ lkSpiral(x,ey,r*(style===5?1.3:1.05), t*9*(i?-1:1)); });
+  } else if (k==='fire'){
+    xs.forEach(function(x,i){
+      var fl=1+0.12*Math.sin(t*31+i*2);
+      var g=ctx.createLinearGradient(0,ey+r,0,ey-r*2.4*fl);
+      g.addColorStop(0,'#ffffff'); g.addColorStop(0.4,'#ffd23f'); g.addColorStop(1,'rgba(255,90,20,0)');
+      ctx.fillStyle=g; ctx.shadowColor='#ff8a1f'; ctx.shadowBlur=blur(pw*0.08);
+      ctx.beginPath(); ctx.moveTo(x-r,ey+r*0.6); ctx.quadraticCurveTo(x-r*1.1,ey-r,x,ey-r*2.4*fl);
+      ctx.quadraticCurveTo(x+r*1.1,ey-r,x+r,ey+r*0.6); ctx.closePath(); ctx.fill();
+    });
+  } else if (k==='tears'){
+    ctx.fillStyle='#6fd3ff'; ctx.shadowColor='#6fd3ff'; ctx.shadowBlur=blur(pw*0.05);
+    xs.forEach(function(x,i){
+      for (var j=0;j<2;j++){
+        var d=((t*1.5+i*0.37+j*0.5)%1), tx=x+(x<0?-1:1)*r*0.65;
+        ctx.globalAlpha=R.a*(1-d*0.5);
+        ctx.beginPath(); ctx.moveTo(tx, ey+r*0.6+d*ph*0.22);
+        ctx.quadraticCurveTo(tx+r*0.45, ey+r*1.35+d*ph*0.22, tx, ey+r*1.55+d*ph*0.22);
+        ctx.quadraticCurveTo(tx-r*0.45, ey+r*1.35+d*ph*0.22, tx, ey+r*0.6+d*ph*0.22); ctx.fill();
+      }
+    });
+  }
+  ctx.restore();
+  ctx.shadowBlur=0;
+}
+/* heart pickup: a small heart pops above the car (HEART EYES stays a surprise) */
+function rxHeartPop(pw,ph,R,shp){
+  if (!R || R.k!=='heart' || R.a<=0.01) return;
+  var top = (shp>=7) ? -ph-pw*0.46 : -ph-pw*0.22;
+  var y=top-R.p*pw*0.22, s=pw*(0.07+0.05*Math.min(1,R.p*3));
+  ctx.save(); ctx.globalAlpha=R.a; ctx.shadowColor='#ff2fbe'; ctx.shadowBlur=blur(pw*0.12);
+  lkHeart(0,y,s,'#ff4fa8'); ctx.restore(); ctx.shadowBlur=0;
+}
+
+/* ---- plates: custom text and the word filter ----
+   Typed text is A-Z 0-9, up to 6. The filter list is stored only as FNV-1a
+   hashes of folded words (0>O 1>I 3>E 4>A 5>S 7>T $>S): every substring of
+   3+ letters is checked against PL_HA, the whole plate against PL_HX. */
+var PL_HA=[41634682, 152530813, 208425134, 278032556, 292387540, 323962365, 452109277, 532400506, 551706814, 642806360, 660333348, 690728961, 743648299, 748507219, 875781829, 886211709, 937349921, 950518903, 958712065, 972868565, 983393885, 989860552, 1018818235, 1022051671, 1066463195, 1114610467, 1116445565, 1140582950, 1186580324, 1299755769, 1308012891, 1316202875, 1396394864, 1412122053, 1422878355, 1480169176, 1487216039, 1529660161, 1532199071, 1556903699, 1578309797, 1616499594, 1625984302, 1631281530, 1652794983, 1735496014, 1738707625, 1739613470, 1746741893, 1768543363, 1775528836, 1838807816, 1868181352, 1870563258, 1879823697, 1938264588, 1970316240, 2052524312, 2065403595, 2108985736, 2123067701, 2171170606, 2201160208, 2219422243, 2242719966, 2277018227, 2304842649, 2374034327, 2399875226, 2475613657, 2489567815, 2492307141, 2495088491, 2504179634, 2646364614, 2689574854, 2729956893, 2756612659, 2812015270, 2865098299, 2983416069, 3010490379, 3017815374, 3034611393, 3064488520, 3065185593, 3076157478, 3129769727, 3152024371, 3157788687, 3214608158, 3218549669, 3317874953, 3478928831, 3509235704, 3565607237, 3605183390, 3622858876, 3747370735, 3801771297, 3813940209, 3821608330, 3823292437, 3853066291, 3869564462, 3895587481, 3900000128, 3941216582, 4019191330, 4038432605, 4040698271, 4046879050, 4122105818, 4138860677, 4195898075, 4211623896, 4221791332];
+var PL_HX=[39404883, 42487031, 357497368, 886211709, 960991326, 1001030005, 1295019167, 1376158250, 1382701007, 1426167239, 1882233720, 1894470373, 1936927907, 1957536570, 2213245088, 2267761280, 2498263709, 2502647946, 2687049245, 2890636747, 3482271707, 4006992398, 4278265441];
+var plHA={}, plHX={};
+(function(){ var i; for (i=0;i<PL_HA.length;i++) plHA[PL_HA[i]]=1; for (i=0;i<PL_HX.length;i++) plHX[PL_HX[i]]=1; })();
+function plFold(s){ return String(s).toUpperCase().replace(/[013457$]/g, function(c){ return {'0':'O','1':'I','3':'E','4':'A','5':'S','7':'T','$':'S'}[c]; }); }
+function plHash(s){ var h=0x811c9dc5; for (var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; } return h>>>0; }
+function plateBad(txt){
+  var f=plFold(txt), i, j;
+  if (!f) return false;
+  if (plHX[plHash(f)]) return true;
+  for (i=0;i<f.length;i++) for (j=i+3;j<=f.length;j++) if (plHA[plHash(f.substring(i,j))]) return true;
+  return false;
+}
+function plClean(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6); }
+var plateRnd='', plateRndS='CLASSIC', plateMsgT=0;
+function rollPlate(){
+  var L='ABCDEFGHJKLMNPRSTUVWXYZ', D='0123456789', t, n=0;
+  do { t=''; for (var i=0;i<3;i++) t+=L.charAt((Math.random()*L.length)|0);
+       for (i=0;i<3;i++) t+=D.charAt((Math.random()*10)|0); n++; } while (plateBad(t) && n<20);
+  plateRnd=t; plateRndS=['CLASSIC','YELLOW','NEON','HOLO'][(Math.random()*4)|0];
+}
+function plateType(ch){                       /* one typed character; false = refused */
+  var v=plClean(plateTxt+ch);
+  if (v===plateTxt) return false;
+  if (plateBad(v)){ plateMsgT=1.8; blip(220,0.12,'square',0.10); return false; }
+  plateTxt=v; saveGame(); return true;
+}
+var plateIn=null;
+function plateInput(show){
+  if (!TOUCH){ return; }
+  if (!show){ if (plateIn && plateIn.style.display!=='none'){ plateIn.style.display='none'; try{ plateIn.blur(); }catch(_){} } return; }
+  if (!plateIn){
+    try{
+      plateIn=document.createElement('input');
+      plateIn.type='text'; plateIn.id='plateIn'; plateIn.maxLength=6;
+      plateIn.setAttribute('autocapitalize','characters'); plateIn.setAttribute('autocomplete','off');
+      plateIn.setAttribute('autocorrect','off'); plateIn.setAttribute('spellcheck','false');
+      plateIn.setAttribute('aria-label','plate text');
+      plateIn.style.cssText='position:fixed;z-index:30;box-sizing:border-box;margin:0;padding:0 6px;border:2px solid #ff2fbe;'+
+        'border-radius:6px;background:#0b0714;color:#21e6ff;font:800 16px ui-monospace,Menlo,monospace;letter-spacing:3px;'+
+        'text-align:center;text-transform:uppercase;outline:none;display:none';
+      plateIn.addEventListener('input', function(){
+        var v=plClean(plateIn.value);
+        if (plateBad(v)){ plateIn.value=plateTxt; plateMsgT=1.8; return; }
+        plateTxt=v; if (plateIn.value!==v) plateIn.value=v; saveGame();
+      });
+      plateIn.addEventListener('keydown', function(e){ if (e.key==='Enter'){ try{ plateIn.blur(); }catch(_){} } });
+      document.body.appendChild(plateIn);
+    }catch(_){ plateIn=null; return; }
+  }
+  var q=garPlateScreen();                 /* build 97 */
+  plateIn.style.left=q.l+'px'; plateIn.style.top=q.t+'px';
+  plateIn.style.width=q.w+'px'; plateIn.style.height=q.h+'px';
+  if (plateIn.style.display==='none'){ plateIn.value=plateTxt; plateIn.style.display='block'; }
+}
+
+/* ---- trails: shown only while drifting in a race (and on the garage's TRAIL row) ---- */
+var trl=[], TRL_MAX=72, trlA=0, trlAcc=0, trlSeed=0x51ed27, trlAt={on:false,x:W/2,y:PLAYER_Y,pw:PW,dir:0,side:1,rot:0};
+var GAR_PW=120, GAR_CAR_Y=186;
+function trlR(){ trlSeed=(trlSeed*1664525+1013904223)>>>0; return trlSeed/4294967296; }
+var TRL_RATE={SPARKS:70, HEARTS:11, PIXEL:32, GHOST:20, NOTES:9.1};   /* build 95: notes +30 % */
+var TRL_BOTH={RAINBOW:1, NOTES:1};   /* build 95: these two keep both sides; the rest scrape the corner that dips */
+function trailStep(dt){
+  var k=TRAILS[trailI].k, on=false, i, p;
+  if (k){
+    if (state==='playing' && drifting && dinoT<=0 && cutCar.alpha>0.01){
+      var lean=clamp(steerVel,-1.6,1.6);
+      on=true; trlAt.x=W/2+lean*9; trlAt.y=PLAYER_Y; trlAt.pw=PW; trlAt.dir=lean>0.05?1:(lean<-0.05?-1:0);
+      trlAt.rot=-lean*0.07;             /* build 95: the car's drift tilt (drawPlayer) */
+    } else if (state==='garage' && GROWS[garRow] && GROWS[garRow].id==='trail'){
+      /* build 97: the showroom car drives on the stage and the trail shows while it drifts */
+      on=(garTrlTgt!==0); trlAt.x=garCar.x+garLean*9*garCar.pw/PW; trlAt.y=garCar.y; trlAt.pw=garCar.pw;
+      trlAt.dir=garTrlTgt; trlAt.rot=-garLean*0.07;
+    }
+  }
+  trlAt.on=on;
+  if (trlAt.dir) trlAt.side=-trlAt.dir;   /* build 95: drifting right -> the left corner (it dips) */
+  if (plateMsgT>0) plateMsgT-=dt;
+  trlA += ((on?1:0)-trlA)*Math.min(1,dt*(on?10:5));
+  for (i=trl.length-1;i>=0;i--){
+    p=trl[i]; p.t+=dt;
+    if (p.t>=p.life){ trl.splice(i,1); continue; }
+    p.vx*=Math.pow(0.35,dt); p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
+  }
+  if (!on || !TRL_RATE[k]) { trlAcc=0; return; }
+  trlAcc += TRL_RATE[k]*dt*trlA;
+  while (trlAcc>=1){ trlAcc-=1; trlEmit(k); }
+}
+function trlEmit(k){
+  if (trl.length>=TRL_MAX) trl.shift();
+  var s=trlR()<0.5?-1:1, pw=trlAt.pw, f=pw/PW, d=trlAt.dir, r1=trlR(), r2=trlR();
+  if (!TRL_BOTH[k]) s=trlAt.side;                              /* build 95: one side only */
+  var cxo=s*pw*0.47+(trlR()-0.5)*pw*0.06, cyo=TRL_BOTH[k]?0:cxo*Math.sin(trlAt.rot);   /* at the tilted corner */
+  var p={k:k, t:0, x:trlAt.x+cxo, y:trlAt.y-pw*0.01+cyo, vx:0, vy:0, g:0, life:0.6, sz:1, c:0, s:s};
+  if (k==='SPARKS'){ p.vx=(s*(40+160*r1)-d*60)*f; p.vy=(20+90*r2)*f; p.g=200*f; p.life=0.22+0.22*trlR(); p.c=(trlR()<0.5)?'#ffd23f':'#ff8a1f'; }
+  else if (k==='HEARTS'){ p.vx=(s*(20+50*r1)-d*30)*f; p.vy=-(14+30*r2)*f; p.g=-10*f; p.life=0.7+0.3*trlR(); p.sz=pw*(0.05+0.03*trlR()); p.c=['#ff4fa8','#ff2fbe','#ff8ad8'][(trlR()*3)|0]; }
+  else if (k==='PIXEL'){ p.vx=(s*(15+50*r1)-d*40)*f; p.vy=-(6+24*r2)*f; p.g=-15*f; p.life=0.7+0.4*trlR(); p.sz=pw*0.04; p.c=['#cfd6ff','#a99fdc','#7c6fb8'][(trlR()*3)|0]; }
+  else if (k==='GHOST'){ p.vx=(s*(5+25*r1)-d*20)*f; p.vy=-(30+50*r2)*f; p.life=0.5+0.3*trlR(); p.sz=pw*(0.09+0.04*trlR()); }
+  else if (k==='NOTES'){ p.vx=(s*(15+40*r1)-d*25)*f; p.vy=-(25+30*r2)*f; p.life=1.0; p.sz=pw*0.07; p.c=['#21e6ff','#ff2fbe','#ffd23f','#7cff4f'][(trlR()*4)|0]; p.w=trlR()*6.28; }
+  trl.push(p);
+}
+var trlGhostCv=null;
+function trlGhost(){
+  if (trlGhostCv) return trlGhostCv;
+  try{
+    var c=offCv(null,64,64), g=c.getContext('2d'), gg=g.createRadialGradient(32,32,0,32,32,32);
+    gg.addColorStop(0,'rgba(170,255,230,0.95)'); gg.addColorStop(0.45,'rgba(60,220,200,0.6)'); gg.addColorStop(1,'rgba(40,120,255,0)');
+    g.fillStyle=gg; g.fillRect(0,0,64,64); trlGhostCv=c;
+  }catch(_){ trlGhostCv=null; }
+  return trlGhostCv;
+}
+function lkNote(x,y,s,col,two){
+  ctx.fillStyle=col; ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,s*0.16);
+  ctx.beginPath(); ctx.ellipse(x,y,s*0.42,s*0.30,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x+s*0.36,y); ctx.lineTo(x+s*0.36,y-s*1.25); ctx.stroke();
+  if (two){ ctx.beginPath(); ctx.ellipse(x+s*0.9,y-s*0.2,s*0.42,s*0.30,-0.4,0,Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(x+s*1.26,y-s*0.2); ctx.lineTo(x+s*1.26,y-s*1.45); ctx.stroke();
+            ctx.lineWidth=Math.max(1,s*0.28); ctx.beginPath(); ctx.moveTo(x+s*0.36,y-s*1.2); ctx.lineTo(x+s*1.26,y-s*1.4); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(x+s*0.36,y-s*1.25); ctx.quadraticCurveTo(x+s*0.9,y-s*0.9,x+s*0.75,y-s*0.5); ctx.stroke(); }
+}
+function trailDraw(){
+  var k=TRAILS[trailI].k;
+  if (!k || (trlA<0.02 && !trl.length)) return;
+  var A=trlA, x0=trlAt.x, y0=trlAt.y, pw=trlAt.pw, d=trlAt.dir, i, p, q;
+  ctx.save();
+  if ((k==='RIBBON' || k==='RAINBOW') && A>0.02){
+    var len = (state==='garage') ? pw*1.3 : (H+12-y0);
+    ctx.globalCompositeOperation='lighter';
+    if (k==='RIBBON'){
+      /* build 95: one ribbon off the corner that dips, two strands (TRIM outside, BAR COLOUR inside; 101: NEON EDGE / TOPPER COLOUR) */
+      var cols=[NEONS[trimI].c, NEONS[lightI].c], sd=trlAt.side, ya=y0+sd*pw*0.47*Math.sin(trlAt.rot);
+      for (var j=0;j<2;j++){
+        var c=cols[j], o=(j?-1:1)*sd*pw*0.028, xa=x0+sd*pw*0.47+o, xb=xa+sd*pw*0.40-d*pw*0.55+o*1.8;
+        var g=ctx.createLinearGradient(0,ya,0,y0+len); g.addColorStop(0,hexA(c,(0.9*A).toFixed(3))); g.addColorStop(1,hexA(c,0));
+        ctx.fillStyle=g; ctx.beginPath();
+        ctx.moveTo(xa-pw*0.025,ya); ctx.lineTo(xa+pw*0.025,ya); ctx.lineTo(xb+pw*0.075,y0+len); ctx.lineTo(xb-pw*0.075,y0+len); ctx.closePath(); ctx.fill();
+      }
+    } else {
+      var rc=['#ff3b5c','#ff8a1f','#ffd23f','#7cff4f','#21e6ff','#b06cff'], w0=pw*0.11;
+      for (i=0;i<6;i++){
+        var xl=-pw*0.33+i*w0, sk=-d*pw*0.5;
+        var g2=ctx.createLinearGradient(0,y0,0,y0+len); g2.addColorStop(0,hexA(rc[i],(0.85*A).toFixed(3))); g2.addColorStop(1,hexA(rc[i],0));
+        ctx.fillStyle=g2; ctx.beginPath(); ctx.moveTo(x0+xl,y0); ctx.lineTo(x0+xl+w0,y0);
+        ctx.lineTo(x0+(xl+w0)*2.2+sk,y0+len); ctx.lineTo(x0+xl*2.2+sk,y0+len); ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.globalCompositeOperation='source-over';
+  }
+  for (i=0;i<trl.length;i++){
+    p=trl[i]; q=p.t/p.life;
+    if (p.k==='SPARKS'){
+      ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=clamp(1-q*0.8,0,1);
+      ctx.strokeStyle=p.c; ctx.lineWidth=Math.max(1.5,2.2*pw/PW);
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-p.vx*0.05,p.y-p.vy*0.05); ctx.stroke();
+      ctx.fillStyle='#fff6c8'; ctx.fillRect(p.x-1.2,p.y-1.2,2.4,2.4);
+      ctx.globalCompositeOperation='source-over';
+    } else if (p.k==='HEARTS'){
+      ctx.globalAlpha=clamp(1-q,0,1); lkHeart(p.x,p.y,p.sz*(1+q*0.6),p.c);
+    } else if (p.k==='PIXEL'){
+      var sz=p.sz*(1+q*1.6); ctx.globalAlpha=clamp((1-q)*0.7,0,1); ctx.fillStyle=p.c; ctx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
+    } else if (p.k==='GHOST'){
+      var gc=trlGhost(); if (!gc) continue;
+      var R=p.sz*(1+q*0.8); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=clamp(1-q*0.7,0,1);
+      ctx.drawImage(gc,p.x-R,p.y-R,R*2,R*2); ctx.globalCompositeOperation='source-over';
+    } else if (p.k==='NOTES'){
+      ctx.globalAlpha=clamp(1-q*0.8,0,1); lkNote(p.x+Math.sin(p.t*8+p.w)*pw*0.04,p.y,p.sz,p.c,(i%2)===1);
+    }
+  }
+  ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+  ctx.restore();
+}
+
+/* ---- the car ---- */
 function paintCar(pw,o){
-  var ph=pw*0.62;
-  var trim=NEONS[trimI].c, light=NEONS[lightI].c, paint=PAINTS[paintI];
+  var ph=pw*0.62, L=o.lk||lookNow();
+  var trim=L.trim, light=L.light, paint=L.paint;
   var glow=o.glow||0;
 
   if (o.aura>0){
     drawAura(pw,ph,o.aura);
+  } else if (L.glow==='UNDER'){
+    ctx.fillStyle=hexA(light, 0.18+glow*0.36);
+    ctx.beginPath(); ctx.ellipse(0,ph*0.10,pw*0.70,ph*0.20+glow*ph*0.16,0,0,Math.PI*2); ctx.fill();
   } else {
     ctx.fillStyle=hexA(trim, 0.10+glow*0.30);
     ctx.beginPath(); ctx.ellipse(0,ph*0.10,pw*0.62,ph*0.16+glow*ph*0.16,0,0,Math.PI*2); ctx.fill();
   }
+  if (L.spo==='FINS') lkSpoiler(pw,ph,'FINS',paint.b,trim);
 
   ctx.fillStyle='#07040d';
   rr(-pw*0.54,-ph*0.52,pw*0.14,ph*0.5,pw*0.03); ctx.fill();
   rr( pw*0.40,-ph*0.52,pw*0.14,ph*0.5,pw*0.03); ctx.fill();
+  if (L.glow==='RIM'){
+    ctx.strokeStyle=light; ctx.lineWidth=Math.max(1.2,pw*0.022); ctx.shadowColor=light; ctx.shadowBlur=blur(pw*0.12);
+    rr(-pw*0.56,-ph*0.54,pw*0.18,ph*0.54,pw*0.04); ctx.stroke(); rr(pw*0.38,-ph*0.54,pw*0.18,ph*0.54,pw*0.04); ctx.stroke();
+    ctx.fillStyle=light; ctx.fillRect(-pw*0.585,-ph*0.34,pw*0.05,ph*0.12); ctx.fillRect(pw*0.535,-ph*0.34,pw*0.05,ph*0.12);
+    ctx.shadowBlur=0;
+  }
 
-  var bg=ctx.createLinearGradient(0,-ph,0,0);
-  bg.addColorStop(0,paint.a); bg.addColorStop(1,paint.b);
-  ctx.fillStyle=bg;
-  rr(-pw/2,-ph,pw,ph,pw*0.10); ctx.fill();
+  lkBodyDraw(pw,ph,L);
+  lkBody(pw,ph);
+  ctx.lineWidth=Math.max(2.4,pw*0.05); ctx.strokeStyle='#0a0612'; ctx.stroke();      /* build 94: keyline */
   ctx.lineWidth=Math.max(1.4,pw*0.026); ctx.strokeStyle=trim;
   ctx.shadowColor=trim; ctx.shadowBlur=blur(pw*0.17); ctx.stroke(); ctx.shadowBlur=0;
 
-  ctx.fillStyle='rgba(140,215,255,.20)';
-  rr(-pw*0.31,-ph*0.94,pw*0.62,ph*0.34,pw*0.05); ctx.fill();
+  /* build 94: a dark tinted rear window with one streak of reflection */
+  ctx.fillStyle='rgba(14,8,30,.88)'; rr(-pw*0.31,-ph*0.94,pw*0.62,ph*0.34,pw*0.05); ctx.fill();
+  ctx.save(); rr(-pw*0.31,-ph*0.94,pw*0.62,ph*0.34,pw*0.05); ctx.clip();
+  ctx.fillStyle='rgba(140,215,255,.13)'; ctx.beginPath(); ctx.moveTo(-pw*0.12,-ph*0.94); ctx.lineTo(-pw*0.02,-ph*0.94);
+  ctx.lineTo(-pw*0.2,-ph*0.6); ctx.lineTo(-pw*0.3,-ph*0.6); ctx.fill();
+  ctx.restore();
 
-  drawEyes(pw,ph,eyeI,o.brake);
-  drawLightBar(pw,ph,light,shapeI);
+  drawEyes(pw,ph,L.eye,o.brake,o.rx);
+  rxOverlay(pw,ph,L.eye,o.rx);
+  if (L.spo && L.spo!=='FINS') lkSpoiler(pw,ph,L.spo,paint.b,trim);
+  drawLightBar(pw,ph,light,L.shape);
 
-  var braking=o.brake;
-  ctx.shadowColor=braking?'#ff2020':'#ff5a5a';
-  ctx.shadowBlur=blur(braking?pw*0.24:pw*0.11);
-  ctx.fillStyle=braking?'#ff2626':'#c53a4a';
-  ctx.fillRect(-pw*0.42,-ph*0.42,pw*0.22,ph*0.17);
-  ctx.fillRect( pw*0.20,-ph*0.42,pw*0.22,ph*0.17);
-  ctx.shadowBlur=0;
-
-  ctx.fillStyle='#e9e6ff';
-  ctx.fillRect(-pw*0.11,-ph*0.24,pw*0.22,ph*0.13);
+  lkTails(pw,ph,L.tail,o.brake);
+  lkPlate(pw,ph,L.plate,L.ptxt);
+  lkExhaust(pw,ph,L.exh,o.gas);
+  rxHeartPop(pw,ph,o.rx,L.shape);
 }
 
 function drawPlayerDino(lean){
@@ -8063,6 +9234,7 @@ function drawPlayer(){
   var spct=clamp(speed/maxSpeedFor(lap),0,1);
 
   if (cutCar.alpha<=0.01) return;
+  trailDraw();                          /* build 94: under the car, while drifting */
   ctx.save();
   /* Build 71: the drift rumble shakes the car, not the world. About a pixel
      each way at 11-17 Hz while the tyres scream; the road stays still. */
@@ -8073,7 +9245,7 @@ function drawPlayer(){
   ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92)) + cutCar.tilt + cutCar.spin + rmR);
   ctx.globalAlpha=(blink?0.42:1)*cutCar.alpha;
   var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
-  paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn});
+  paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn, rx:rxNow(), gas:!!keys.up});
   if (cutCar.lit>0.01 && ufo){            /* build 83: the beam lights the car */
     var ph8=PW*0.62, lg=ctx.createRadialGradient(0,-ph8*0.55,2,0,-ph8*0.45,PW*0.75);
     lg.addColorStop(0,hexA(ufo.color,(0.42*cutCar.lit).toFixed(3))); lg.addColorStop(1,hexA(ufo.color,0));
@@ -8646,6 +9818,7 @@ function titleKeys(cru){
     keyCap(W-EDGE-rw,Y0+i*ROW,sz,sets[i][0],sets[i][1],fs);
     ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
   }
+  garTitleNew(EDGE, Y0+2*ROW, sz, play[2][1], fs, pad);   /* build 97 */
   tutKeyBox={x:EDGE, y:Y0, w:tw, sz:sz};
 }
 
@@ -8672,6 +9845,8 @@ function newHereDesk(){
 function drawPause(){
   overlay(0.6);
   glowText(T('PAUSED'),W/2,H/2-26,TS.TITLE,'#21e6ff','center',26);
+  var unp=prUnLine(370, TS.LABEL);      /* build 96: a cruise run ends from here; narrow, between the HUD tags */
+  if (unp) monoText(unp,W/2,TOUCH?H/2+84:H/2+186,TS.LABEL,'#7cff4f','center');   /* under the menu lines, clear of the message card */
   if (TOUCH){
     monoText(T('PAUSE_TOUCH'),W/2,H/2+16,TS.LABEL,'#a99fdc','center');
     monoText(T('FPS_TAP')+'  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'),W/2,fpsLineY(),TS.LABEL,'#8a7ec4','center');
@@ -8912,6 +10087,8 @@ function drawOver(){
   monoText(T('OVER_FINAL'),W/2,210,TS.LABEL,'#8a7ec4','center');
   glowText(String(score|0),W/2,252,TS.SUB,'#ffffff','center',16);
   monoText(T('OVER_LAPS')+lap+T('OVER_OVERTAKES')+overtakes+T('OVER_BEST')+best,W/2,292,TS.LABEL,'#a99fdc','center');
+  var un=prUnLine(740, TS.LABEL);       /* build 96 */
+  if (un) monoText(un,W/2,324,TS.LABEL,'#7cff4f','center');
   if (Math.floor(performance.now()/420)%2===0)
     glowText(T('OVER_AGAIN'),W/2,362,TS.HERO,'#7cff4f','center',18);
   monoText(T('OVER_GARAGE'),W/2,394,TS.LABEL,'#21e6ff','center');
@@ -8920,21 +10097,27 @@ function drawOver(){
   if (tutOffer()) monoText(T(TOUCH?'OVER_LEARN_TOUCH':'OVER_LEARN'),W/2,442,TS.LABEL,'#7cff4f','center');
 }
 
-function swatchRow(label,yy,list,sel,active,paintSw){
+function swatchRow(label,yy,list,sel,active,paintSw,rowId){
   monoText(label,116,yy+13,TS.MICRO,active?'#ffffff':'#8a7ec4');
   if (active){
     ctx.fillStyle='#7cff4f';
     ctx.beginPath(); ctx.moveTo(99,yy+4); ctx.lineTo(108,yy+9); ctx.lineTo(99,yy+14); ctx.closePath(); ctx.fill();
   }
-  var x0=248, sw=30, gap=7, i, x;
-  for (i=0;i<list.length;i++){
-    x=x0+i*(sw+gap);
+  /* build 94: at most eight swatches show; a longer list slides with the pick */
+  var x0=GAR_SW_X, sw=30, gap=7, i, x, n=list.length, vis=Math.min(n,GAR_SW_MAX);
+  var f0 = n>vis ? clamp(sel-3, 0, n-vis) : 0;
+  for (i=f0;i<f0+vis;i++){
+    x=x0+(i-f0)*(sw+gap);
     ctx.fillStyle='rgba(10,5,22,.75)';
     ctx.fillRect(x,yy,sw,18);
     ctx.save();
     ctx.beginPath(); ctx.rect(x,yy,sw,18); ctx.clip();
     paintSw(x,yy,sw,18,list[i],i);
     ctx.restore();
+    if (rowId && !prOwns(rowId,list[i])){        /* build 96: locked */
+      ctx.fillStyle='rgba(6,3,14,.55)'; ctx.fillRect(x,yy,sw,18);
+      prLockIcon(x+sw-7, yy+8, 7, '#ff6ad5');
+    }
     if (i===sel){
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
       ctx.strokeRect(x-2.5,yy-2.5,sw+5,23);
@@ -8943,7 +10126,9 @@ function swatchRow(label,yy,list,sel,active,paintSw){
       ctx.strokeRect(x+0.5,yy+0.5,sw-1,17);
     }
   }
-  monoText(list[sel].n, x0+list.length*(sw+gap)+8, yy+13, TS.MICRO, active?'#ffffff':'#a99fdc');
+  var nx=x0+vis*(sw+gap)+8;
+  if (rowId && !prOwns(rowId,list[sel])){ prLockIcon(nx+5, yy+9, 9, '#ff6ad5'); nx+=15; }   /* build 96 */
+  monoText(list[sel].n + (n>GAR_SW_MAX ? '  '+(sel+1)+'/'+n : ''), nx, yy+13, TS.MICRO, active?'#ffffff':'#a99fdc');
 }
 
 function swColour(x,y,w,h,item,i){
@@ -8986,33 +10171,1155 @@ function swChassis(x,y,w,h,item){
   ctx.globalAlpha=1;
 }
 
-function drawGarage(){
-  overlay(0.88);
-  glowText(T('GARAGE'),W/2,48,TS.SUB,'#21e6ff','center',20);
-  monoText(T('GAR_HINT'),W/2,66,TS.MICRO,'#a99fdc','center');
-
-  ctx.save();
-  ctx.translate(W/2,180+Math.sin(performance.now()/700)*3);
-  paintCar(140,{brake:false, glow:0.55+0.2*Math.sin(performance.now()/500)});
-  ctx.restore();
-
-  /* Live stats for whatever chassis is selected, so the numbers move while
-     you cycle the row rather than being buried in a submenu. */
-  var ch=CH_(), sx=W/2;
-  monoText(ch.n, sx-150, 212, TS.LABEL, ch.c);
-  monoText(T('GAR_SPD') +' '+Math.round(ch.spd*100) +'%', sx-46, 212, TS.MICRO, '#cfd6ff');
-  monoText(T('GAR_GRIP')+' '+Math.round(ch.grip*100)+'%', sx+50, 212, TS.MICRO, '#cfd6ff');
-  monoText(T('GAR_HP')  +' '+ch.hp,                       sx+156, 212, TS.MICRO, '#cfd6ff');
-
-  swatchRow(T('GAR_TRIM'),     236, NEONS,   trimI,    garRow===0, swColour);
-  swatchRow(T('GAR_BARCOL'),   272, NEONS,   lightI,   garRow===1, swColour);
-  swatchRow(T('GAR_BARSHAPE'), 308, BARS,    shapeI,   garRow===2, swShape);
-  swatchRow(T('GAR_EYES'),     344, EYES,    eyeI,     garRow===3, swEye);
-  swatchRow(T('GAR_PAINT'),    380, PAINTS,  paintI,   garRow===4, swPaint);
-  swatchRow(T('GAR_CHASSIS'),  416, CHASSIS, chassisI, garRow===5, swChassis);
-
-  glowText(T('GAR_BACK'), W/2, 466, TS.LABEL, '#7cff4f','center',14);
+/* ---------------------------------------------------------------
+   BUILD 94: the garage, TEMPORARY layout. Every new look is an extra row
+   here so it can be tried; build 96 replaces this screen with the A
+   SHOWROOM. Six rows show at a time and the list scrolls with the cursor;
+   a row with more than eight items scrolls its swatches the same way.
+   Locks are not enforced yet (build 95).
+--------------------------------------------------------------- */
+var RX_OPTS=[{n:'ON'},{n:'OFF'}];
+function swMini(field){                        /* the part on its own, zoomed to fit the swatch */
+  return function(x,y,w,h,item){
+    var k=item.k, cx=x+w/2, L=lookNow();
+    ctx.save();
+    if (field==='spo'){
+      L.spo=k; ctx.translate(cx, y+h-1); paintCar(19,{lk:L, brake:false, glow:0.3});
+    } else if (field==='tail'){
+      var pw=40, ph=pw*0.62; ctx.translate(cx, y+h/2+ph*0.335); lkTails(pw,ph,k,false);
+    } else if (field==='plate'){
+      if (!k){ ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1; ctx.strokeRect(x+7.5,y+5.5,w-15,h-11); ctx.restore(); return; }
+      var pw2=72, ph2=pw2*0.62; ctx.translate(cx, y+h/2+ph2*0.135);
+      if (k==='RANDOM') lkPlate(pw2,ph2,'HOLO','?'); else lkPlate(pw2,ph2,k,k==='CLASSIC'?'':' ');
+    } else if (field==='exh'){
+      if (!k){ ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1; ctx.strokeRect(x+7.5,y+5.5,w-15,h-11); ctx.restore(); return; }
+      var pw3=36, ph3=pw3*0.62; ctx.translate(cx, y+5); lkExhaust(pw3,ph3,k,true);
+    } else if (field==='glow'){
+      L.glow=k; ctx.translate(cx, y+h-4); paintCar(22,{lk:L, brake:false, glow:0.8});
+    }
+    ctx.restore();
+  };
 }
+function swBody(field){
+  return function(x,y,w,h,item){
+    var L=lookNow(); L[field]=item.k;
+    ctx.save(); ctx.translate(x+w/2, y+h+1); lkBodyDraw(w*1.1, w*1.1*0.62, L); ctx.restore();
+  };
+}
+function swOnOff(x,y,w,h,item,i){
+  monoText(item.n, x+w/2, y+13, TS.MICRO*0.8, i===0?'#7cff4f':'#ff5d5d', 'center');
+}
+function swTrail(x,y,w,h,item){
+  var k=item.k, cx=x+w/2, i;
+  if (!k){ ctx.strokeStyle='rgba(255,255,255,.30)'; ctx.lineWidth=1; ctx.strokeRect(x+7.5,y+5.5,w-15,h-11); return; }
+  ctx.save();
+  if (k==='RIBBON'){ ctx.fillStyle=NEONS[trimI].c; ctx.fillRect(x+6,y+3,3,h-6); ctx.fillStyle=NEONS[lightI].c; ctx.fillRect(x+w-9,y+3,3,h-6); }
+  else if (k==='RAINBOW'){ var rc=['#ff3b5c','#ff8a1f','#ffd23f','#7cff4f','#21e6ff','#b06cff']; for (i=0;i<6;i++){ ctx.fillStyle=rc[i]; ctx.fillRect(x+3+i*4,y+3,4,h-6); } }
+  else if (k==='SPARKS'){ ctx.strokeStyle='#ffd23f'; ctx.lineWidth=1.3; for (i=0;i<5;i++){ ctx.beginPath(); ctx.moveTo(cx-2+i,y+4+i*2); ctx.lineTo(cx-8+i*4,y+h-3); ctx.stroke(); } }
+  else if (k==='HEARTS'){ lkHeart(cx-5,y+11,4,'#ff4fa8'); lkHeart(cx+6,y+8,3,'#ff8ad8'); }
+  else if (k==='PIXEL'){ ctx.fillStyle='#a99fdc'; ctx.fillRect(cx-8,y+9,4,4); ctx.fillRect(cx-2,y+5,5,5); ctx.fillRect(cx+5,y+10,3,3); }
+  else if (k==='GHOST'){ var gc=trlGhost(); if (gc) ctx.drawImage(gc,cx-9,y,18,18); }
+  else if (k==='NOTES'){ lkNote(cx-4,y+13,6,'#21e6ff',true); }
+  ctx.restore();
+}
+var GROWS=[
+  {id:'trim',  lab:'GAR_TRIM',     list:NEONS,    get:function(){return trimI;},    set:function(v){trimI=v;},    sw:swColour},
+  {id:'light', lab:'GAR_BARCOL',   list:NEONS,    get:function(){return lightI;},   set:function(v){lightI=v;},   sw:swColour},
+  {id:'shape', lab:'GAR_BARSHAPE', list:BARS,     get:function(){return shapeI;},   set:function(v){shapeI=v;},   sw:swShape},
+  {id:'eye',   lab:'GAR_EYES',     list:EYES,     get:function(){return eyeI;},     set:function(v){eyeI=v;},     sw:swEye},
+  {id:'react', lab:'GAR_REACT',    list:RX_OPTS,  get:function(){return reactOn?0:1;}, set:function(v){reactOn=(v===0); if (!reactOn) rx=null;}, sw:swOnOff},
+  {id:'paint', lab:'GAR_PAINT',    list:PAINTS,   get:function(){return paintI;},   set:function(v){paintI=v;},   sw:swPaint},
+  {id:'fin',   lab:'GAR_FINISH',   list:FINISHES, get:function(){return finishI;},  set:function(v){finishI=v;},  sw:swBody('fin')},
+  {id:'liv',   lab:'GAR_LIVERY',   list:LIVERIES, get:function(){return liveryI;},  set:function(v){liveryI=v;},  sw:swBody('liv')},
+  {id:'spo',   lab:'GAR_SPOILER',  list:SPOILERS, get:function(){return spoilerI;}, set:function(v){spoilerI=v;}, sw:swMini('spo')},
+  {id:'tail',  lab:'GAR_TAILS',    list:TAILS,    get:function(){return tailI;},    set:function(v){tailI=v;},    sw:swMini('tail')},
+  {id:'plate', lab:'GAR_PLATE',    list:PLATES,   get:function(){return plateI;},   set:function(v){plateI=v; if (PLATES[v].k==='RANDOM') rollPlate();}, sw:swMini('plate')},
+  {id:'ptxt',  lab:'GAR_PTEXT',    list:null},
+  {id:'exh',   lab:'GAR_EXHAUST',  list:EXHAUSTS, get:function(){return exhaustI;}, set:function(v){exhaustI=v;}, sw:swMini('exh')},
+  {id:'glow',  lab:'GAR_GLOW',     list:GLOWS,    get:function(){return glowI;},    set:function(v){glowI=v;},    sw:swMini('glow')},
+  {id:'trail', lab:'GAR_TRAIL',    list:TRAILS,   get:function(){return trailI;},   set:function(v){trailI=v;},   sw:swTrail},
+  {id:'chassis',lab:'GAR_CHASSIS', list:CHASSIS,  get:function(){return chassisI;}, set:function(v){chassisI=v;}, sw:swChassis},
+  {id:'livc',  lab:'GAR_WRAPCOL',  list:NEONS,    get:function(){return wrapcI;},   set:function(v){wrapcI=v;},   sw:swColour}   /* build 101 */
+];
+var GAR_VIS=6, GAR_ROW0=244, GAR_STEP=34, GAR_SW_X=248, GAR_SW_MAX=8, garTop=0;
+function garRowY(r){ return GAR_ROW0+(r-garTop)*GAR_STEP; }
+function garScroll(){
+  var n=GROWS.length;
+  if (garRow<garTop+1) garTop=Math.max(0,garRow-1);
+  if (garRow>garTop+GAR_VIS-2) garTop=Math.min(n-GAR_VIS, garRow-GAR_VIS+2);
+  garTop=clamp(garTop,0,Math.max(0,n-GAR_VIS));
+}
+
+function drawPlateRow(yy,active){
+  monoText(T('GAR_PTEXT'),116,yy+13,TS.MICRO,active?'#ffffff':'#8a7ec4');
+  if (active){
+    ctx.fillStyle='#7cff4f';
+    ctx.beginPath(); ctx.moveTo(99,yy+4); ctx.lineTo(108,yy+9); ctx.lineTo(99,yy+14); ctx.closePath(); ctx.fill();
+  }
+  var k=PLATES[plateI].k, off=(!k || k==='RANDOM'), bx=GAR_SW_X, by=yy-4, bw=170, bh=26;
+  ctx.fillStyle='#0b0714'; rr(bx,by,bw,bh,5); ctx.fill();
+  ctx.lineWidth=active?2:1; ctx.strokeStyle=active?'#ff2fbe':'rgba(255,255,255,.25)'; ctx.stroke();
+  ctx.font='800 16px ui-monospace,Menlo,"Courier New",monospace'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  var txt=plateTxt.split('').join(' '), tw=ctx.measureText(txt).width;
+  ctx.fillStyle=off?'#5a5280':'#21e6ff'; ctx.fillText(txt, bx+bw/2-tw/2, by+19);
+  if (active && !TOUCH && Math.floor(performance.now()/450)%2===0){
+    ctx.fillStyle='#ff2fbe'; ctx.fillRect(bx+bw/2+tw/2+(txt?4:0), by+6, 2, 15);
+  }
+  var note = plateMsgT>0 ? T('GAR_PLATE_BAD') : off ? T('GAR_PT_OFF') : active ? T(TOUCH?'GAR_TYPE_TOUCH':'GAR_TYPE_DESK') : '';
+  if (note) monoText(note, bx+bw+(TOUCH?36:12), yy+13, TS.MICRO, plateMsgT>0?'#ff6ad5':'#8a7ec4');
+}
+
+/* ---------------------------------------------------------------
+   BUILD 97: THE A SHOWROOM GARAGE (garage step 3 of 3)
+   Replaces build 94's temporary 16-row screen. The car stands big on a
+   turntable; you pick a CATEGORY (tabs), then a PART inside it (chips, only
+   when the category has more than one), then an ITEM (cards, or LEFT / RIGHT).
+   GROWS (build 94) stays the data: garRow is still the row being edited, so
+   the locks (build 96), the trail preview and the plate box keep working.
+     - locked items: dimmed card + lock watermark + progress bar; a lock
+       watermark over the turntable car too; try on yes, race no (96's rules).
+     - NEW: on every item never STOPPED ON (shown on the turntable for
+       GAR_DWELL s; scrolling past doesn't count) and on every new unlock.
+       A slow-pulsing NEW tag on the category tabs and the title's GARAGE.
+     - a check mark on the item you will race with; OWNED on earned items.
+     - TRAIL: the car drives on the stage, 3 s drive / 1 s drift left /
+       3 s drive / 1 s drift right.
+     - saved slots 1 2 3: look-only toggle (tap again = your build back),
+       DRIVE races the shown slot, SAVE then pick a slot (overwrite check).
+       Slots and the build in progress are in the save (gs).
+     - RANDOM (owned items only) and PHOTO (a 1080 x 1080 PNG).
+   Three layouts of the same screen: 'desk' (all on the stage, keys + mouse),
+   'land' (phone sideways: cards on the stage, tabs and tools in the side
+   strips) and 'port' (phone upright: the stage shows the car, everything
+   else is HTML under it).
+--------------------------------------------------------------- */
+var GCATS=[
+  {id:'paint',  lab:'GC_PAINT',   rows:['paint','fin','trim'],
+   ic:'M4 4.5h12.5v5H4zM16.5 7h3v6.2h-8v2.6M10 15.8h3v4.7h-3z'},
+  {id:'livery', lab:'GC_LIVERY',  rows:['liv','livc'],          /* build 101: own colour row (was the shared 'light') */
+   ic:'M3.5 6h17v12h-17zM9 6v12M14.5 6l-3.5 12M20.5 10l-6 8'},
+  {id:'parts',  lab:'GC_PARTS',   rows:['spo','tail','exh','glow','plate','ptxt'],
+   ic:'M15 4.2a4.3 4.3 0 0 0-5.4 5.4L3.8 15.4l3 3 5.8-5.8a4.3 4.3 0 0 0 5.4-5.4l-2.7 2.7-2.8-.6-.6-2.8z'},
+  {id:'topper', lab:'GC_TOPPER',  rows:['shape','light'],
+   ic:'M12 3.5l5.5 13h-11zM3.5 20h17M12 3.5v-1'},
+  {id:'face',   lab:'GC_FACE',    rows:['eye','react'],
+   ic:'M5 11.5a3 3 0 1 0 6 0a3 3 0 1 0-6 0zM13 11.5a3 3 0 1 0 6 0a3 3 0 1 0-6 0zM8.5 17.5h7'},
+  {id:'trail',  lab:'GC_TRAIL',   rows:['trail'],
+   ic:'M3 7.5h12M3 12h16M3 16.5h9M17 7.5h1.5M14 16.5h2'},
+  {id:'chassis',lab:'GC_CHASSIS', rows:['chassis'],
+   ic:'M3.5 17.5a8.5 8.5 0 0 1 17 0M12 17.5l4.6-5.2M2.5 17.5h19'}
+];
+var GAR_DWELL=0.45;                          /* seconds on the turntable before an item counts as seen */
+var GAR_LOOK_KEYS=['trim','light','paint','shape','eye','fin','liv','spo','tail','plate','exh','glow','trail','chassis','livc'];
+var GROW_BY={};                              /* row id -> its GROWS index */
+(function(){ for (var i=0;i<GROWS.length;i++) GROW_BY[GROWS[i].id]=i; })();
+var garCat=0, garPart=0, garPartMem=[0,0,0,0,0,0,0];
+var garSlots=[null,null,null], garSlotOn=0, garWip=null;   /* the slots, the one showing, the build underneath */
+var garOwnWip=null;                          /* the build underneath's last owned items (a slot shown doesn't change them) */
+var garPick=false, garOw=0;                  /* SAVE: choosing a slot; the full slot waiting for "again" */
+var garMsg='', garMsgT=0, garDw={k:'',t:0}, garLean=0, garTrlTgt=0;
+var garHits=[], garPlateBox={x:300,y:370,w:200,h:40}, garIconP={};
+var garCar={x:W/2, y:256, pw:150};
+garRow=GROW_BY.paint;
+
+/* ---- which part, which category ---- */
+function garSyncCat(){                       /* garRow is the truth (tests and old code set it) */
+  var id=(GROWS[garRow]||GROWS[0]).id, c=GCATS[garCat];
+  if (!c || c.rows.indexOf(id)<0){
+    for (var i=0;i<GCATS.length;i++) if (GCATS[i].rows.indexOf(id)>=0){ garCat=i; break; }
+  }
+  garPart=Math.max(0, GCATS[garCat].rows.indexOf(id));
+  garPartMem[garCat]=garPart;
+}
+function garDropLocked(){                    /* build 98: a locked item is a preview of the part you're on only */
+  if (garSlotOn || !garLooseLocked()) return;
+  prEnforce(); saveGame();
+}
+function garCatGo(c){
+  c=(c+GCATS.length)%GCATS.length;
+  if (garPick){ garPick=false; garOw=0; }
+  garDropLocked();
+  garCat=c; garPart=Math.min(garPartMem[c]||0, GCATS[c].rows.length-1);
+  garRow=GROW_BY[GCATS[c].rows[garPart]];
+  blip(520,0.05,'square',0.10);
+}
+function garPartGo(p){
+  var rows=GCATS[garCat].rows; p=(p+rows.length)%rows.length;
+  garDropLocked();
+  garPart=p; garPartMem[garCat]=p; garRow=GROW_BY[rows[p]];
+  blip(520,0.05,'square',0.10);
+}
+function garOpen(from){
+  garFrom=from; state='garage'; garPick=false; garOw=0; garMsgT=0; garDw.k='';
+  prGarEnter(); garSyncCat();
+  if (GROWS[garRow].id==='ptxt'){ garPart=GCATS[garCat].rows.indexOf('plate'); garPartMem[garCat]=garPart; garRow=GROW_BY.plate; }   /* never open typing */
+}
+
+/* ---- the look as names (slots, the build in progress) ---- */
+function garLookGet(){
+  var o={}, i, row;
+  for (i=0;i<GAR_LOOK_KEYS.length;i++){ row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]]; o[row.id]=row.list[row.get()].n; }
+  o.ptxt=plateTxt; return o;
+}
+function garLookPut(o){
+  if (!o) return;
+  for (var i=0;i<GAR_LOOK_KEYS.length;i++){
+    var row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]], v=o[row.id];
+    if (row.id==='livc' && typeof v!=='string') v=o.light;      /* build 101 */
+    if (typeof v!=='string') continue;
+    var j=pickName(v,row.list,-1); if (j>=0) row.set(j);
+  }
+  var pt=plClean(o.ptxt); plateTxt=plateBad(pt)?'':pt;
+  garOwnNote();
+}
+function garOwnNote(){                       /* what is worn now counts as the last owned, where it is owned */
+  for (var i=0;i<GAR_LOOK_KEYS.length;i++){
+    var row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]], j=row.get();
+    if (prRowOwned(row,j)) garOwn[row.id]=j;
+  }
+}
+function garWornIdx(row){                    /* the item you would race with in this row */
+  var j=row.get(); if (row.id==='react' || prRowOwned(row,j)) return j;
+  var o=garOwn[row.id]; return (typeof o==='number' && o>=0 && o<row.list.length && prRowOwned(row,o)) ? o : 0;
+}
+function garStrip(o){                        /* a slot never keeps a locked item */
+  var cut=0;
+  for (var i=0;i<GAR_LOOK_KEYS.length;i++){
+    var row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]], j=pickName(o[row.id],row.list,0);
+    if (!prRowOwned(row,j)){ o[row.id]=row.list[garWornIdx(row)].n; cut++; }
+  }
+  return cut;
+}
+function garLooseLocked(){                   /* is the car on the stage wearing anything it can't race? */
+  for (var i=0;i<GAR_LOOK_KEYS.length;i++){ var row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]]; if (!prRowOwned(row,row.get())) return true; }
+  return false;
+}
+
+/* ---- NEW ---- */
+function garNewIt(rowId,item){ return rowId!=='react' && !PR.seen[prKey(rowId,item.n)]; }
+function garRowNew(id){
+  var row=GROWS[GROW_BY[id]]; if (!row || !row.list || id==='react') return false;
+  for (var i=0;i<row.list.length;i++) if (!PR.seen[prKey(id,row.list[i].n)]) return true;
+  return false;
+}
+/* build 99: does the car differ from the stock look in this row / category? (the green dot) */
+var GAR_STOCK={trim:0, light:1, livc:1, paint:8, shape:0, eye:0, chassis:0};   /* a brand-new player's look; other rows: item 0 */
+function garRowMod(id){
+  if (id==='react') return false;            /* a switch, not a design */
+  if (id==='ptxt') return !!plateTxt;
+  var row=GROWS[GROW_BY[id]]; if (!row || !row.list) return false;
+  var st=GAR_STOCK.hasOwnProperty(id) ? GAR_STOCK[id] : 0;
+  return garWornIdx(row)!==st;
+}
+function garCatMod(c){ var r=GCATS[c].rows; for (var i=0;i<r.length;i++) if (garRowMod(r[i])) return true; return false; }
+function garModDot(x,y,r){
+  ctx.save(); ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(6);
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0; ctx.lineWidth=1.2; ctx.strokeStyle='rgba(10,4,24,.9)'; ctx.stroke(); ctx.restore();
+}
+function garCatNew(c){ var r=GCATS[c].rows; for (var i=0;i<r.length;i++) if (garRowNew(r[i])) return true; return false; }
+function garAnyNew(){ for (var c=0;c<GCATS.length;c++) if (garCatNew(c)) return true; return false; }
+function garPulse(){ return 0.55+0.45*Math.abs(Math.sin(performance.now()/650)); }   /* slow */
+
+/* ---- actions ---- */
+function garSay(t){ garMsg=t; garMsgT=2.4; }
+function garLookOnly(){
+  garSay(T(TOUCH?'G_LOOK_T':'G_LOOK_K').replace(/#/g,garSlotOn));
+  blip(220,0.08,'square',0.08);
+}
+function garStep(d){
+  var row=GROWS[garRow]; if (!row || !row.list) return;
+  if (garSlotOn){ garLookOnly(); return; }
+  var n=row.list.length; row.set((row.get()+d+n)%n); prGarSet(row);
+  blip(880,0.05,'square',0.12); saveGame();
+}
+function garPickIdx(i){
+  var row=GROWS[garRow]; if (!row || !row.list) return;
+  if (garSlotOn){ garLookOnly(); return; }
+  if (i===row.get()) return;
+  row.set(i); prGarSet(row); blip(880,0.05,'square',0.12); saveGame();
+}
+function garRandom(){
+  if (garSlotOn){ garLookOnly(); return; }
+  garDropLocked();
+  for (var i=0;i<GAR_LOOK_KEYS.length;i++){
+    var row=GROWS[GROW_BY[GAR_LOOK_KEYS[i]]]; if (row.id==='chassis') continue;   /* the chassis changes how it drives */
+    var ok=[]; for (var j=0;j<row.list.length;j++) if (prRowOwned(row,j)) ok.push(j);
+    if (ok.length) row.set(ok[(Math.random()*ok.length)|0]);
+  }
+  garOwnNote(); garSay(T('G_RANDOMED'));
+  blip(660,0.05,'square',0.12); setTimeout(function(){ blip(990,0.07,'square',0.12); },60);
+  saveGame();
+}
+function garSlotTap(n){
+  if (garPick){ garSaveTo(n); return; }
+  var s=garSlots[n-1];
+  if (garSlotOn===n){                         /* tap again: the build in progress comes back, exactly */
+    garLookPut(garWip); garWip=null; garSlotOn=0; garMsgT=0;
+    if (garOwnWip){ for (var k in garOwnWip) garOwn[k]=garOwnWip[k]; garOwnNote(); garOwnWip=null; }
+    blip(520,0.07,'square',0.12); saveGame(); return;
+  }
+  if (!s){ blip(220,0.06,'square',0.06); return; }   /* empty: dimmed, nothing to show */
+  if (!garSlotOn){ garDropLocked(); garWip=garLookGet(); garOwnWip={}; for (var k in garOwn) garOwnWip[k]=garOwn[k]; }
+  garLookPut(s); garSlotOn=n; garMsgT=0;
+  blip(880,0.06,'square',0.12); setTimeout(function(){ blip(1180,0.08,'square',0.12); },60);
+  saveGame();
+}
+function garSaveBtn(){
+  if (garSlotOn){ garLookOnly(); return; }
+  garPick=!garPick; garOw=0;
+  blip(garPick?740:330,0.06,'square',0.10);
+}
+function garSaveTo(n){
+  if (garSlots[n-1] && garOw!==n){ garOw=n; blip(440,0.08,'square',0.12); return; }   /* full: ask first */
+  var o=garLookGet(), cut=garStrip(o);
+  garSlots[n-1]=o; garPick=false; garOw=0;
+  garSay(T('G_SAVED_TO').replace(/#/g,n)+(cut?'  \u00b7  '+T('G_LOCK_LEFT'):''));
+  blip(660,0.06,'square',0.14); setTimeout(function(){ blip(990,0.10,'square',0.14); },70);
+  saveGame();
+}
+function garBack(){
+  if (garPick){ garPick=false; garOw=0; blip(330,0.06,'square',0.10); return; }
+  prGarLeave(); state=garFrom; blip(660,0.09,'square',0.14);
+}
+function garDrive(){
+  garPick=false; garOw=0; prGarLeave();
+  if (garFrom==='paused') state='playing';
+  else beginRun();
+}
+
+/* ---- keys (desktop) ---- */
+function garageKey(code){
+  var gr=GROWS[garRow]||GROWS[0];
+  garSyncCat();
+  if (garPick){
+    var dg=/^(?:Digit|Numpad)([1-3])$/.exec(code);
+    if (dg){ garSaveTo(+dg[1]); return; }
+    if (code==='Escape'||code==='KeyS'){ garBack(); return; }
+  }
+  if (code==='Tab'){ garCatGo(garCat+1); return; }
+  if (code==='ArrowUp'){   garPartGo(garPart-1); return; }
+  if (code==='ArrowDown'){ garPartGo(garPart+1); return; }
+  if (gr.id==='ptxt'){                    /* type the plate (desktop); LEFT deletes, RIGHT opens the phone's keyboard */
+    if (code==='Backspace'||code==='Delete'||code==='ArrowLeft'){
+      if (plateTxt){ plateTxt=plateTxt.slice(0,-1); saveGame(); blip(660,0.05,'square',0.10); }
+      if (plateIn) plateIn.value=plateTxt;
+      return;
+    }
+    if (code==='ArrowRight'){ if (plateIn && plateIn.style.display!=='none'){ try{ plateIn.focus(); }catch(_){} } return; }
+    var m=/^Key([A-Z])$/.exec(code) || /^(?:Digit|Numpad)([0-9])$/.exec(code);
+    if (m){ if (plateType(m[1])) blip(880,0.05,'square',0.12); if (plateIn) plateIn.value=plateTxt; return; }
+  }
+  if (code==='ArrowLeft'){  garStep(-1); return; }
+  if (code==='ArrowRight'){ garStep(1); return; }
+  if (code==='KeyQ'){ garCatGo(garCat-1); return; }
+  if (code==='KeyE'){ garCatGo(garCat+1); return; }
+  if (code==='KeyR'){ garRandom(); return; }
+  if (code==='KeyP'){ garPhoto(); return; }
+  if (code==='KeyS'){ garSaveBtn(); return; }
+  var d=/^(?:Digit|Numpad)([1-3])$/.exec(code);
+  if (d){ garSlotTap(+d[1]); return; }
+  if (code==='Enter'||code==='Space'){ garDrive(); return; }
+  if (code==='Escape'||code==='KeyG'){ garBack(); }
+}
+
+/* ---- every frame (from update) ---- */
+function garTick(dt){
+  /* the trail preview's drive / drift cycle: 3 s drive, 1 s left, 3 s drive, 1 s right */
+  var t=(performance.now()/1000)%8;
+  garTrlTgt = (t>=3 && t<4) ? -1 : (t>=7 ? 1 : 0);
+  var tl = (state==='garage' && GROWS[garRow] && GROWS[garRow].id==='trail') ? garTrlTgt*1.25 : 0;
+  garLean += (tl-garLean)*Math.min(1,dt*7);
+  if (state!=='garage') return;
+  if (garMsgT>0) garMsgT-=dt;
+  var row=GROWS[garRow];
+  if (row && row.list && row.id!=='react'){
+    var k=prKey(row.id,row.list[row.get()].n);
+    if (k!==garDw.k){ garDw.k=k; garDw.t=0; }
+    else if (!PR.seen[k]){ garDw.t+=dt; if (garDw.t>=GAR_DWELL){ PR.seen[k]=1; saveGame(); } }
+  }
+}
+
+/* ---- the save ---- */
+function garLookOk(o){
+  if (!o || typeof o!=='object') return null;
+  var r={}, n=0, i, k;
+  for (i=0;i<GAR_LOOK_KEYS.length;i++){ k=GAR_LOOK_KEYS[i]; if (typeof o[k]==='string' && o[k].length<40){ r[k]=o[k]; n++; } }
+  r.ptxt = typeof o.ptxt==='string' ? plClean(o.ptxt) : '';
+  return n ? r : null;
+}
+function garSaveObj(){ return { s:garSlots, on:garSlotOn, wip:garWip }; }
+function garLoad(g){
+  garSlots=[null,null,null]; garSlotOn=0; garWip=null;
+  if (!g || typeof g!=='object') return;
+  if (Array.isArray(g.s)) for (var i=0;i<3;i++) garSlots[i]=garLookOk(g.s[i]);
+  var on=parseInt(g.on,10), w=garLookOk(g.wip);
+  if (on>=1 && on<=3 && garSlots[on-1] && w){ garSlotOn=on; garWip=w; }
+}
+
+/* ---- drawing helpers ---- */
+function garMode(){ return !TOUCH ? 'desk' : (isLandscape() ? 'land' : 'port'); }
+function garHit(x,y,w,h,f){ garHits.push({x:x,y:y,w:w,h:h,f:f}); }
+function garTap(lx,ly){
+  for (var i=garHits.length-1;i>=0;i--){
+    var h=garHits[i];
+    if (lx>=h.x && lx<=h.x+h.w && ly>=h.y && ly<=h.y+h.h){ h.f(); return true; }
+  }
+  return false;
+}
+function garFont(sz,w){ ctx.font=(w||700)+' '+sz+'px ui-monospace,Menlo,"Courier New",monospace'; }
+function garFit(txt,maxW,sz,w){              /* shrink to 70 %, then cut with ... */
+  var s=sz; garFont(s,w);
+  while (s>sz*0.7 && ctx.measureText(txt).width>maxW){ s-=0.5; garFont(s,w); }
+  if (ctx.measureText(txt).width<=maxW) return {t:txt,s:s};
+  while (txt.length>2 && ctx.measureText(txt+'\u2026').width>maxW) txt=txt.slice(0,-1);
+  return {t:txt+'\u2026', s:s};
+}
+function garText(txt,x,y,sz,col,align,w){
+  garFont(sz,w); ctx.fillStyle=col; ctx.textAlign=align||'left'; ctx.textBaseline='alphabetic'; ctx.fillText(txt,x,y);
+}
+function garIcon(c,x,y,s,col,lw){             /* a category icon (24-unit path) at x,y, s px */
+  var p=garIconP[c];
+  if (p===undefined){ try{ p=new Path2D(GCATS[c].ic); }catch(_){ p=null; } garIconP[c]=p; }
+  if (!p) return;
+  ctx.save(); ctx.translate(x,y); ctx.scale(s/24,s/24);
+  ctx.strokeStyle=col; ctx.lineWidth=lw||1.9; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.stroke(p); ctx.restore();
+}
+function garDice(cx,cy,s,col){
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.2,s*0.09); rr(cx-s/2,cy-s/2,s,s,s*0.22); ctx.stroke();
+  ctx.fillStyle=col; var d=s*0.25, r=s*0.085;
+  [[-d,-d],[d,-d],[0,0],[-d,d],[d,d]].forEach(function(p){ ctx.beginPath(); ctx.arc(cx+p[0],cy+p[1],r,0,Math.PI*2); ctx.fill(); });
+}
+function garCam(cx,cy,s,col){
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.2,s*0.09);
+  rr(cx-s/2,cy-s*0.32,s,s*0.7,s*0.12); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy+s*0.03,s*0.2,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle=col; ctx.fillRect(cx-s*0.22,cy-s*0.44,s*0.24,s*0.12);
+}
+function garLockMark(cx,cy,s,col,lw){        /* an outline padlock: the item still shows through it */
+  lw=lw||Math.max(2.5,s*0.14);               /* build 99: 97's classic shape (shackle + body) with 98's bold edge + glow */
+  ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round';
+  var pass=function(dark){
+    ctx.strokeStyle=dark?'rgba(10,4,24,.85)':col; ctx.lineWidth=dark?lw+Math.max(2,lw*0.8):lw;
+    if (!dark){ ctx.shadowColor=col; ctx.shadowBlur=hb(Math.max(4,s*0.12)); }
+    ctx.beginPath(); ctx.moveTo(cx-s*0.30, cy-s*0.04); ctx.lineTo(cx-s*0.30, cy-s*0.30);   /* the shackle */
+    ctx.arc(cx, cy-s*0.30, s*0.30, Math.PI, 0); ctx.lineTo(cx+s*0.30, cy-s*0.04); ctx.stroke();
+    rr(cx-s*0.5, cy-s*0.06, s, s*0.72, s*0.1); ctx.stroke();                             /* the body */
+    ctx.shadowBlur=0;
+  };
+  pass(true); pass(false);
+  ctx.fillStyle='rgba(10,4,24,.85)'; ctx.beginPath(); ctx.arc(cx, cy+s*0.22, s*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.fillRect(cx-s*0.065, cy+s*0.22, s*0.13, s*0.24);
+  ctx.fillStyle=col; ctx.beginPath(); ctx.arc(cx, cy+s*0.22, s*0.085, 0, Math.PI*2); ctx.fill();   /* the keyhole */
+  ctx.fillRect(cx-s*0.035, cy+s*0.22, s*0.07, s*0.2);
+  ctx.restore();
+}
+function garChev(cx,cy,d){                   /* build 99: a glowing chevron, d = -1 left / +1 right */
+  ctx.save(); ctx.globalAlpha=0.75+0.25*garPulse();
+  ctx.strokeStyle='#21e6ff'; ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(10);
+  ctx.beginPath(); ctx.moveTo(cx-d*4,cy-9); ctx.lineTo(cx+d*4,cy); ctx.lineTo(cx-d*4,cy+9); ctx.stroke();
+  ctx.restore();
+}
+function garCheck(cx,cy,s,col){
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(1.6,s*0.2); ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(cx-s*0.45,cy); ctx.lineTo(cx-s*0.12,cy+s*0.32); ctx.lineTo(cx+s*0.48,cy-s*0.38); ctx.stroke();
+  ctx.lineCap='butt';
+}
+function garPill(txt,x,y,sz,col,alpha,align){  /* x,y = top-left (or top-right with align 'right') */
+  garFont(sz,900); var w=ctx.measureText(txt).width+sz*0.9, h=sz*1.45;
+  if (align==='right') x-=w;
+  ctx.save(); ctx.globalAlpha=alpha==null?1:alpha;
+  ctx.fillStyle=col; rr(x,y,w,h,h*0.3); ctx.fill();
+  ctx.fillStyle='#14061f'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.fillText(txt,x+w/2,y+h*0.76); ctx.restore();
+  return w;
+}
+function garBtn(x,y,w,h,o){                   /* o: {on, dim, col, glow} */
+  var col=o.col||'#7c3aed';
+  ctx.save(); if (o.dim) ctx.globalAlpha=0.35;
+  ctx.fillStyle=o.on ? hexA(col,0.32) : 'rgba(14,8,30,.9)'; rr(x,y,w,h,5); ctx.fill();
+  ctx.lineWidth=o.on?2:1.4; ctx.strokeStyle=o.on?col:hexA(col,0.75);
+  if (o.glow){ ctx.shadowColor=col; ctx.shadowBlur=hb(o.glow); }
+  ctx.stroke(); ctx.restore();
+}
+function garPx(){ return Math.max(1, Math.min(4, cv.width/W)); }   /* backing pixels per stage pixel */
+
+/* ---- card pictures, painted once per look and cached ---- */
+var garCardC={}, garCardN=0;
+function garSig(){ return [trimI,lightI,wrapcI,paintI,shapeI,eyeI,finishI,liveryI,spoilerI,tailI,plateI,exhaustI,glowI,trailI,chassisI,plateTxt,plateRnd].join(','); }
+function garCardImg(row,i,w,h,sc){
+  sc=Math.max(1,Math.min(4,Math.round(sc*4)/4));
+  var key=row.id+'|'+i+'|'+w+'x'+h+'@'+sc+'|'+garSig(), e=garCardC[key];
+  if (e!==undefined) return e;
+  if (garCardN>=96){ garCardC={}; garCardN=0; }
+  e=null;
+  try{
+    var c=offCv(null, Math.ceil(w*sc), Math.ceil(h*sc)), g=c.getContext('2d');
+    g.setTransform(sc,0,0,sc,0,0);
+    var keep=ctx; ctx=g;
+    try{ ctx.save(); ctx.beginPath(); ctx.rect(0,0,w,h); ctx.clip(); garCardPaint(row,i,w,h); ctx.restore(); }
+    finally { ctx=keep; }
+    e=c;
+  }catch(_){ e=null; }
+  garCardC[key]=e; garCardN++;
+  return e;
+}
+function garCardPaint(row,i,w,h){
+  var id=row.id, it=row.list[i], L=lookNow(), k;
+  if (id==='react'){ garText(T(i===0?'G_ON':'G_OFF'), w/2, h*0.62, Math.min(22,h*0.36), i===0?'#7cff4f':'#ff5d5d', 'center', 900); return; }
+  if (id==='chassis'){ swChassis(w*0.22,h*0.14,w*0.56,h*0.72,it); return; }
+  if (id==='trail'){
+    ctx.save(); ctx.translate(w/2,h*0.5); ctx.scale(h/22*0.95,h/22*0.95); swTrail(-15,-11,30,22,it); ctx.restore();
+    return;
+  }
+  if (id==='tail'){                          /* build 100: the car's rear at card size, the lights on it */
+    var tpw=w*0.86, tph=tpw*0.62;
+    ctx.save(); ctx.translate(w/2, h*0.5+tph*0.42);
+    lkBody(tpw,tph); ctx.fillStyle=L.paint.b||'#2a1748'; ctx.fill();
+    ctx.lineWidth=Math.max(1.2,tpw*0.022); ctx.strokeStyle=L.trim; ctx.stroke();
+    lkTails(tpw,tph,it.k,true); ctx.restore();
+    return;
+  }
+  if (id==='exh'){                           /* build 102: the car's lower rear at card size, the exhaust on it */
+    L.exh=it.k;
+    var epw=Math.min(w*1.15, h*1.75); ctx.save(); ctx.translate(w/2, h*0.68); paintCar(epw,{lk:L, gas:true, glow:0}); ctx.restore();
+    return;
+  }
+  if (id==='plate'){
+    var z = 1.15;
+    ctx.save(); ctx.translate(w/2,h/2); ctx.scale(z*h/22,z*h/22); swMini(id)(-15,-11,30,22,it); ctx.restore();
+    return;
+  }
+  if (id==='trim') L.trim=it.c; else if (id==='light') L.light=it.c; else if (id==='livc') L.wrapc=it.c; else if (id==='paint') L.paint=it;
+  else if (id==='shape') L.shape=i; else if (id==='eye') L.eye=i;
+  else if (id==='fin') L.fin=it.k; else if (id==='liv') L.liv=it.k; else if (id==='spo') L.spo=it.k; else if (id==='glow') L.glow=it.k;
+  var pw=w*0.66, by=h*0.86;
+  if (id==='shape'){ pw=w*0.62; by=h*1.02; }               /* the topper is the point: closer, the bottom cut off */
+  if (id==='eye'){ pw=w*0.95; by=h*1.32; }                 /* the face: zoom on the rear window */
+  ctx.save(); ctx.translate(w/2,by); paintCar(pw,{lk:L, glow:0.5}); ctx.restore();
+}
+
+function garItName(row,i){ return row.id==='react' ? T(i===0?'G_ON':'G_OFF') : row.list[i].n; }
+/* one card on the stage */
+function garCardDraw(row,i,x,y,w,h,F){
+  var it=row.list[i], sel=(i===row.get()), dim=garSlotOn>0 || !!garColIdle(row.id), lock=!prOwns(row.id,it);
+  var own=!!(it.lk && PR.got[prKey(row.id,it.n)]), nw=garNewIt(row.id,it), worn=(i===garWornIdx(row));
+  var lh=Math.round(F*1.75), ph=h-lh-4;
+  ctx.save(); if (dim) ctx.globalAlpha=0.45;
+  ctx.fillStyle=sel?'rgba(33,230,255,.13)':'rgba(14,8,30,.9)'; rr(x,y,w,h,6); ctx.fill();
+  var pic=garCardImg(row,i,w-4,ph,garPx());
+  ctx.save(); if (lock) ctx.globalAlpha*=0.5; if (pic) ctx.drawImage(pic,x+2,y+2,w-4,ph); ctx.restore();
+  if (lock){
+    ctx.save(); garLockMark(x+w/2, y+ph*0.55, Math.min(w,ph)*0.42, '#ff6ad5'); ctx.restore();
+    var r=prRuleFor(row.id,it.n);
+    if (r){ var bw=w-14, v=Math.min(prVal(r),r.to), by=y+ph-3;
+      ctx.fillStyle='rgba(255,255,255,.16)'; ctx.fillRect(x+7,by,bw,Math.max(3,F*0.3));
+      ctx.fillStyle='#ff6ad5'; ctx.fillRect(x+7,by,Math.round(bw*v/r.to),Math.max(3,F*0.3)); }
+  }
+  ctx.lineWidth=sel?2.4:1; ctx.strokeStyle=sel?'#21e6ff':'rgba(124,58,237,.55)';
+  if (sel){ ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(12); }
+  rr(x,y,w,h,6); ctx.stroke(); ctx.shadowBlur=0;
+  var nm=garFit(garItName(row,i), w-8, F, 700);
+  garText(nm.t, x+w/2, y+h-lh*0.42, nm.s, sel?'#ffffff':(lock?'#8a7ec4':'#cfd6ff'), 'center');
+  var tagX=x+5;                               /* build 102: OWNED in the top-left corner, NEW right after it */
+  if (own){ var osz=Math.max(7,F*0.7); garFont(osz,900); var ow=ctx.measureText(T('G_OWNED')).width;
+    garText(T('G_OWNED'), tagX, y+4+osz*1.12, osz, '#7cff4f', 'left', 900); tagX+=ow+5; }
+  if (nw){ var nsz=Math.max(7,F*0.72); garFont(nsz,900); var nwW=ctx.measureText(T('G_NEW')).width+nsz*0.9;
+    if (own && tagX+nwW > x+w-F*1.9) garPill(T('G_NEW'), x+4, y+6+nsz*1.3, nsz, '#ff2fbe');   /* no room: under OWNED */
+    else garPill(T('G_NEW'), own?tagX:x+4, y+4, nsz, '#ff2fbe'); }
+  if (worn && row.id!=='react') garCheck(x+w-F*0.95, y+F*0.95, F*0.95, '#7cff4f');
+  ctx.restore();
+}
+/* which items show in a window of k cards, the picked one in the middle */
+function garWin(n,sel,k){
+  var out=[], j;
+  if (n<=k){ for (j=0;j<n;j++) out.push(j); return out; }
+  var h=k>>1; for (j=-h;j<=h;j++) out.push((sel+j+n*4)%n);
+  return out;
+}
+function garCards(x0,y,w,h,gap,k,F,arrows){
+  var row=GROWS[garRow]; if (!row || !row.list) return;
+  var n=row.list.length, sel=row.get(), ids=garWin(n,sel,k), tw=ids.length*w+(ids.length-1)*gap;
+  var cx=x0+((k*w+(k-1)*gap)-tw)/2;
+  for (var j=0;j<ids.length;j++){
+    (function(i,x){
+      garCardDraw(row,i,x,y,w,h,F);
+      if (!garSlotOn) garHit(x,y,w,h,function(){ garPickIdx(i); });
+    })(ids[j], cx+j*(w+gap));
+  }
+  if (arrows){
+    var ax=[x0-arrows.gap-arrows.w, x0+k*w+(k-1)*gap+arrows.gap], dirs=[-1,1];
+    for (var a=0;a<2;a++){
+      (function(d,x){
+        ctx.save(); if (garSlotOn) ctx.globalAlpha=0.3;
+        ctx.fillStyle='#21e6ff'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(10);
+        var cy=y+h/2, s=arrows.w*0.42;
+        ctx.beginPath(); ctx.moveTo(x+arrows.w/2-d*s*0.6,cy-s); ctx.lineTo(x+arrows.w/2+d*s*0.7,cy); ctx.lineTo(x+arrows.w/2-d*s*0.6,cy+s); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        garHit(x,y,arrows.w,h,function(){ garStep(d); });
+      })(dirs[a],ax[a]);
+    }
+  }
+}
+/* the part chips (only when the category has more than one part) */
+function garPartsDraw(cy,h,F,maxW){
+  var rows=GCATS[garCat].rows; if (rows.length<2) return;
+  var pad=F*0.9, gap=F*0.55, ws=[], tw=0, i;
+  garFont(F,700);
+  for (i=0;i<rows.length;i++){ ws[i]=ctx.measureText(T(GROWS[GROW_BY[rows[i]]].lab)).width+pad*2; tw+=ws[i]; }
+  tw+=gap*(rows.length-1);
+  var sc=tw>maxW ? maxW/tw : 1, x=W/2-tw*sc/2;
+  for (i=0;i<rows.length;i++){
+    (function(p,x,w){
+      var on=(p===garPart), id=rows[p];
+      garBtn(x,cy,w,h,{on:on, col:'#21e6ff'});
+      garText(T(GROWS[GROW_BY[id]].lab), x+w/2, cy+h*0.7, F*sc, on?'#ffffff':(garColIdle(id)?'#5f5690':'#a99fdc'), 'center');
+      var dr=Math.max(5,F*0.56);               /* build 99: twice 98's size */
+      if (garRowNew(id)){ ctx.save(); ctx.globalAlpha=garPulse(); ctx.fillStyle='#ff2fbe'; ctx.shadowColor='#ff2fbe'; ctx.shadowBlur=hb(6);
+        ctx.beginPath(); ctx.arc(x+w-2,cy+2,dr,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+      if (garRowMod(id)) garModDot(x+2, cy+2, dr);
+      garHit(x,cy,w,h,function(){ garPartGo(p); });
+    })(i,x,ws[i]*sc);
+    x+=(ws[i]+gap)*sc;
+  }
+}
+/* the stage behind the car: back wall, two neon pillars, the turntable (or a road while previewing a trail) */
+function garStage(cx,cy,rx,ry,top){
+  var now=performance.now(), drive=(GROWS[garRow] && GROWS[garRow].id==='trail');
+  var bg=ctx.createRadialGradient(cx,top+40,20,cx,top+60,W*0.75);   /* the road isn't drawn behind the showroom (render) */
+  bg.addColorStop(0,'#1d0a3a'); bg.addColorStop(1,'#06020f'); ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  var fg=ctx.createLinearGradient(0,cy-ry*3,0,H);
+  fg.addColorStop(0,'rgba(124,58,237,0)'); fg.addColorStop(1,'rgba(124,58,237,.22)');
+  ctx.fillStyle=fg; ctx.fillRect(0,cy-ry*3,W,H-(cy-ry*3));
+  ctx.fillStyle='rgba(124,58,237,.10)'; ctx.fillRect(cx-rx*1.05,top,rx*2.1,cy-top-ry*0.4);
+  ctx.save(); ctx.strokeStyle='#21e6ff'; ctx.lineWidth=3; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(14); ctx.globalAlpha=0.75;
+  ctx.beginPath(); ctx.moveTo(cx-rx*1.12,top); ctx.lineTo(cx-rx*1.12,cy-ry*0.3); ctx.moveTo(cx+rx*1.12,top); ctx.lineTo(cx+rx*1.12,cy-ry*0.3); ctx.stroke();
+  ctx.restore();
+  /* the disc */
+  ctx.save();
+  ctx.fillStyle='rgba(255,47,190,.16)'; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(33,230,255,.55)'; ctx.lineWidth=1.6; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(10);
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.stroke();
+  ctx.shadowBlur=0; ctx.strokeStyle='rgba(33,230,255,.25)';
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx*0.72,ry*0.72,0,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx*0.45,ry*0.45,0,0,Math.PI*2); ctx.stroke();
+  if (drive){                                 /* trail preview: the road runs under the car */
+    ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.clip();
+    var off=(now/1000*ry*7)%(ry*1.6);
+    ctx.fillStyle='rgba(255,255,255,.55)';
+    for (var yy=cy-ry-ry*1.6+off; yy<cy+ry; yy+=ry*1.6){
+      var q=clamp((yy-(cy-ry))/(ry*2),0,1), lw=1.5+q*3;
+      ctx.fillRect(cx-rx*0.42-lw/2,yy,lw,ry*0.7); ctx.fillRect(cx+rx*0.42-lw/2,yy,lw,ry*0.7);
+    }
+  } else {                                    /* the disc turns: marks running round the rim */
+    ctx.fillStyle='rgba(33,230,255,.8)';
+    for (var a=0;a<12;a++){
+      var an=now/2400+a*Math.PI/6, sx=Math.cos(an), sy=Math.sin(an);
+      if (sy<-0.2) continue;
+      ctx.globalAlpha=0.3+0.6*Math.max(0,sy);
+      ctx.fillRect(cx+sx*rx*0.86-1.5, cy+sy*ry*0.86-1, 3, 2);
+    }
+  }
+  ctx.restore();
+}
+function garDrawCar(cx,by,pw){
+  var gr=GROWS[garRow]||GROWS[0], now=performance.now(), drive=(gr.id==='trail');
+  garCar.x=cx; garCar.y=by; garCar.pw=pw;
+  if (drive) trailDraw();
+  ctx.save();
+  ctx.translate(cx+garLean*9*pw/PW, by+(drive?0:Math.sin(now/700)*2));
+  if (drive) ctx.rotate(-garLean*0.07);
+  paintCar(pw,{brake:gr.id==='tail' && Math.floor(now/900)%2===0, glow:0.55+0.2*Math.sin(now/500),
+               rx:gr.id==='react'?rxDemo():null, gas:gr.id==='exh'});
+  ctx.restore();
+  if (garLooseLocked()){                      /* the lock watermark: try it on, race it once unlocked */
+    ctx.save(); ctx.globalAlpha=0.82+0.18*Math.sin(now/500);   /* build 98: bigger + bolder */
+    garLockMark(cx, by-pw*0.36, pw*0.44, '#ff6ad5', Math.max(4,pw*0.045)); ctx.restore();
+  }
+}
+/* build 101: items that draw in their own fixed colours, so a colour row can't tint them */
+var GAR_FIX_LIV={FLAMES:1, SYNTHSUN:1};
+var GAR_FIX_TOP={COWBOY:1, WITCH:1, ANTENNA:1, SHARK:1, CONE:1, PROPELLER:1, MINIUFO:1, DINO:1, TOPHAT:1, MOHAWK:1};
+function garFixed(id,i){                     /* is item i of row id one with its own colours? */
+  if (id==='liv'){ var k=LIVERIES[i].k; return !!(k && GAR_FIX_LIV[k]); }
+  if (id==='shape'){ var b=BARS[i]; return !!(b && b.k && GAR_FIX_TOP[b.k]); }
+  return false;
+}
+function garTopUsed(){                       /* TOPPER COLOUR also tints the glow and NEON RIBBON's inner strand */
+  return GLOWS[glowI].k ? 'glow' : (TRAILS[trailI].k==='RIBBON' ? 'trail' : '');
+}
+/* a colour row with nothing to colour right now: '' or the note to show */
+function garColIdle(id){
+  if (id==='livc'){
+    if (!LIVERIES[liveryI].k) return T('G_NOWRAP');
+    return garFixed('liv',liveryI) ? T('G_OWNCOL').replace('#',LIVERIES[liveryI].n) : '';
+  }
+  if (id==='light' && garFixed('shape',shapeI) && !garTopUsed()) return T('G_OWNCOL').replace('#',BARS[shapeI].n);
+  return '';
+}
+function garSubCol(){                        /* the sub line's colour: amber when it carries a note */
+  var row=GROWS[garRow]; return (row && row.list && garColIdle(row.id)) ? '#ffd23f' : '#a99fdc';
+}
+/* the name of what's on the turntable and where it sits in its list */
+function garSubLine(){
+  var row=GROWS[garRow]; if (!row || !row.list) return T('GAR_PTEXT');
+  var idle=garColIdle(row.id); if (idle) return idle;                     /* build 101 */
+  var s=T(row.lab)+'  '+(row.get()+1)+' / '+row.list.length;
+  if ((row.id==='liv' || row.id==='shape') && garFixed(row.id,row.get())) s+='  ·  '+T('G_OWNCOL_S');
+  if (row.id==='light' && garFixed('shape',shapeI)) s+='  ·  '+T(garTopUsed()==='glow'?'G_TINT_GLOW':'G_TINT_TRAIL');
+  if (row.id==='chassis'){ var ch=CH_(); s+='  \u00b7  '+T('GAR_SPD')+' '+Math.round(ch.spd*100)+'%  '+T('GAR_GRIP')+' '+Math.round(ch.grip*100)+'%  '+T('GAR_HP')+' '+ch.hp; }
+  return s;
+}
+function garNameLine(){
+  var row=GROWS[garRow]; if (!row) return '';
+  if (!row.list) return plateTxt ? plateTxt.split('').join(' ') : '- - -';
+  return row.id==='react' ? T('GAR_REACT')+' '+T(row.get()===0?'G_ON':'G_OFF') : row.list[row.get()].n;
+}
+/* LOCKED + how to earn it, for the item on the turntable */
+function garLockInfo(){
+  var row=GROWS[garRow]; if (!row || !row.list || row.id==='react') return null;
+  var it=row.list[row.get()]; if (!it || !it.lk) return null;
+  var r=prRuleFor(row.id,it.n); if (!r) return null;
+  return {r:r, own:!!PR.got[prKey(r.row,r.n)], v:Math.min(prVal(r),r.to)};
+}
+function garCount(L){
+  var lab=L.r.sc==='wk' ? T('LK_WEEK') : (L.r.sc==='run' ? T('LK_BEST') : '');
+  return (lab?lab+' ':'')+prFmt(L.v)+' / '+prFmt(L.r.to);
+}
+function garLockLine(cx,y,maxW,F){            /* phones: the reason under the name (wraps, build 98) + a bar */
+  var L=garLockInfo(); if (!L) return false;
+  var pre=L.own ? '\u2713 '+T('LK_OWNED')+':' : '', ind=L.own ? 0 : F*1.6, fs=F, ln, i;
+  garFont(fs,700); ln=prWrap((pre?pre+' ':'')+prText(L.r), maxW-ind);
+  if (ln.length>1){ fs=F*0.88; garFont(fs,700); ln=prWrap((pre?pre+' ':'')+prText(L.r), maxW-ind); }
+  if (ln.length>3){ ln=ln.slice(0,3); }
+  var lh=fs*1.18, y0=y-(ln.length-1)*lh*(L.own?0.5:0.75);
+  for (i=0;i<ln.length;i++){
+    garFont(fs,700); var tw=ctx.measureText(ln[i]).width, x=cx-(tw+(i===0?ind:0))/2, yy=y0+i*lh;
+    if (L.own){
+      if (i===0){ var pw=ctx.measureText(pre).width;
+        garText(pre, x, yy, fs, '#7cff4f', 'left', 800);
+        garText(ln[0].slice(pre.length), x+pw, yy, fs, '#cfd6ff', 'left'); }
+      else garText(ln[i], x, yy, fs, '#cfd6ff', 'left');
+      continue;
+    }
+    if (i===0) prLockIcon(x+F*0.5, yy-F*0.32, F*0.75, '#ff6ad5');
+    garText(ln[i], x+(i===0?ind:0), yy, fs, '#ffd0f0', 'left');
+  }
+  if (L.own) return true;
+  y=y0+(ln.length-1)*lh;
+  var bw=Math.min(maxW*0.6, F*16), bh=Math.max(4,F*0.36), by=y+F*0.55, cnt=garCount(L);
+  garFont(F*0.85,700); var cw=ctx.measureText(cnt).width, bx=cx-(bw+F*0.6+cw)/2;
+  ctx.fillStyle='rgba(255,255,255,.16)'; ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle='#ff6ad5'; ctx.fillRect(bx,by,Math.round(bw*L.v/L.r.to),bh);
+  garText(cnt, bx+bw+F*0.6, by+bh, F*0.85, '#ffffff', 'left');
+  return true;
+}
+function garStatusText(){
+  var tc=TOUCH?'_T':'_K';
+  if (garPick) return garOw ? T('G_OVER'+tc).replace(/#/g,garOw) : T('G_PICK'+tc);
+  if (garMsgT>0) return garMsg;
+  if (garSlotOn) return T('G_LOOK'+tc).replace(/#/g,garSlotOn);
+  return '';
+}
+function garStatus(y,F,maxW){
+  var s=garStatusText(); if (!s) return;
+  var f=garFit(s,maxW,F,800);
+  ctx.save(); if (garPick || garSlotOn) ctx.globalAlpha=garPulse();
+  garText(f.t, W/2, y, f.s, garPick?'#ffd23f':(garSlotOn?'#21e6ff':'#7cff4f'), 'center', 800);
+  ctx.restore();
+}
+/* the slot buttons (desk and land draw them on the stage, phones upright in HTML) */
+function garSlotBtn(n,x,y,w,h,F){
+  var full=!!garSlots[n-1], on=(garSlotOn===n), pick=garPick, ow=(garOw===n);
+  var col = pick ? '#ffd23f' : '#21e6ff';
+  if (on){
+    ctx.save(); ctx.fillStyle='rgba(33,230,255,.85)'; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=hb(8+10*garPulse());
+    rr(x,y,w,h,5); ctx.fill(); ctx.restore();
+    garText(String(n), x+w/2, y+h*0.72, F*1.15, '#071018', 'center', 900);
+  } else {
+    garBtn(x,y,w,h,{dim:!full && !pick, on:ow, col:col, glow:pick?6+8*garPulse():0});
+    ctx.save(); if (!full && !pick) ctx.globalAlpha=0.35;
+    garText(String(n), x+w/2, y+h*0.72, F*1.15, pick?'#ffd23f':'#ffffff', 'center', 900);
+    if (full){ ctx.fillStyle=pick?'#ffd23f':'#21e6ff'; ctx.beginPath(); ctx.arc(x+w/2,y+h-4,2,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+  if (full || pick) garHit(x,y,w,h,function(){ garSlotTap(n); });
+}
+
+/* ---- the three layouts ---- */
+function drawGarage(){
+  garSyncCat(); garHits.length=0;
+  var M=garMode();
+  if (M==='desk') garDesk(); else if (M==='land') garLand(); else garPort();
+  if (TOUCH) garPadUpdate();
+}
+function garDesk(){
+  var row=GROWS[garRow], now=performance.now(), F=11, i;
+  garStage(400,262,160,28,92);
+  /* tabs + Q / E */
+  keyCap(19,13,26,'Q','',F); keyCap(755,13,26,'E','',F);   /* build 99: chevrons outside them */
+  garChev(10,26,-1); garChev(790,26,1);
+  garHit(2,10,46,32,function(){ garCatGo(garCat-1); }); garHit(752,10,46,32,function(){ garCatGo(garCat+1); });
+  var tw=92, tg=6, tx=W/2-(GCATS.length*tw+(GCATS.length-1)*tg)/2;
+  for (i=0;i<GCATS.length;i++){
+    (function(c,x){
+      var on=(c===garCat);
+      garBtn(x,12,tw,30,{on:on, col:'#21e6ff', glow:on?12:0});
+      garIcon(c, x+7, 18, 18, on?'#ffffff':'#a99fdc', 2);
+      var f=garFit(T(GCATS[c].lab), tw-34, F, 700);
+      garText(f.t, x+29, 31, f.s, on?'#ffffff':'#cfd6ff', 'left');
+      if (garCatNew(c)) garPill(T('G_NEW'), x+tw+3, 4, 7.5, '#ff2fbe', garPulse(), 'right');
+      if (garCatMod(c)) garModDot(x+3, 14, 6);
+      garHit(x,12,tw,30,function(){ garCatGo(c); });
+    })(i, tx+i*(tw+tg));
+  }
+  glowText(T('G_SIGN'), W/2, 82, 26, '#21e6ff', 'center', 18);
+  /* chassis panel */
+  var ch=CH_(); panel(18,56,196,78);
+  garText(ch.n, 30, 76, 14, ch.c, 'left', 800); garText(T('GAR_CHASSIS'), 30+ctx.measureText(ch.n).width+8, 76, 9, '#8a7ec4');
+  var bars=[[T('GAR_SPD'),ch.spd/1.2,'#21e6ff'],[T('GAR_GRIP'),ch.grip/1.2,'#7cff4f'],[T('GAR_HP'),ch.hp/5,'#ff2fbe']];
+  for (i=0;i<3;i++){
+    garText(bars[i][0], 30, 96+i*14, 9, '#a99fdc');
+    var on=Math.round(clamp(bars[i][1],0,1)*10);
+    for (var s=0;s<10;s++){ ctx.fillStyle = s<on ? bars[i][2] : 'rgba(255,255,255,.10)'; ctx.fillRect(84+s*12, 88+i*14, 10, 8); }
+  }
+  /* locked / earned item on the turntable */
+  var L=garLockInfo();
+  if (L){                                    /* build 98: the reason wraps onto as many lines as it needs */
+    garFont(10,700); var ln=prWrap(prText(L.r),172), nl=Math.min(6,ln.length);
+    if (L.own){
+      panel(18,142,196,40+nl*13);
+      garText('\u2713 '+T('LK_OWNED'), 30, 162, 13, '#7cff4f', 'left', 800);
+      for (i=0;i<nl;i++) garText(ln[i], 30, 180+i*13, 10, '#cfd6ff');
+    } else {
+      garFont(8.5,700); var tl0=prWrap(T('LK_TRY'),172);
+      panel(18,142,196,(184+nl*13+(tl0[1]?45:34)+10)-142);
+      prLockIcon(36,156,12,'#ff6ad5'); garText(T('LK_LOCKED'), 48, 161, 13, '#ff6ad5', 'left', 800);
+      for (i=0;i<nl;i++) garText(ln[i], 30, 180+i*13, 10, '#cfd6ff');
+      var by=184+nl*13;
+      ctx.fillStyle='rgba(255,255,255,.14)'; ctx.fillRect(30,by,172,6);
+      ctx.fillStyle='#ff6ad5'; ctx.fillRect(30,by,Math.round(172*L.v/L.r.to),6);
+      garText(garCount(L), 30, by+20, 10, '#ffffff', 'left');
+      garFont(8.5,700); var tl=prWrap(T('LK_TRY'),172);
+      garText(tl[0], 30, by+34, 8.5, '#8a7ec4'); if (tl[1]) garText(tl[1], 30, by+45, 8.5, '#8a7ec4');
+    }
+  }
+  /* saved builds, random, photo */
+  panel(586,56,196,84);
+  garText(T('G_SAVED'), 598, 74, 10, '#21e6ff', 'left', 800);
+  for (i=1;i<=3;i++) garSlotBtn(i, 598+(i-1)*38, 84, 32, 28, 11);
+  var sd=!!garSlotOn;
+  garBtn(714,84,58,28,{dim:sd, on:garPick, col:'#ffd23f', glow:garPick?10:0});
+  ctx.save(); if (sd) ctx.globalAlpha=0.35; garText(T('G_SAVE'), 743, 103, 10, garPick?'#ffd23f':'#ffffff', 'center', 800); ctx.restore();
+  if (!sd) garHit(714,84,58,28,garSaveBtn);
+  garText('1 2 3  \u00b7  S', 598, 130, 9, '#8a7ec4');
+  garBtn(586,148,196,30,{dim:sd, col:'#ffd23f'});
+  ctx.save(); if (sd) ctx.globalAlpha=0.35; garDice(604,163,14,'#ffd23f'); garText(T('G_RANDOM'), 622, 168, 11, '#ffffff', 'left', 800); garText('R', 768, 168, 11, '#ffd23f', 'right', 800); ctx.restore();
+  if (!sd) garHit(586,148,196,30,garRandom);
+  var pl=garLooseLocked();                   /* build 98: no photo of a car wearing a locked item */
+  garBtn(586,186,196,30,{col:'#7cff4f', dim:pl});
+  ctx.save(); if (pl) ctx.globalAlpha=0.35;
+  garCam(604,201,15,'#7cff4f'); garText(T('G_PHOTO'), 622, 206, 11, '#ffffff', 'left', 800); garText('P', 768, 206, 11, '#7cff4f', 'right', 800);
+  if (pl) prLockIcon(752,201,10,'#ff6ad5');
+  ctx.restore();
+  garHit(586,186,196,30,garPhoto);
+  /* the car */
+  garDrawCar(400,256,150);
+  var nm=garFit(garNameLine(), 360, 24, 900);
+  glowText(nm.t, W/2, 302, nm.s, '#ffffff', 'center', 12, '900');
+  garText(garSubLine(), W/2, 320, 10, garSubCol(), 'center');
+  garPartsDraw(328,22,11,700);
+  if (row && row.list) garCards(82,358,84,82,8,7,10,{w:34,gap:8});
+  else garPlateDesk(row);
+  garStatus(458,12,440);
+  /* BACK / DRIVE */
+  garBtn(18,442,132,32,{col:'#a99fdc'}); garText('ESC', 30, 463, 9, '#8a7ec4', 'left', 800); garText(T('G_BACK'), 100, 463, 13, '#ffffff', 'center', 800);
+  garHit(18,442,132,32,garBack);
+  ctx.save(); ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(14); rr(650,442,132,32,6); ctx.fill(); ctx.restore();
+  garText('ENTER', 662, 463, 9, '#123d06', 'left', 800); garText(T('G_DRIVE'), 735, 463, 14, '#071a02', 'center', 900);
+  garHit(650,442,132,32,garDrive);
+  garFooter(row);
+}
+function garFooter(row){
+  var k = (row && !row.list) ?
+    [['TAB',T('GK_CAT')],['\u25b2 \u25bc',T('GK_PART')],['A-Z 0-9',T('GK_TYPE')],['\u232b',T('GK_DEL')]] :
+    [['Q E',T('GK_CAT')],['\u25b2 \u25bc',T('GK_PART')],['\u25c0 \u25b6',T('GK_PICK')],['R',T('GK_RND')],['P',T('GK_PHOTO')],['1 2 3',T('GK_SLOT')],['S',T('GK_SAVE')]];
+  var F=10, i, tw=0, ws=[];
+  garFont(F,800);
+  for (i=0;i<k.length;i++){ var a=ctx.measureText(k[i][0]).width+8, b=ctx.measureText(k[i][1]).width; ws.push([a,b]); tw+=a+5+b+(i?16:0); }
+  var x=W/2-tw/2, y=490;
+  for (i=0;i<k.length;i++){
+    if (i) x+=16;
+    ctx.strokeStyle='rgba(255,210,63,.7)'; ctx.lineWidth=1; rr(x,y-11,ws[i][0],15,3); ctx.stroke();
+    garText(k[i][0], x+ws[i][0]/2, y, F, '#ffd23f', 'center', 800); x+=ws[i][0]+5;
+    garText(k[i][1], x, y, F, '#a99fdc', 'left', 700); x+=ws[i][1];
+  }
+}
+function garPlateDesk(row){                   /* PLATE TEXT: the box instead of cards */
+  var k=PLATES[plateI].k, off=(!k || k==='RANDOM'), b=garPlateBox;
+  b.x=290; b.y=366; b.w=220; b.h=44;
+  ctx.fillStyle='#0b0714'; rr(b.x,b.y,b.w,b.h,7); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle='#ff2fbe'; ctx.stroke();
+  var txt=plateTxt.split('').join(' ');
+  garFont(24,800); var tw=ctx.measureText(txt).width;
+  garText(txt, W/2-tw/2, b.y+31, 24, off?'#5a5280':'#21e6ff', 'left', 800);
+  if (!TOUCH && Math.floor(performance.now()/450)%2===0){ ctx.fillStyle='#ff2fbe'; ctx.fillRect(W/2+tw/2+(txt?5:0), b.y+10, 2, 24); }
+  var note = plateMsgT>0 ? T('GAR_PLATE_BAD') : off ? T('GAR_PT_OFF') : T(TOUCH?'GAR_TYPE_TOUCH':'GAR_TYPE_DESK');
+  garText(note, W/2, b.y+b.h+20, TOUCH?TS.MICRO*UI:11, plateMsgT>0?'#ff6ad5':'#8a7ec4', 'center');
+}
+function garLand(){
+  var row=GROWS[garRow], F=TS.LABEL*UI;
+  garStage(400,200,170,30,40);
+  /* top-left: category \u00b7 part; top-right: the slot showing */
+  var c=GCATS[garCat], lab=T(c.lab)+((c.rows.length>1 && T(row.lab)!==T(c.lab))?'  \u00b7  '+T(row.lab):'');
+  garFont(F*0.9,800); var lw=ctx.measureText(lab).width+F*2.6;
+  garBtn(12,10,lw,F*1.9,{col:'#21e6ff'}); garIcon(garCat, 20, 10+F*0.4, F*1.1, '#21e6ff', 2);
+  garText(lab, 20+F*1.5, 10+F*1.3, F*0.9, '#ffffff', 'left', 800);
+  if (garSlotOn){ var st=T('G_SLOT')+' '+garSlotOn; garFont(F*0.9,800); var sw=ctx.measureText(st).width+F*1.4;
+    ctx.save(); ctx.globalAlpha=garPulse(); garBtn(W-12-sw,10,sw,F*1.9,{on:true,col:'#21e6ff',glow:12}); ctx.restore();
+    garText(st, W-12-sw/2, 10+F*1.3, F*0.9, '#ffffff', 'center', 800); }
+  garDrawCar(400,194,150);
+  var nm=garFit(garNameLine(), 560, 30, 900);
+  glowText(nm.t, W/2, 246, nm.s, '#ffffff', 'center', 12, '900');
+  if (!garLockLine(W/2, 274, 700, F*0.95)) garText(garSubLine(), W/2, 274, F*0.85, garSubCol(), 'center');
+  garPartsDraw(298,F*1.55,F*0.82,760);
+  if (row && row.list) garCards(64,336,128,118,8,5,F*0.75,null);
+  else garPlateTouch(352);
+  garStatus(484,F*0.95,760);
+}
+function garPlateTouch(y){                    /* the phone types in the HTML field placed over this box */
+  var b=garPlateBox; b.w=300; b.h=64; b.x=W/2-b.w/2; b.y=y;
+  ctx.fillStyle='#0b0714'; rr(b.x,b.y,b.w,b.h,8); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#ff2fbe'; ctx.stroke();
+  var k=PLATES[plateI].k, off=(!k || k==='RANDOM');
+  var note = plateMsgT>0 ? T('GAR_PLATE_BAD') : off ? T('GAR_PT_OFF') : T('GAR_TYPE_TOUCH');
+  garText(note, W/2, b.y+b.h+30, TS.LABEL*UI*0.85, plateMsgT>0?'#ff6ad5':'#8a7ec4', 'center');
+}
+function garPort(){
+  var row=GROWS[garRow], F=TS.LABEL*UI*1.25;
+  garStage(400,306,230,40,60);
+  var c=GCATS[garCat], lab=T(c.lab);
+  garFont(F,800); var lw=ctx.measureText(lab).width+F*2.8;
+  garBtn(14,12,lw,F*2,{col:'#21e6ff'}); garIcon(garCat, 22, 12+F*0.42, F*1.15, '#21e6ff', 2);
+  garText(lab, 22+F*1.6, 12+F*1.4, F, '#ffffff', 'left', 800);
+  if (garSlotOn){ var st=T('G_SLOT')+' '+garSlotOn; garFont(F,800); var sw=ctx.measureText(st).width+F*1.4;
+    ctx.save(); ctx.globalAlpha=garPulse(); garBtn(W-14-sw,12,sw,F*2,{on:true,col:'#21e6ff',glow:14}); ctx.restore();
+    garText(st, W-14-sw/2, 12+F*1.4, F, '#ffffff', 'center', 800); }
+  garDrawCar(400,300,214);
+  var nm=garFit(garNameLine(), 700, 46, 900);
+  glowText(nm.t, W/2, 382, nm.s, '#ffffff', 'center', 14, '900');
+  if (!garLockLine(W/2, 424, 770, F*0.95)) garText(garSubLine(), W/2, 424, F*0.95, garSubCol(), 'center');
+  garStatus(486,F*0.95,770);
+}
+
+/* ---- phone buttons (#padMenu, class gar) ---- */
+var GP=null;
+var GAR_SVG={
+  dice:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.3"/><path d="M8.5 7l1.2-2.2h4.6L15.5 7"/></svg>'
+};
+function garEl(tag,cls,html){ var e=document.createElement(tag); if (cls) e.className=cls; if (html) e.innerHTML=html; return e; }
+function garPadBuild(){
+  padMenu.innerHTML='';
+  GP={tabs:[], partsBox:null, parts:'', cards:[], cardsBox:null, slots:[], sig:'', cw:0};
+  var tabs=garEl('div','gTabs');
+  GCATS.forEach(function(c,i){
+    var b=garEl('button','tbtn gTab','<svg viewBox="0 0 24 24"><path d="'+c.ic+'"/></svg><span class="lab"></span><span class="nt"></span>');
+    b.children[1].textContent=T(c.lab); b.children[2].textContent=T('G_NEW');
+    bindTap(b,function(){ garCatGo(i); });
+    GP.tabs.push(b); tabs.appendChild(b);
+  });
+  var parts=garEl('div','gParts'); GP.partsBox=parts;
+  var cards=garEl('div','gCards'); GP.cardsBox=cards;
+  var pv=garEl('button','tbtn gArr','\u25c0'), nx=garEl('button','tbtn gArr','\u25b6');
+  bindTap(pv,function(){ garStep(-1); }); bindTap(nx,function(){ garStep(1); });
+  cards.appendChild(pv);
+  for (var k=0;k<3;k++){
+    var cd=garEl('div','gCard','<canvas></canvas><span class="nm"></span><span class="nw"></span><span class="ck">\u2713</span><span class="ow"></span><b class="bar"><b></b></b>');
+    cd.children[2].textContent=T('G_NEW'); cd.children[4].textContent=T('G_OWNED');
+    GP.cards.push({el:cd, cv:cd.children[0], i:-1}); cards.appendChild(cd);
+  }
+  cards.appendChild(nx);
+  var note=garEl('div','gPtNote'); cards.appendChild(note); GP.ptNote=note;
+  /* swipe the cards, or tap a side card */
+  var sx=null, sy=0;
+  cards.addEventListener('pointerdown',function(e){ if (e.target.closest && e.target.closest('.gArr')) return; sx=e.clientX; sy=e.clientY; audioInit(); });
+  cards.addEventListener('pointerup',function(e){
+    if (sx===null) return; var dx=e.clientX-sx; sx=null;
+    if (Math.abs(dx)>28){ garStep(dx<0?1:-1); return; }
+    for (var j=0;j<GP.cards.length;j++){
+      var r=GP.cards[j].el.getBoundingClientRect();
+      if (e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom && GP.cards[j].i>=0){ garPickIdx(GP.cards[j].i); return; }
+    }
+  });
+  cards.addEventListener('pointercancel',function(){ sx=null; });
+  var arrs=garEl('div','gArrs'), lp=garEl('button','tbtn gArr','\u25c0'), rp=garEl('button','tbtn gArr','\u25b6');
+  bindTap(lp,function(){ garStep(-1); }); bindTap(rp,function(){ garStep(1); });
+  arrs.appendChild(lp); arrs.appendChild(rp);
+  var slots=garEl('div','gSlots');
+  for (var n=1;n<=3;n++){ (function(n){ var b=garEl('button','tbtn gSlot'); b.textContent=String(n); bindTap(b,function(){ garSlotTap(n); }); GP.slots.push(b); slots.appendChild(b); })(n); }
+  var sv=garEl('button','tbtn gSave'); sv.textContent=T('G_SAVE'); bindTap(sv,garSaveBtn); slots.appendChild(sv); GP.save=sv;
+  var tools=garEl('div','gTools'), rnd=garEl('button','tbtn gRnd',GAR_SVG.dice), cam=garEl('button','tbtn gCam',GAR_SVG.cam);
+  rnd.setAttribute('aria-label',T('G_RANDOM')); cam.setAttribute('aria-label',T('G_PHOTO'));
+  bindTap(rnd,garRandom); bindTap(cam,garPhoto); tools.appendChild(rnd); tools.appendChild(cam); GP.rnd=rnd; GP.cam=cam;
+  var row1=garEl('div','gRow1'); row1.appendChild(slots); row1.appendChild(tools);
+  var back=garEl('button','tbtn gBack'); back.textContent=T('G_BACK'); bindTap(back,garBack);
+  var drive=garEl('button','tbtn gDrive'); drive.textContent=T('G_DRIVE'); bindTap(drive,garDrive);
+  var row2=garEl('div','gRow2'); row2.appendChild(back); row2.appendChild(drive);
+  [tabs,parts,cards,arrs,row1,row2].forEach(function(e){ padMenu.appendChild(e); });
+}
+function garPadUpdate(){
+  if (!GP || !GP.cardsBox || !GP.cardsBox.isConnected) return;
+  var row=GROWS[garRow], i, c=GCATS[garCat], pt=!row.list;
+  var sel=pt?-1:row.get(), n=pt?0:row.list.length, ids=pt?[]:garWin(n,sel,3);
+  var sig=[garCat,garRow,sel,garSig(),garSlotOn,garPick,garOw,garSlots[0]?1:0,garSlots[1]?1:0,garSlots[2]?1:0,
+           Object.keys(PR.seen).length,Object.keys(PR.got).length,lang,ids.join('.'),GP.cardsBox.clientWidth].join('|');
+  /* the tabs' NEW tags pulse by CSS; the rest only changes with the state */
+  if (sig===GP.sig) return;
+  GP.sig=sig;
+  for (i=0;i<GP.tabs.length;i++){ GP.tabs[i].classList.toggle('sel',i===garCat); GP.tabs[i].classList.toggle('new',garCatNew(i)); GP.tabs[i].classList.toggle('mod',garCatMod(i)); }
+  /* part chips */
+  var pk=garCat+'|'+garPart+'|'+lang+'|'+c.rows.map(function(id){ return (garRowNew(id)?1:0)+(garRowMod(id)?2:0)+(garColIdle(id)?4:0); }).join('');
+  if (GP.parts!==pk){
+    GP.parts=pk; GP.partsBox.innerHTML='';
+    GP.partsBox.style.display = c.rows.length>1 ? '' : 'none';
+    if (c.rows.length>1) c.rows.forEach(function(id,p){
+      var b=garEl('button','tbtn gPart'+(p===garPart?' sel':'')+(garRowNew(id)?' new':'')+(garRowMod(id)?' mod':'')+(garColIdle(id)?' idle':''));
+      b.textContent=T(GROWS[GROW_BY[id]].lab); bindTap(b,function(){ garPartGo(p); }); GP.partsBox.appendChild(b);
+    });
+  }
+  /* cards */
+  GP.cardsBox.classList.toggle('pt',pt); GP.cardsBox.classList.toggle('dim',!!garSlotOn);
+  GP.cardsBox.classList.toggle('idle',!pt && !!garColIdle(row.id));     /* build 101 */
+  if (pt){ var k=PLATES[plateI].k; GP.ptNote.textContent = plateMsgT>0 ? T('GAR_PLATE_BAD') : (!k||k==='RANDOM') ? T('GAR_PT_OFF') : T('GAR_TYPE_TOUCH'); }
+  for (i=0;i<GP.cards.length;i++){
+    var C=GP.cards[i], j=(i<ids.length)?ids[i]:-1;
+    C.i=j; C.el.style.display = j<0 ? 'none' : '';
+    if (j<0) continue;
+    var it=row.list[j], lock=!prOwns(row.id,it);
+    C.el.classList.toggle('sel',j===sel); C.el.classList.toggle('lock',lock);
+    C.el.classList.toggle('new',garNewIt(row.id,it)); C.el.classList.toggle('worn',j===garWornIdx(row) && row.id!=='react');
+    var own2=!!(it.lk && PR.got[prKey(row.id,it.n)]); C.el.classList.toggle('own',own2);
+    var nwE=C.el.children[2], both=own2 && C.el.classList.contains('new'); nwE.style.left=''; nwE.style.top='';   /* build 102 */
+    if (both){ var ox=C.el.children[4].offsetWidth+9;
+      if (ox+nwE.offsetWidth > C.el.clientWidth-20) nwE.style.top='15px'; else nwE.style.left=ox+'px'; }
+    C.el.children[1].textContent=garItName(row,j);
+    var bar=C.el.children[5].firstChild, r=lock?prRuleFor(row.id,it.n):null;
+    bar.style.width = r ? (100*Math.min(prVal(r),r.to)/r.to).toFixed(1)+'%' : '0';
+    garCardDom(C, row, j, lock);
+  }
+  /* slots, save, random */
+  for (i=0;i<3;i++){
+    var b=GP.slots[i], full=!!garSlots[i];
+    b.classList.toggle('full',full); b.classList.toggle('on',garSlotOn===i+1);
+    b.classList.toggle('pick',garPick); b.classList.toggle('ow',garOw===i+1); b.classList.toggle('empty',!full && !garPick);
+  }
+  GP.save.classList.toggle('pick',garPick); GP.save.classList.toggle('dimmed',!!garSlotOn);
+  GP.rnd.classList.toggle('dimmed',!!garSlotOn);
+  GP.cam.classList.toggle('locked',garLooseLocked());   /* build 98: dimmed, a tap says why */
+}
+function garCardDom(C,row,j,lock){            /* paint a card picture into its own small canvas */
+  var cvs=C.cv, w=cvs.clientWidth||84, h=cvs.clientHeight||58, d=window.devicePixelRatio||1;
+  if (cvs.width!==Math.round(w*d)) cvs.width=Math.round(w*d);
+  if (cvs.height!==Math.round(h*d)) cvs.height=Math.round(h*d);
+  var g=cvs.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cvs.width,cvs.height);
+  var pic=garCardImg(row,j,84,Math.round(84*h/w),d*w/84);
+  g.globalAlpha=lock?0.5:1; if (pic) g.drawImage(pic,0,0,cvs.width,cvs.height); g.globalAlpha=1;
+  if (lock){
+    g.setTransform(d,0,0,d,0,0); var keep=ctx; ctx=g;
+    try{ garLockMark(w/2,h*0.55,Math.min(w,h)*0.44,'#ff6ad5'); } finally { ctx=keep; }
+  }
+}
+/* where the phone's plate field goes */
+function garPlateScreen(){
+  if (garMode()==='port' && GP && GP.cardsBox && GP.cardsBox.isConnected){
+    var q=GP.cardsBox.getBoundingClientRect(), w=Math.min(220,q.width-20);
+    return {l:q.left+(q.width-w)/2, t:q.top+6, w:w, h:40};
+  }
+  var r=cv.getBoundingClientRect(), sx=r.width/W, sy=r.height/H, b=garPlateBox;
+  return {l:r.left+b.x*sx, t:r.top+b.y*sy, w:Math.max(88,b.w*sx), h:Math.max(30,b.h*sy)};
+}
+
+/* ---- PHOTO: a 1080 x 1080 card of the car and the best score ---- */
+function garPhoto(){
+  if (garLooseLocked()){ garSay(T('G_PHOTO_LOCK')); blip(220,0.08,'square',0.08); return; }   /* build 98 */
+  var S=1080, c=null;
+  try{ c=offCv(null,S,S,true); }catch(_){ c=null; }
+  if (!c){ garSay(T('G_PHOTO_NO')); return; }
+  var g=c.getContext('2d'), keep=ctx; ctx=g;
+  try{ garPhotoPaint(S); } catch(_){} finally { ctx=keep; }
+  var url=null;
+  try{ url=c.toDataURL('image/png'); }catch(_){ url=null; }
+  if (typeof url!=='string' || url.indexOf('data:image/png')!==0){ garSay(T('G_PHOTO_NO')); return; }
+  var name='vapor-lane-'+(plateTxt||'car').toLowerCase()+'.png', blob=null, file=null;
+  try{
+    var bin=atob(url.split(',')[1]), arr=new Uint8Array(bin.length);
+    for (var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    blob=new Blob([arr],{type:'image/png'});
+    if (typeof File==='function') file=new File([blob],name,{type:'image/png'});
+  }catch(_){ blob=null; }
+  try{                                        /* phones: the share sheet (save to photos, send) */
+    if (TOUCH && file && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file], title:'Vapor Lane'}).catch(function(){});
+      garSay(T('G_PHOTO_OK')); blip(1320,0.06,'square',0.12); return;
+    }
+  }catch(_){}
+  try{
+    var a=document.createElement('a'), u=blob ? URL.createObjectURL(blob) : url;
+    a.href=u; a.download=name; a.style.display='none'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ if (blob) URL.revokeObjectURL(u); a.remove(); }catch(_){} },4000);
+    garSay(T('G_PHOTO_OK')); blip(1320,0.06,'square',0.12);
+  }catch(_){ garSay(T('G_PHOTO_NO')); }
+}
+function garPhotoPaint(S){
+  var g=ctx.createRadialGradient(S/2,S*0.3,40,S/2,S*0.45,S*0.85);
+  g.addColorStop(0,'#3a1166'); g.addColorStop(0.55,'#14072a'); g.addColorStop(1,'#05020c');
+  ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
+  /* sun */
+  var sy=S*0.50, sr=S*0.22, sg=ctx.createLinearGradient(0,sy-sr,0,sy);
+  sg.addColorStop(0,'#ffd23f'); sg.addColorStop(1,'#ff2fbe');
+  ctx.save(); ctx.beginPath(); ctx.arc(S/2,sy,sr,Math.PI,0); ctx.closePath(); ctx.clip();
+  ctx.fillStyle=sg; ctx.fillRect(S/2-sr,sy-sr,sr*2,sr);
+  ctx.fillStyle='#14072a'; for (var k=0;k<6;k++){ var yy=sy-sr*0.42+k*sr*0.09; ctx.fillRect(S/2-sr,yy,sr*2,3+k*2.2); }
+  ctx.restore();
+  /* grid floor */
+  ctx.fillStyle='#0b0418'; ctx.fillRect(0,sy,S,S-sy);
+  ctx.strokeStyle='rgba(255,47,190,.55)'; ctx.lineWidth=2;
+  for (var i=-12;i<=12;i++){ ctx.beginPath(); ctx.moveTo(S/2+i*14,sy); ctx.lineTo(S/2+i*150,S); ctx.stroke(); }
+  for (var j=1;j<12;j++){ var t=Math.pow(j/12,2.1), y2=sy+(S-sy)*t; ctx.globalAlpha=0.25+0.6*t; ctx.beginPath(); ctx.moveTo(0,y2); ctx.lineTo(S,y2); ctx.stroke(); }
+  ctx.globalAlpha=1;
+  /* the turntable and the car */
+  ctx.fillStyle='rgba(255,47,190,.22)'; ctx.beginPath(); ctx.ellipse(S/2,S*0.785,S*0.33,S*0.06,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#21e6ff'; ctx.lineWidth=4; ctx.shadowColor='#21e6ff'; ctx.shadowBlur=20; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.save(); ctx.translate(S/2,S*0.775); paintCar(S*0.40,{glow:0.8}); ctx.restore();
+  /* words */
+  glowText('VAPOR LANE', S/2, S*0.13, 96, '#21e6ff', 'center', 30, '900');
+  garText(T('BEST')+'  '+prFmt(best), S/2, S*0.935, 46, '#ffd23f', 'center', 800);
+  if (plateTxt) garText(plateTxt.split('').join(' '), S/2, S*0.20, 34, '#ff6ad5', 'center', 800);
+}
+
+/* ---- NEW on the title's G GARAGE key (desktop); the phone's GARAGE slab gets it in syncPad ---- */
+function garTitleNew(x,y,sz,label,fs,pad){
+  if (!garAnyNew()) return;
+  garFont(fs,700);
+  var lx=x+sz+pad+ctx.measureText(label).width+9;
+  garPill(T('G_NEW'), lx, y+sz*0.5-fs*0.62, fs*0.82, '#ff2fbe', garPulse());
+}
+/* ---- the mouse over the stage: a hand over anything that can be clicked ---- */
+function garHitAt(lx,ly){
+  for (var i=garHits.length-1;i>=0;i--){ var h=garHits[i]; if (lx>=h.x && lx<=h.x+h.w && ly>=h.y && ly<=h.y+h.h) return i; }
+  return -1;
+}
+cv.addEventListener('pointermove', function(e){
+  if (TOUCH) return;
+  var want='';
+  if (state==='garage'){
+    var r=cv.getBoundingClientRect();
+    if (r.width>0 && r.height>0 && garHitAt((e.clientX-r.left)*W/r.width, (e.clientY-r.top)*H/r.height)>=0) want='pointer';
+  }
+  if (cv.style.cursor!==want) cv.style.cursor=want;
+});
 
 /* ---------------------------------------------------------------
    FRAME
@@ -9303,6 +11610,7 @@ function startCut(kind, to){
 }
 
 function endAbduct(){
+  var ck=cut ? cut.kind : '';         /* build 96: which ride this was */
   cut=null; cutCarRest();
   ufo=null; ufoT=ufoWait(18); hailCool=HAIL_COOL;   /* build 85: the zone has swapped already */
   spinT=0; spinAng=0;                 /* never set down mid-spin */
@@ -9314,6 +11622,8 @@ function endAbduct(){
   say(T('ZONE_IN')+'  '+zn.name, zn.accent, true, null, 2.6);
   if (zn.mult!==1)
     say('×'+zn.mult.toFixed(1)+'  '+T('ZONE_PAY'), '#ffd23f', false, null, 2.6);
+  if (ck==='abduct') prAdd('beam');                               /* build 96: a UFO beam-up */
+  else if (ck==='mist' && zoneI==='haunted') prAdd('haunt');      /* build 96: into HAUNTED HIGHWAY by THE MIST */
 }
 
 function startAbduct(){
@@ -9468,6 +11778,12 @@ function render(){
   if (oy>0) ctx.clearRect(0,0,CWd,oy); else if (oy<0) ctx.clearRect(0,CHd+oy,CWd,-oy);
   ctx.setTransform(dpr,0,0,dpr,0,0);
 
+  if (state==='garage'){                 /* build 97: the showroom covers the whole stage; the road behind isn't drawn */
+    drawGarage();
+    plateInput(!!(GROWS[garRow] && GROWS[garRow].id==='ptxt'));
+    tutFxVis();
+    return;
+  }
   ctx.save();
   ctx.translate(sx,sy);
 
@@ -9517,6 +11833,7 @@ function render(){
   if (state==='paused')   drawPause();
   if (state==='gameover') drawOver();
   if (state==='garage')   drawGarage();
+  plateInput(state==='garage' && GROWS[garRow] && GROWS[garRow].id==='ptxt');   /* build 94: the phone's plate field */
   if (state==='info')     drawInfo();
   drawBuildTag();                        /* build 93 */
   if (state==='tutorial') tutLayout();   /* build 72/73: keep the closing card where it belongs */
@@ -9714,6 +12031,7 @@ function tutBoot(){
 /* a run the player started themselves counts as having seen the offer */
 function beginRun(){
   reset(); state = 'playing';
+  prPlay();                             /* build 96 */
   if (!tutSeen){ tutSeen = true; tutSave(); }
 }
 /* the game-over offer: an early loss, not finished, never got to lap 5 */
@@ -9825,7 +12143,7 @@ var TUT = [
     trig:function(){ return nextCP - (position + Z_CAR) <= 18000; },
     watch:function(dt){ if (tut.gate) tut.ok = true; } },
   { id:'READY', spot:[], hard:true, final:true,
-    enter:function(){ tutDone = true; tutSave(); },       /* reaching the end is finishing */
+    enter:function(){ tutDone = true; tutSave(); prAdd('tutfin'); },   /* reaching the end is finishing; build 96: PROPELLER */
     trig:function(){ return true; } }
 ];
 
@@ -10113,6 +12431,7 @@ function tutExit(where){
   if (where === 'run'){
     tutDone = true; tutSave();
     learn = false; reset(); state = 'playing';
+    prPlay();                           /* build 96 */
   } else {
     learn = false; reset(); state = 'title';
   }
@@ -10132,6 +12451,7 @@ function startLearn(){
   tutHide(); tutPulse(null); tutFxClear();
   learnPending = true; reset(); learnPending = false;
   state = 'playing';
+  prPlay();                             /* build 96 */
   tutSeen = true; tutSave();
   fansRelease();
   blip(660, 0.09, 'square', 0.14);
