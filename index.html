@@ -80,6 +80,8 @@
     overflow:hidden;
   }
   canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+  /* build 104: the TOP layer. Same size as #c, laid exactly over it, never filtered, and clicks fall through to #c. */
+  #c2{ position:absolute; left:0; top:0; pointer-events:none }
   #scan{
     position:absolute;inset:0;pointer-events:none;
     background:
@@ -621,6 +623,44 @@
   #tutCard button.skip{ border-color:#8a7ec4; color:#a99fdc; background:rgba(138,126,196,.10) }
   /* build 73: the live boxes and the fading dim over the moving road. It never takes a touch. */
   #tutFx{ display:none; position:fixed; inset:0; width:100%; height:100%; z-index:40; pointer-events:none }
+
+  /* ------------------------------------------------------------------
+     BUILD 103 - the START GATE (#gate) and the LEAVE-THE-RACE box (#leave).
+     Two fixed layers above everything (the canvas, the phone pad, the tutorial). Each sits hidden until
+     the script adds .on. The gate dims the main menu until the first click / tap / key; the leave box
+     is the "are you sure?" on the pause screen.
+     ------------------------------------------------------------------ */
+  #gate, #leave{ display:none; position:fixed; inset:0; z-index:80; align-items:center; justify-content:center;
+                 -webkit-user-select:none; user-select:none; touch-action:none;
+                 font-family:"Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif }
+  #gate.on, #leave.on{ display:flex }
+  #gate{ background:rgba(5,2,14,.64); cursor:pointer; -webkit-tap-highlight-color:transparent }
+  #gate .gBox{ box-sizing:border-box; max-width:88vw; text-align:center; padding:.8em 1.5em .95em; border-radius:16px;
+               font-size:clamp(13px,3.1vmin,30px); background:rgba(8,4,18,.9); border:2px solid #21e6ff;
+               box-shadow:0 0 28px rgba(33,230,255,.55), 0 0 64px rgba(255,47,190,.28), inset 0 0 0 1px rgba(255,255,255,.14) }
+  #gate .gHead{ font-size:2.1em; line-height:1.1; letter-spacing:.03em; color:#fff;
+                text-shadow:0 0 16px #ff2fbe, 0 0 4px #ff2fbe }
+  #gate .gGo{ display:inline-block; margin-top:.6em; padding:.4em 1.2em; border-radius:9px;
+              font:800 1.05em ui-monospace,Menlo,"Courier New",monospace; letter-spacing:.14em; color:#7cff4f;
+              border:2px solid rgba(124,255,79,.8); background:rgba(124,255,79,.1);
+              box-shadow:0 0 14px rgba(124,255,79,.35); animation:gatePulse 1.2s ease-in-out infinite }
+  #gate .gSub{ margin-top:.8em; font:700 .62em ui-monospace,Menlo,"Courier New",monospace; letter-spacing:.12em; color:#8a7ec4 }
+  #gate .gSub:empty{ display:none }
+  @keyframes gatePulse{ 0%,100%{ opacity:.62; transform:scale(1) } 50%{ opacity:1; transform:scale(1.05) } }
+  #leave{ background:rgba(5,2,14,.58) }
+  #leave .lBox{ box-sizing:border-box; width:min(88vw,540px); text-align:center; padding:.85em 1.1em 1em; border-radius:14px;
+                font-size:clamp(12px,2.7vmin,22px); background:rgba(8,4,18,.94); border:2px solid #ffd23f;
+                box-shadow:0 0 24px rgba(255,210,63,.4), inset 0 0 0 1px rgba(255,255,255,.14) }
+  #leave .lHead{ font-size:1.65em; line-height:1.1; letter-spacing:.02em; color:#ffd23f; text-shadow:0 0 12px rgba(255,210,63,.55) }
+  #leave .lBody{ margin:.7em 0 .15em; font:700 1em/1.4 ui-monospace,Menlo,"Courier New",monospace; color:#eaf0ff }
+  #leave .lBtns{ display:flex; gap:.9em; justify-content:center; align-items:stretch; flex-wrap:wrap; margin-top:1em }
+  #leave button{ cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:.35em; min-width:9em;
+                 font:800 .9em ui-monospace,Menlo,"Courier New",monospace; letter-spacing:.06em;
+                 border-radius:9px; padding:.6em 1.1em }
+  #leave button .k{ font-size:.68em; letter-spacing:.12em; opacity:.8 }
+  #leave button.stay{ color:#eaf6ff; background:rgba(33,230,255,.14); border:2px solid #21e6ff }
+  #leave button.go{ color:#ffd23f; background:rgba(255,210,63,.1); border:2px solid #ffd23f }
+  body.touch #leave button .k{ display:none }
 </style>
 </head>
 <body>
@@ -628,6 +668,7 @@
 <canvas id="circuit" aria-hidden="true"></canvas>
 <div id="stage">
   <canvas id="c"></canvas>
+  <canvas id="c2" aria-hidden="true"></canvas>
   <div id="scan"></div>
 </div>
 <div id="pad">
@@ -679,14 +720,25 @@
 </div>
 <div id="tut"><svg id="tutSvg" aria-hidden="true"></svg><div id="tutCard"></div></div>
 <svg id="tutFx" aria-hidden="true"></svg>
+<div id="gate" role="button" tabindex="0"><div class="gBox"><div class="gHead"></div><div class="gGo"></div><div class="gSub"></div></div></div>
+<div id="leave" role="dialog" aria-modal="true"><div class="lBox"><div class="lHead"></div><div class="lBody"></div>
+  <div class="lBtns"><button type="button" class="stay"><span class="t"></span><span class="k"></span></button><button type="button" class="go"><span class="t"></span><span class="k"></span></button></div></div></div>
 
 <script>
 (function(){
 "use strict";
 
 var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+/* BUILD 104 - TWO LAYERS. `cv` / `ctxW` is the WORLD layer: the zone's CSS grade (ZN.grade) sits on this canvas only.
+   `cv2` / `ctx2` is the TOP layer, stacked over it and never graded. The global `ctx` is whichever layer is being drawn
+   on right now; render() switches it with useWorld() / useTop(). After render() it is left on the top layer, so any
+   stray draw (the FPS meter) lands on the UI. */
+var cv2 = document.getElementById('c2'), ctx2 = cv2.getContext('2d'), ctxW = ctx;
+function useWorld(){ ctx = ctxW; }
+function useTop(){ ctx = ctx2; }
+var wBlank = true;                 /* the world layer is empty (the garage covers the stage) */
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 102;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
+var BUILD_NO = 104;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -723,6 +775,8 @@ var dpr = window.devicePixelRatio || 1;
 cv.width = W * dpr;
 cv.height = H * dpr;
 ctx.scale(dpr, dpr); // Scale the context so everything draws crisply on high-res screens
+cv2.width = cv.width; cv2.height = cv.height;      /* build 104 */
+ctx2.scale(dpr, dpr);
 
 /* RENDER SCALE (build 70). `dpr` used to be the screen's full pixel ratio,
    whatever size the stage ended up on screen. A phone shows the stage at
@@ -744,6 +798,7 @@ function fitCanvas(){
   var cw=Math.round(W*k), chh=Math.round(H*k);
   if (cw===cv.width && chh===cv.height){ dpr=k; return; }
   dpr=k; cv.width=cw; cv.height=chh;           /* render() sets the transform */
+  cv2.width=cw; cv2.height=chh;                /* build 104: the top layer always matches the world layer */
 }
 
 /* ---------------------------------------------------------------
@@ -966,6 +1021,10 @@ function hb(v){ return v*HQ; }
 /* The lab does its grade as a CSS filter on the canvas element rather
    than a per-frame ctx.filter, so it costs nothing to draw and the
    compositor does the work. Same here. */
+/* Build 104: the grade is a CSS filter on the WORLD canvas (#c) only. The top canvas (#c2) has no filter, so the car, the
+   HUD and every menu keep their natural colours in a graded zone. A zone's own colour tables still hold the RAW values the
+   filter turns into the final look. What goes on which layer is decided in render(): to move something from one to the
+   other, call useWorld() / useTop() around it. */
 function gradeString(){
   var g=ZN.grade;
   return 'brightness('+g.bri.toFixed(2)+') contrast('+g.con.toFixed(2)+
@@ -1288,7 +1347,12 @@ var STR={
     PAUSE_RESUME:'P OR ENTER \u2014 BACK TO THE ROAD', PAUSE_GARAGE:'G \u2014 GARAGE',
     PAUSE_INFO:'I \u2014 HOW IT WORKS', PAUSE_LANG:'L \u2014 IDIOMA / LANGUAGE',
     PAUSE_SOUND:'M \u2014 MUSIC / SOUND',
-    MENU_LINE:'ESC \u2014 MAIN MENU',
+    MENU_LINE:'BACKSPACE \u2014 MAIN MENU',
+    /* build 103: the start gate and the leave-the-race box */
+    GATE_HEAD:'READY TO RACE?', GATE_GO:'CLICK HERE', GATE_GO_TOUCH:'TAP HERE', GATE_SUB:'OR PRESS ANY KEY',
+    LV_HEAD:'LEAVE THIS RACE?', LV_BODY:'You will lose this race, but your garage unlocks and progress still count.',
+    LV_HEAD_C:'END THIS CRUISE?', LV_BODY_C:'Your garage unlocks and progress still count.',
+    LV_STAY:'GO BACK', LV_GO:'MAIN MENU', LV_STAY_K:'ENTER', LV_GO_K:'BACKSPACE',
     PAUSE_FPS:'F \u2014 FPS METER', FPS_TAP:'TAP HERE \u2014 FPS METER', FPS_ON:'ON', FPS_OFF:'OFF',
     HAIL_CALL:'SIGNAL SENT \u2014 LOOK UP', BEAM_HOLD:'HOLD THE BEAM',
     BEAM_SEEN:'IT SAW YOU', T_REAR:'REAR-ENDED \u2014 NO PENALTY',
@@ -1462,7 +1526,11 @@ var STR={
     PAUSE_RESUME:'P O ENTER \u2014 VOLVER A LA PISTA', PAUSE_GARAGE:'G \u2014 GARAJE',
     PAUSE_INFO:'I \u2014 C\u00d3MO FUNCIONA', PAUSE_LANG:'L \u2014 LANGUAGE / IDIOMA',
     PAUSE_SOUND:'M \u2014 M\u00daSICA / SONIDO',
-    MENU_LINE:'ESC \u2014 MEN\u00da PRINCIPAL',
+    MENU_LINE:'RETROCESO \u2014 MEN\u00da PRINCIPAL',
+    GATE_HEAD:'\u00bfLISTO PARA CORRER?', GATE_GO:'HAZ CLIC AQU\u00cd', GATE_GO_TOUCH:'TOCA AQU\u00cd', GATE_SUB:'O PULSA CUALQUIER TECLA',
+    LV_HEAD:'\u00bfSALIR DE LA CARRERA?', LV_BODY:'Perder\u00e1s esta carrera, pero tus desbloqueos del garaje y tu progreso se cuentan igual.',
+    LV_HEAD_C:'\u00bfTERMINAR EL PASEO?', LV_BODY_C:'Tus desbloqueos del garaje y tu progreso se cuentan igual.',
+    LV_STAY:'VOLVER', LV_GO:'MEN\u00da PRINCIPAL', LV_STAY_K:'ENTER', LV_GO_K:'RETROCESO',
     PAUSE_FPS:'F \u2014 MEDIDOR DE FPS', FPS_TAP:'TOCA AQU\u00cd \u2014 MEDIDOR DE FPS', FPS_ON:'S\u00cd', FPS_OFF:'NO',
     HAIL_CALL:'SE\u00d1AL ENVIADA \u2014 MIRA ARRIBA', BEAM_HOLD:'QU\u00c9DATE EN EL HAZ',
     BEAM_SEEN:'TE VIO', T_REAR:'GOLPE TRASERO \u2014 SIN CASTIGO',
@@ -3469,8 +3537,82 @@ function musMix(){
 var MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
          KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
 
+/* ---------------------------------------------------------------
+   BUILD 103 - START GATE + LEAVE-THE-RACE BOX
+
+   START GATE. A browser keeps a page's audio locked, and an itch.io frame keeps its keys, until the player
+   clicks / taps / presses a key INSIDE the page; the click on itch's "Run game" button happens in the
+   parent page and doesn't count. Before this, the first click landed on the main menu and started a race.
+   Now every load puts a dimmed "READY TO RACE?" layer over the main menu; the first click, tap or key
+   press unlocks the audio and the keyboard and starts the menu music, and does nothing else.
+
+   LEAVE BOX. PAUSED -> MAIN MENU used to be ESC, but in a fullscreen frame ESC is eaten by the browser
+   (it only leaves fullscreen), so it needed two presses. Now BACKSPACE (or the phone's MAIN MENU slab)
+   opens a box; Backspace again leaves. Nothing is lost but the run itself: unlocks and counters are
+   saved the moment they happen, and the menu exit saves again.
+--------------------------------------------------------------- */
+var gateUp=false, leaveUp=false;
+var GATE_ON = !/jsdom/i.test(navigator.userAgent||'');   /* the headless tests press the keys themselves */
+function gateText(){
+  var g=el('gate'); if (!g) return;
+  g.querySelector('.gHead').textContent=T('GATE_HEAD');
+  g.querySelector('.gGo').textContent=T(TOUCH?'GATE_GO_TOUCH':'GATE_GO');
+  g.querySelector('.gSub').textContent=TOUCH?'':T('GATE_SUB');
+}
+function gateShow(){
+  var g=el('gate'); if (!g || !GATE_ON || state!=='title') return;
+  gateUp=true; gateText(); g.classList.add('on');
+}
+function gateGo(){
+  if (!gateUp) return;
+  gateUp=false;
+  var g=el('gate'); if (g) g.classList.remove('on');
+  audioInit(); audioResume();                /* the music starts here, on the main menu */
+  try{ window.focus(); }catch(_){}
+  padState=null;
+}
+function leaveText(){
+  var l=el('leave'); if (!l) return;
+  var cr=(mode==='cruise'), st=l.querySelector('button.stay'), go=l.querySelector('button.go');
+  l.querySelector('.lHead').textContent=T(cr?'LV_HEAD_C':'LV_HEAD');
+  l.querySelector('.lBody').textContent=T(cr?'LV_BODY_C':'LV_BODY');
+  st.querySelector('.t').textContent=T('LV_STAY'); st.querySelector('.k').textContent=T('LV_STAY_K');
+  go.querySelector('.t').textContent=T('LV_GO');   go.querySelector('.k').textContent=T('LV_GO_K');
+}
+function leaveAsk(){
+  var l=el('leave'); if (!l){ leaveNow(); return; }
+  leaveUp=true; leaveText(); l.classList.add('on');
+  l.querySelectorAll('button').forEach(function(b){ b._arm=0; });
+}
+function leaveNo(){ leaveUp=false; var l=el('leave'); if (l) l.classList.remove('on'); }
+function leaveNow(){ leaveNo(); saveGame(); learn=false; state='title'; }
+function leaveKey(e){
+  var c=e.code;
+  if (c==='Backspace'||c==='Delete'){ e.preventDefault(); if (!e.repeat) leaveNow(); }       /* held key = no double press */
+  else if (c==='Enter'||c==='Escape'||c==='KeyP'){ e.preventDefault(); if (!e.repeat) leaveNo(); }
+}
+/* A phone's MAIN MENU slab fires on pointerdown, so the box appears under the finger and the browser's own click
+   (sent when the finger lifts) lands on whichever box button is there: it closed the box the instant it opened.
+   A box button now only answers a click whose press started on that same button. */
+function leaveBtn(b,fn){
+  b.addEventListener('pointerdown', function(){ b._arm=1; });
+  b.addEventListener('pointercancel', function(){ b._arm=0; });
+  b.addEventListener('click', function(){ if (!b._arm) return; b._arm=0; fn(); });
+}
+(function(){
+  var g=el('gate'), l=el('leave');
+  if (g) g.addEventListener('click', gateGo);
+  if (l){ leaveBtn(l.querySelector('button.stay'), leaveNo); leaveBtn(l.querySelector('button.go'), leaveNow); }
+})();
+
 window.addEventListener('keydown', function(e){
   if (plateIn && e.target===plateIn) return;   /* build 94: typing in the plate field */
+  if (gateUp){                                 /* build 103: the first key only wakes the page up */
+    var gc=e.code||'';
+    if (gc!=='Escape' && !/^(Shift|Control|Alt|Meta|F\d+)/.test(gc) && !e.ctrlKey && !e.metaKey){ e.preventDefault(); gateGo(); }
+    return;
+  }
+  if (leaveUp){ leaveKey(e); return; }
   audioInit();
   var c=e.code;
   if (c.indexOf('Arrow')===0 || c==='Space' || (c==='Tab' && state==='garage')) e.preventDefault();   /* build 97: Tab = next category */
@@ -3505,7 +3647,10 @@ window.addEventListener('keydown', function(e){
      playing, where one stray keypress would bin a live run, and not on the
      title screen, where there is nowhere to go. Garage and info intercept
      Escape earlier as their own "back", so they never reach this. */
-  if (c==='Escape' && (state==='paused'||state==='gameover')){ saveGame(); learn=false; state='title'; }
+  /* build 103: PAUSED asks first and answers to BACKSPACE only (ESC is eaten by a fullscreen frame; on the pause
+     screen it now does nothing). GAME OVER has nothing left to lose: Backspace or ESC go straight to the menu. */
+  if (state==='gameover' && (c==='Escape'||c==='Backspace'||c==='Delete')){ e.preventDefault(); saveGame(); learn=false; state='title'; }
+  if (state==='paused' && (c==='Backspace'||c==='Delete')){ e.preventDefault(); if (!e.repeat) leaveAsk(); }
   if (c==='KeyL' && (state==='title'||state==='paused')){ toggleLang(); }
   /* Title only: switching mode mid-run would mean deciding what happens to a
      clock and a health bar that the other mode doesn't have. */
@@ -4042,7 +4187,7 @@ var PAD_ACTS={
   infoPrev: function(){ infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES; },
   infoNext: function(){ infoPage=(infoPage+1)%INFO_PAGES; },
   back:   function(){ if (state==='garage') garBack(); else if (state==='info') state=infoFrom; },   /* build 92; 97: garBack */
-  menu:   function(){ saveGame(); learn=false; state='title'; },
+  menu:   function(){ if (state==='paused') leaveAsk(); else leaveNow(); },   /* build 103: from a race it asks first */
   sound:  function(){ cycleAudio(); },
   lang:   function(){ toggleLang(); padState=null; },
   mode:   function(){ toggleMode(); padState=null; },
@@ -11772,18 +11917,26 @@ function render(){
   /* The sky and ground blits cover every pixel, opaque, so the old
      full-canvas clear only matters for the strip a camera shake uncovers
      (build 70). The blits land on whole pixels, so the strip is exact. */
+  useWorld();
   ctx.setTransform(1,0,0,1,0,0);
   var ox=Math.round(sx*dpr), oy=Math.round(sy*dpr), CWd=cv.width, CHd=cv.height;
   if (ox>0) ctx.clearRect(0,0,ox,CHd); else if (ox<0) ctx.clearRect(CWd+ox,0,-ox,CHd);
   if (oy>0) ctx.clearRect(0,0,CWd,oy); else if (oy<0) ctx.clearRect(0,CHd+oy,CWd,-oy);
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* build 104: the top layer starts empty every frame */
+  ctx2.setTransform(1,0,0,1,0,0); ctx2.clearRect(0,0,cv2.width,cv2.height); ctx2.setTransform(dpr,0,0,dpr,0,0);
 
   if (state==='garage'){                 /* build 97: the showroom covers the whole stage; the road behind isn't drawn */
+    if (!wBlank){                         /* build 104: nothing of the world (or its grade) is left under the garage */
+      ctxW.setTransform(1,0,0,1,0,0); ctxW.clearRect(0,0,CWd,CHd); ctxW.setTransform(dpr,0,0,dpr,0,0); wBlank=true;
+    }
+    useTop();
     drawGarage();
     plateInput(!!(GROWS[garRow] && GROWS[garRow].id==='ptxt'));
     tutFxVis();
     return;
   }
+  wBlank=false;
   ctx.save();
   ctx.translate(sx,sy);
 
@@ -11813,10 +11966,16 @@ function render(){
   }
 
   drawGroundFog();
+  drawWeather(lastDt);                 /* build 104: weather belongs to the graded world (it now falls behind the car) */
+  ctx.restore();
+
+  /* ---- build 104: from here on, the TOP layer (never graded) ---- */
+  useTop();
+  ctx.save();
+  ctx.translate(sx,sy);
   fxDraw(0);                           /* build 83: effects on the ground, under the car */
   drawPlayer();
   hwSpookNear();                       /* build 87 */
-  drawWeather(lastDt);
   drawNearMissPops();
   fxDraw(1);                           /* build 83: effects above the car */
   ctx.restore();
@@ -12477,6 +12636,7 @@ noteLandscape();   /* must follow loadGame(): it can write, and writing
                       before the read would clobber the saved record */
 reset();
 state='title';
+gateShow();        /* build 103: READY TO RACE? over the dimmed main menu until the first click / tap / key */
 /* build 73: ?tutorial=1 starts the tutorial on load */
 (function(){ var q=qs('tutorial'); if (q && q !== '0') startLearn(); })();
 requestAnimationFrame(loop);
