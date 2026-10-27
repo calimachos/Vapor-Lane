@@ -738,7 +738,7 @@ function useWorld(){ ctx = ctxW; }
 function useTop(){ ctx = ctx2; }
 var wBlank = true;                 /* the world layer is empty (the garage covers the stage) */
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 104;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
+var BUILD_NO = 105;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -1350,7 +1350,8 @@ var STR={
     MENU_LINE:'BACKSPACE \u2014 MAIN MENU',
     /* build 103: the start gate and the leave-the-race box */
     GATE_HEAD:'READY TO RACE?', GATE_GO:'CLICK HERE', GATE_GO_TOUCH:'TAP HERE', GATE_SUB:'OR PRESS ANY KEY',
-    LV_HEAD:'LEAVE THIS RACE?', LV_BODY:'You will lose this race, but your garage unlocks and progress still count.',
+    LV_HEAD:'LEAVE THIS RACE?', LV_BODY:'Your score still counts for BEST, and your garage unlocks and progress still count.',
+    LV_HEAD_L:'LEAVE THE TUTORIAL?', LV_BODY_L:'Nothing is lost. Press T on the title screen to start it again.', LV_BODY_LT:'Nothing is lost. Tap TUTORIAL on the title screen to start it again.',
     LV_HEAD_C:'END THIS CRUISE?', LV_BODY_C:'Your garage unlocks and progress still count.',
     LV_STAY:'GO BACK', LV_GO:'MAIN MENU', LV_STAY_K:'ENTER', LV_GO_K:'BACKSPACE',
     PAUSE_FPS:'F \u2014 FPS METER', FPS_TAP:'TAP HERE \u2014 FPS METER', FPS_ON:'ON', FPS_OFF:'OFF',
@@ -1464,9 +1465,10 @@ var STR={
     OVER_LEARN:'NEED A HAND?  T — TUTORIAL', OVER_LEARN_TOUCH:'NEED A HAND?  TAP TUTORIAL',
     LEARN_TAG:'TUTORIAL', LEARN_STEP:'STEP ',
     T_LEARN_CRASH:'CRASH — COSTS HEALTH AND TIME IN A RUN',
-    TUT_GO:'DRIVE', TUT_AGAIN:'AGAIN', TUT_MENU:'MENU',
-    TUT_READY_KEYS:'ENTER — DRIVE    T — AGAIN    ESC — MENU',
-    TUT_EXIT:'P TO PAUSE, THEN ESC TO LEAVE',
+    TUT_GO:'DRIVE', TUT_AGAIN:'AGAIN', TUT_MENU:'MENU', TUT_MENU_K:'BACKSPACE',
+    T_TIMEOUT:'TIME OUT! NO MORE GAS',
+    TUT_READY_KEYS:'ENTER — DRIVE    T — AGAIN    BACKSPACE — MENU',
+    TUT_EXIT:'P TO PAUSE, THEN BACKSPACE TO LEAVE',
     TUT_EXIT_T:'TAP PAUSE, THEN MAIN MENU TO LEAVE',
     TUT_DRIVE_H:'LET’S DRIVE',
     TUT_DRIVE_B:'Hold ↑ or W to speed up. Steer with ← → or A D.',
@@ -1528,7 +1530,8 @@ var STR={
     PAUSE_SOUND:'M \u2014 M\u00daSICA / SONIDO',
     MENU_LINE:'RETROCESO \u2014 MEN\u00da PRINCIPAL',
     GATE_HEAD:'\u00bfLISTO PARA CORRER?', GATE_GO:'HAZ CLIC AQU\u00cd', GATE_GO_TOUCH:'TOCA AQU\u00cd', GATE_SUB:'O PULSA CUALQUIER TECLA',
-    LV_HEAD:'\u00bfSALIR DE LA CARRERA?', LV_BODY:'Perder\u00e1s esta carrera, pero tus desbloqueos del garaje y tu progreso se cuentan igual.',
+    LV_HEAD:'\u00bfSALIR DE LA CARRERA?', LV_BODY:'Tu puntuaci\u00f3n cuenta para el r\u00e9cord, y tus desbloqueos del garaje y tu progreso se cuentan igual.',
+    LV_HEAD_L:'\u00bfSALIR DEL TUTORIAL?', LV_BODY_L:'No se pierde nada. Pulsa T en el men\u00fa principal para repetirlo.', LV_BODY_LT:'No se pierde nada. Toca TUTORIAL en el men\u00fa principal para repetirlo.',
     LV_HEAD_C:'\u00bfTERMINAR EL PASEO?', LV_BODY_C:'Tus desbloqueos del garaje y tu progreso se cuentan igual.',
     LV_STAY:'VOLVER', LV_GO:'MEN\u00da PRINCIPAL', LV_STAY_K:'ENTER', LV_GO_K:'RETROCESO',
     PAUSE_FPS:'F \u2014 MEDIDOR DE FPS', FPS_TAP:'TOCA AQU\u00cd \u2014 MEDIDOR DE FPS', FPS_ON:'S\u00cd', FPS_OFF:'NO',
@@ -1630,9 +1633,10 @@ var STR={
     OVER_LEARN:'¿NECESITAS AYUDA?  T — TUTORIAL', OVER_LEARN_TOUCH:'¿NECESITAS AYUDA?  TOCA TUTORIAL',
     LEARN_TAG:'TUTORIAL', LEARN_STEP:'PASO ',
     T_LEARN_CRASH:'CHOQUE — CUESTA SALUD Y TIEMPO EN CARRERA',
-    TUT_GO:'CONDUCIR', TUT_AGAIN:'OTRA VEZ', TUT_MENU:'MENÚ',
-    TUT_READY_KEYS:'ENTER — CONDUCIR    T — OTRA VEZ    ESC — MENÚ',
-    TUT_EXIT:'P PAUSA, LUEGO ESC PARA SALIR',
+    TUT_GO:'CONDUCIR', TUT_AGAIN:'OTRA VEZ', TUT_MENU:'MENÚ', TUT_MENU_K:'RETROCESO',
+    T_TIMEOUT:'¡SE ACABÓ EL TIEMPO! SIN GAS',
+    TUT_READY_KEYS:'ENTER — CONDUCIR    T — OTRA VEZ    RETROCESO — MENÚ',
+    TUT_EXIT:'P PAUSA, LUEGO RETROCESO PARA SALIR',
     TUT_EXIT_T:'TOCA PAUSA, LUEGO MENÚ PARA SALIR',
     TUT_DRIVE_H:'A CONDUCIR',
     TUT_DRIVE_B:'Mantén ↑ o W para acelerar. Gira con ← → o A D.',
@@ -2057,6 +2061,9 @@ var state='title';
 var position=0, playerX=0, speed=0, steerVel=0;
 var health=MAX_HULL, lap=1, timeLeft=45, score=0, best=0, overtakes=0;
 var bestAtStart=0;   // the record this run is chasing
+/* build 105: `coast` = the clock ran out and the car is rolling to a stop (see coastStart);
+   `comboOwe` = the pickup kind the NEXT lap must double, to pay back a combo lap (see pickupPlan) */
+var coast=false, comboOwe=null;
 var spinT=0, invT=0, shake=0, spinAng=0;
 /* Build 71: shT is game time for the shake and the drift rumble; carRum eases
    the rumble in and out (0..1). RUMBLE_* are its size in logical px/radians. */
@@ -2375,7 +2382,7 @@ var stars=[], skyline=[], TILE=W+80;
 function reset(){
   trackReset();
   position=0; playerX=0; speed=0; steerVel=0;
-  health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0;
+  health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0; coast=false; comboOwe=null;
   spinT=0; invT=0; shake=0; spinAng=0; bgX=0; curSlope=0; carRum=0;
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
@@ -3574,8 +3581,9 @@ function gateGo(){
 function leaveText(){
   var l=el('leave'); if (!l) return;
   var cr=(mode==='cruise'), st=l.querySelector('button.stay'), go=l.querySelector('button.go');
-  l.querySelector('.lHead').textContent=T(cr?'LV_HEAD_C':'LV_HEAD');
-  l.querySelector('.lBody').textContent=T(cr?'LV_BODY_C':'LV_BODY');
+  var tl=!!learn;                       /* build 105: opened from the tutorial's pause screen */
+  l.querySelector('.lHead').textContent=T(tl?'LV_HEAD_L':(cr?'LV_HEAD_C':'LV_HEAD'));
+  l.querySelector('.lBody').textContent=T(tl?(TOUCH?'LV_BODY_LT':'LV_BODY_L'):(cr?'LV_BODY_C':'LV_BODY'));
   st.querySelector('.t').textContent=T('LV_STAY'); st.querySelector('.k').textContent=T('LV_STAY_K');
   go.querySelector('.t').textContent=T('LV_GO');   go.querySelector('.k').textContent=T('LV_GO_K');
 }
@@ -3585,7 +3593,11 @@ function leaveAsk(){
   l.querySelectorAll('button').forEach(function(b){ b._arm=0; });
 }
 function leaveNo(){ leaveUp=false; var l=el('leave'); if (l) l.classList.remove('on'); }
-function leaveNow(){ leaveNo(); saveGame(); learn=false; state='title'; }
+function leaveNow(){
+  leaveNo();
+  if (mode==='run' && !learn) best=Math.max(best,score|0);   /* build 105: a race quit to the menu keeps its score for BEST (Carlos) */
+  saveGame(); learn=false; state='title';
+}
 function leaveKey(e){
   var c=e.code;
   if (c==='Backspace'||c==='Delete'){ e.preventDefault(); if (!e.repeat) leaveNow(); }       /* held key = no double press */
@@ -3618,7 +3630,7 @@ window.addEventListener('keydown', function(e){
   if (c.indexOf('Arrow')===0 || c==='Space' || (c==='Tab' && state==='garage')) e.preventDefault();   /* build 97: Tab = next category */
 
   if (state==='garage'){ garageKey(c); return; }
-  if (state==='tutorial'){ tutKey(c); return; }     /* build 72 */
+  if (state==='tutorial'){ if (c==='Backspace'||c==='Delete') e.preventDefault(); tutKey(c); return; }     /* build 72; 105: Backspace too */
   if (state==='info'){
     if (TOUCH && c==='ArrowLeft')  infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES;
     if (TOUCH && c==='ArrowRight') infoPage=(infoPage+1)%INFO_PAGES;
@@ -4464,9 +4476,82 @@ function crash(rear){
   if (health<=0){
     endReason='WRECKED'; state='gameover'; best=Math.max(best,score|0); saveGame();
   } else if (timeLeft<=0){
-    endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame(); react('tears');
+    if (!coast) coastStart();          /* build 105: the crash took the last seconds: the car rolls out instead of ending at once */
   } else {
     say(T('T_CRASH')+CRASH_TIME+T('T_CRASH_S'),'#ff5d5d',true);
+  }
+}
+
+/* ---------------------------------------------------------------
+   BUILD 105 - TIME-OUT COAST
+   When the clock reaches zero the gas stops working, the TIME OUT message and the tears reaction come up, and the
+   car rolls down on its own (a touch quicker than the normal idle: COAST_T seconds from full speed). Steering,
+   braking, shooting and drifting all still work. The run ends when the speed is down to COAST_END (10 %) of the
+   lap's top speed. A lap gate reached on the roll adds time again (coast=false) and the run goes on.
+--------------------------------------------------------------- */
+var COAST_T = 4.2;       /* the idle drag is maxS/6.5 per second; the roll uses maxS/COAST_T                    */
+var COAST_END = 0.10;    /* game over at this share of the lap's top speed                                       */
+function coastStart(){
+  coast=true;
+  react('tears');
+  say(T('T_TIMEOUT'),'#ff4d6d',true,null,2.6);
+  blip(330,0.18,'square',0.16);
+  setTimeout(function(){ blip(220,0.34,'square',0.16); },150);
+}
+
+/* ---------------------------------------------------------------
+   BUILD 105 - WHERE THE PICKUPS GO (options A + C of the build-89 doc)
+   Same amounts per lap as before. A: each lap's pickups are dealt at random into six bands along the lap (the
+   same six bands as before), so the heart is no longer always first. C: about one lap in three has two of the
+   same pickup back to back, a heart pair or a bolt pair (the second 6.5 to 9 k units behind the first, in another
+   lane). A combo lap swaps one pickup of the other kind for the doubled one, and the NEXT lap swaps it back, so
+   over the two laps the amounts are exactly what they always were. Combos start on lap 4 (laps 2 and 3 keep
+   their heart + bolt).
+--------------------------------------------------------------- */
+var PK_BANDS = [[0.10,0.20],[0.26,0.36],[0.40,0.48],[0.52,0.62],[0.66,0.74],[0.80,0.90]];
+var PK_COMBO_P = 0.2;        /* chance on a free lap; with the forced payback lap that is about 1 lap in 3        */
+var PK_COMBO_FROM = 4;
+var PK_PAIR_GAP = 6500, PK_PAIR_JIT = 2500;
+function shuffleArr(a){
+  for (var i=a.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0, t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function pickupPlan(hearts,bolts){
+  var n={heart:hearts, bolt:bolts}, pair=null, payback=false;
+  if (comboOwe){ pair=comboOwe; comboOwe=null; payback=true; }
+  else if (lap>=PK_COMBO_FROM && Math.random()<PK_COMBO_P) pair=(Math.random()<0.5)?'heart':'bolt';
+  if (pair){
+    var other=(pair==='heart')?'bolt':'heart';
+    if (n[other]>0){ n[pair]++; n[other]--; if (!payback) comboOwe=other; }   /* the payback lap does not start a new debt */
+    else pair=null;
+  }
+  return { h:n.heart, b:n.bolt, pair:pair };
+}
+function layPickups(hearts,bolts,dinos,pair){
+  var units=[], i, nh=hearts, nb=bolts, p0=pickups.length;
+  if (pair==='heart' && nh>=2){ units.push(['heart','heart']); nh-=2; }
+  else if (pair==='bolt' && nb>=2){ units.push(['bolt','bolt']); nb-=2; }
+  for (i=0;i<nh;i++) units.push(['heart']);
+  for (i=0;i<nb;i++) units.push(['bolt']);
+  for (i=0;i<dinos;i++) units.push(['dino']);
+  shuffleArr(units);
+  var bands=shuffleArr(PK_BANDS.slice()).slice(0,units.length).sort(function(p,q){ return p[0]-q[0]; });
+  for (i=0;i<units.length;i++){
+    var u=units[i], bd=bands[i];
+    var z0=cpStart + cpLen*(bd[0]+Math.random()*(bd[1]-bd[0]));
+    var l0=(Math.random()*LANES.length)|0;
+    pickups.push({ kind:u[0], z:z0, x:LANES[l0] });
+    if (u.length>1){
+      var l1=(l0+1+((Math.random()*(LANES.length-1))|0))%LANES.length;       /* another lane */
+      pickups.push({ kind:u[1], z:z0+PK_PAIR_GAP+Math.random()*PK_PAIR_JIT, x:LANES[l1] });
+    }
+  }
+  /* two pickups within 3500 units in the same lane would sit on top of each other: move the later one over a lane */
+  for (i=p0+1;i<pickups.length;i++){
+    for (var k=p0;k<i;k++){
+      if (Math.abs(pickups[i].z-pickups[k].z)<3500 && pickups[i].x===pickups[k].x)
+        pickups[i].x=LANES[(LANES.indexOf(pickups[i].x)+1)%LANES.length];
+    }
   }
 }
 
@@ -4524,7 +4609,8 @@ function update(dt){
     // Drift condition: braking + steering + moving at a decent speed
     var isDrifting = keys.down && input !== 0 && speed > maxS * 0.35;
 
-    var both = keys.up && keys.down;
+    var gasOn = keys.up && !coast;         /* build 105: no gas once the clock is out */
+    var both = gasOn && keys.down;
 
     if (both){
       /* holding both is a drift tool, not free speed — it bleeds off at the
@@ -4536,12 +4622,12 @@ function update(dt){
       }
       /* at or below the floor it simply holds: you can drift at a steady 80%
          indefinitely, but holding both can never gain you speed */
-    } else if (keys.up) {
+    } else if (gasOn) {
       speed += (maxS/3.1)*dt;
     } else if (keys.down) {
       speed -= isDrifting ? (maxS/2.2)*dt : (maxS/1.15)*dt;
     } else {
-      speed -= (maxS/6.5)*dt;
+      speed -= (maxS/(coast?COAST_T:6.5))*dt;
     }
 
     var grip = CH_().grip * Z().grip;   /* chassis grip composes with the zone's */
@@ -4627,9 +4713,12 @@ function update(dt){
   bgX += (-curSlope*108000 - bgX)*Math.min(1,3*dt);
 
   if (mode==='run' && !learn){
-    timeLeft-=dt;
-    if (timeLeft<=0){
-      timeLeft=0; endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame(); react('tears');
+    if (!coast){
+      timeLeft-=dt;
+      if (timeLeft<=0){ timeLeft=0; coastStart(); }
+    } else if (speed<=maxS*COAST_END){
+      /* build 105: the roll is over (10 % of the top speed): now the run ends */
+      endReason='OUT OF TIME'; state='gameover'; best=Math.max(best,score|0); saveGame();
     }
   }
 
@@ -4641,7 +4730,7 @@ function update(dt){
     prLap();                                     /* build 96 */                      /* build 73: reaching lap 5 once ends the game-over offer */
     cpStart=nextCP; cpLen=lapLength(lap); nextCP=cpStart+cpLen;
     var award=cpBonus(lap);
-    timeLeft += award;
+    timeLeft += award; coast=false;     /* build 105: a gate reached on the roll saves the run */
     /* The lap<=3 clamp to CLOCK_CAP is gone. It only ever bit a player who was
        ALREADY doing well — someone struggling never reached 48s in the first
        place — so all it did was confiscate the early margin from good play and
@@ -4676,6 +4765,7 @@ function update(dt){
     /* Only claim a speed bump when there is one. Top speed caps at lap 7, so
        the old unconditional "TOP SPEED UP" was false on every lap after it. */
     var spdUp  = maxSpeedFor(lap) > maxSpeedFor(lap-1);
+    var pk = pickupPlan(hearts,bolts); hearts=pk.h; bolts=pk.b;    /* build 105: A + C, same amounts over two laps */
 
     say(T('T_LAP')+lap+'   +'+award+T('T_CP_S'),'#7cff4f',true,null,CP_MSG);
     var chips=[];
@@ -4685,16 +4775,7 @@ function update(dt){
     if (spdUp)    chips.push({icon:'spd',   n:1, label:T('T_SPD')});
     if (chips.length) sayChips(chips,'#21e6ff',CP_MSG);
 
-    if (hearts>0){
-      addPickup('heart',0.10,0.20);
-      if (hearts>1) addPickup('heart',0.40,0.48);
-      if (hearts>2) addPickup('heart',0.66,0.74);
-    }
-    if (bolts>0){
-      addPickup('bolt',0.26,0.36);
-      if (bolts>1) addPickup('bolt',0.80,0.90);     /* a second round per leg */
-    }
-    if (dinos>0) addPickup('dino',0.52,0.62);
+    layPickups(hearts,bolts,dinos,pk.pair);          /* build 105 (was fixed bands: heart first, bolt second ...) */
     /* Must match weaverOdds() — this warning fired on lap 8 while the vans
        themselves moved to lap 5, so for three laps you met the hazard with no
        warning at all and then got told about it long after you had worked it
@@ -12543,7 +12624,7 @@ function tutRender(b){
   h += '<div class="tBtns">'+
        tutOpt('tutGo',    T('TUT_GO'),    'ENTER', '',     true)+
        tutOpt('tutAgain', T('TUT_AGAIN'), 'T',     '',     false)+
-       tutOpt('tutMenu',  T('TUT_MENU'),  'ESC',   'skip', false)+'</div>';
+       tutOpt('tutMenu',  T('TUT_MENU'),  T('TUT_MENU_K'), 'skip', false)+'</div>';
   tutCardEl.innerHTML = h;
   tutBtn(el('tutGo'),    function(){ tutExit('run'); });
   tutBtn(el('tutAgain'), function(){ startLearn(); });
@@ -12600,7 +12681,7 @@ function tutKey(c){
   var b = tut && TUT[tut.i];
   if (c === 'KeyM'){ cycleAudio(); return; }
   if (c === 'KeyL'){ toggleLang(); if (b) tutRender(b); return; }
-  if (c === 'Escape'){ tutExit('title'); return; }
+  if (c === 'Escape' || c === 'Backspace' || c === 'Delete'){ tutExit('title'); return; }   /* build 105: ESC is eaten by a fullscreen frame */
   if (c === 'Enter' || c === 'Space') tutExit('run');
   else if (c === 'KeyT') startLearn();
 }
