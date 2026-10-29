@@ -738,7 +738,7 @@ function useWorld(){ ctx = ctxW; }
 function useTop(){ ctx = ctx2; }
 var wBlank = true;                 /* the world layer is empty (the garage covers the stage) */
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 105;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
+var BUILD_NO = 109;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -853,7 +853,11 @@ var OD_TIME    = 11;     // overdrive: unlimited fire
    drove itself; 2 a second still clears a queue but you have to aim it. The
    manual trigger keeps the old, snappier gate — with three shots in the
    magazine there is nothing there to farm. */
-var OD_CD      = 0.50;   // overdrive: rounds a second while the trigger is held
+var OD_CD      = 0.25;   // overdrive: seconds between rounds while the trigger is held (build 108: 4 a second; 107 1, 106 2)
+/* build 107 (Carlos 10-28): a round no longer erases the whole lane. A loaded bolt destroys up to SHOT_PIERCE cars,
+   an overdrive round up to OD_PIERCE (nearest first); then it is spent. */
+var SHOT_PIERCE = 5;
+var OD_PIERCE   = 2;
 var FIRE_CD    = 0.11;   // ...the three manual shots stay as quick as they were
 var OD_COLS    = ['#b06cff','#7cff4f','#ff6a3d','#ffffff'];
 var DINO_TIME  = 15;     // seconds of rampage
@@ -1329,7 +1333,7 @@ function CH_(){
 --------------------------------------------------------------- */
 var STR={
   en:{
-    SCORE:'SCORE', BEST:'BEST', NEW:'NEW', LAP:'LAP', TIME:'TIME', SPEED:'SPEED',
+    SCORE:'SCORE', BEST:'BEST', NEW:'NEW', LAP:'LAP', TIME:'TIME', SPEED:'SPEED', HUD_PAUSE:'PAUSE',
     HULL:'HEALTH', SHOTS:'SHOTS', UNLIMITED:'UNLIMITED', RAMPAGE:'RAMPAGE',
     DRIFTM:'DRIFT',
     OVERDRIVE:'OVERDRIVE', NEXT_CP:'NEXT LAP', OFF_ROAD:'OFF ROAD',
@@ -1381,7 +1385,7 @@ var STR={
     HAZ1:'change lane \u2014 watch the roof arrows',
     PU_HEART:'Restores 1 health.',
     PU_BOLT1:'Loads a shot. SPACE fires it,',
-    PU_BOLT2:'piercing every car in its lane.',
+    PU_BOLT2:'piercing up to 5 cars in its lane.',
     PU_BOLT3:'Stack 3 = OVERDRIVE, ',
     PU_BOLT3B:'s',
     PU_BOLT4:'of unlimited fire. A crash still',
@@ -1500,8 +1504,8 @@ var STR={
     TUT_DRIFT_R_H:'DRIFT IN THE CURVE',
     TUT_DRIFT_R_B:'Drifting gives you great handling and charges your BOLTS when used in curves.',
     TUT_FIRE_H:'FIRE!',
-    TUT_FIRE_B:'Press SPACE to fire a loaded shot. It pierces every car in the lane.',
-    TUT_FIRE_BT:'Tap the BOLT button to fire a loaded shot. It pierces every car in the lane.',
+    TUT_FIRE_B:'Press SPACE to fire a loaded shot. It pierces up to 5 cars in the lane.',
+    TUT_FIRE_BT:'Tap the BOLT button to fire a loaded shot. It pierces up to 5 cars in the lane.',
     TUT_FIRE_R_H:'TAKE AIM',
     TUT_FIRE_R_B:'Line up with the car and press SPACE to shoot it.',
     TUT_FIRE_R_BT:'Line up with the car and tap the BOLT button to shoot it.',
@@ -1511,7 +1515,7 @@ var STR={
     TUT_READY_B:'In a TIMED RUN the clock is on: reach every gate in time, and mind your health.'
   },
   es:{
-    SCORE:'PUNTOS', BEST:'R\u00c9CORD', NEW:'', LAP:'VUELTA', TIME:'TIEMPO', SPEED:'VELOCIDAD',
+    SCORE:'PUNTOS', BEST:'R\u00c9CORD', NEW:'', LAP:'VUELTA', TIME:'TIEMPO', SPEED:'VELOCIDAD', HUD_PAUSE:'PAUSA',
     HULL:'SALUD', SHOTS:'DISPAROS', UNLIMITED:'ILIMITADO', RAMPAGE:'ARRASE',
     DRIFTM:'DERRAPE',
     OVERDRIVE:'SOBRECARGA', NEXT_CP:'PR\u00d3X. VUELTA', OFF_ROAD:'FUERA DE PISTA',
@@ -1561,7 +1565,7 @@ var STR={
     HAZ1:'cambian de carril. Mira las flechas.',
     PU_HEART:'Restaura 1 de salud.',
     PU_BOLT1:'Carga un disparo. ESPACIO lo',
-    PU_BOLT2:'lanza y atraviesa su carril.',
+    PU_BOLT2:'lanza y atraviesa hasta 5 coches.',
     PU_BOLT3:'Junta 3 = SOBRECARGA, ',
     PU_BOLT3B:'s',
     PU_BOLT4:'de disparo ilimitado. Un choque',
@@ -1668,8 +1672,8 @@ var STR={
     TUT_DRIFT_R_H:'DERRAPA EN LA CURVA',
     TUT_DRIFT_R_B:'El derrape te da gran control y carga tus RAYOS cuando lo usas en las curvas.',
     TUT_FIRE_H:'¡DISPARA!',
-    TUT_FIRE_B:'Pulsa ESPACIO para disparar. Atraviesa todos los coches del carril.',
-    TUT_FIRE_BT:'Toca el botón del rayo para disparar. Atraviesa todos los coches del carril.',
+    TUT_FIRE_B:'Pulsa ESPACIO para disparar. Atraviesa hasta 5 coches del carril.',
+    TUT_FIRE_BT:'Toca el botón del rayo para disparar. Atraviesa hasta 5 coches del carril.',
     TUT_FIRE_R_H:'APUNTA',
     TUT_FIRE_R_B:'Aliníate con el coche y pulsa ESPACIO para dispararle.',
     TUT_FIRE_R_BT:'Aliníate con el coche y toca el botón del rayo para dispararle.',
@@ -2341,9 +2345,10 @@ var HW_PASS_LANE = 0.55;
 function hwActPass(){
   if (hwK<=0 || ZN.id!=='vapor' || lap<HAIL_LAP) return false;
   var zc=position+Z_CAR, i=Math.round(zc/DECO_SPACE);
-  if (Math.abs(zc-i*DECO_SPACE)>HW_PASS_Z || !isHwAct(i)) return false;
+  if (Math.abs(zc-i*DECO_SPACE)>HW_PASS_Z || !isHwAct(i) || !ofrLive(i)) return false;   /* build 108: this slot open */
   var s=hashAt(i,2)<0.5?-1:1;
-  return s*playerX >= actInner();   /* build 91: a quarter of the car (or the dino) in the outer lane */
+  if (s*playerX >= ofrIn()){ ofrUsed=i; return true; }   /* build 107: only inside the off-ramp bay (build 91: a quarter in the outer lane) */
+  return false;
 }
 /* ?zone=haunted (or alien) starts every run in that zone: a way to look at a zone without hunting
    for its activator. Without it every run starts in VAPOR, as before. */
@@ -2387,7 +2392,7 @@ function reset(){
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
   shots=0; pshots=[]; blasts=[]; odT=0; odShotN=0; fireCd=0;
   dBank=0; dPot=0; drifting=false;
-  ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5; hailPrevZ=-1;
+  ufo=null; ufoT=14; hailCool=HAIL_COOL*0.5; hailPrevZ=-1; ofrUsed=-1; ofrForget();
   fxClear();                           /* build 83 */
   rx=null; trl.length=0; trlA=0;       /* build 94: reactions and trails */
   prRunReset(); prEnforce();           /* build 96: this run's counters; never race a locked item */
@@ -3151,6 +3156,80 @@ ZONES.vapor.song = MUS_SONG_VAPOR;
 ZONES.vaporEdit.song = SONG_ALIEN_PLAINS;
 ZONES.haunted.song = SONG_HAUNTED_HIGHWAY;   /* build 86: its own song (was the main song in 84-85) */
 
+/* build 106: THE GARAGE SONG. Carlos's Loop Forge GAME TABLES export of 2026-10-28 ("garage music editing",
+   SONG_GARAGE_MUSIC_EDITING; source kept as Vapor Lane Music/garage-music-editing.game-tables.js), tables
+   verbatim: 98 bpm, key 15, 16 bars; pad from bar 5, melody bars 1-12, bass all through; drums all through.
+   Its levels are as exported: quieter than the race songs on purpose (Carlos: no blasting while you build a
+   ride). Played while state==='garage' (musMix); the song that was on before comes back on its bar 1. */
+var SONG_GARAGE = { bpm:98, tpbar:32, bars:16, key:15, dvol:0.4,
+  voice:[
+  {w:'square', v:0.0039, cut:4200, rel:0.2, det:3, sub:0, vib:6, rev:0.4},  /* body */
+  {w:'triangle', v:0.0281, cut:1280, rel:0.26, det:1, sub:0, vib:0, rev:0.14},  /* lead */
+  {w:'triangle', v:0.0282, cut:1360, rel:0.15, det:0, sub:0.5, vib:0, rev:0}   /* bass */
+],
+  pat:[
+  [[[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[3,2,46],[3,2,50],[3,2,53],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,43],[11,2,46],[11,2,50],[11,2,53],[14,2,43],[14,2,46],[14,2,50],[14,2,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[19,2,46],[19,2,50],[19,2,52],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,43],[27,2,46],[27,2,50],[27,2,52],[30,2,43],[30,2,46],[30,2,50],[30,2,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[3,2,45],[3,2,48],[3,2,52],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,41],[11,2,45],[11,2,48],[11,2,52],[14,2,41],[14,2,45],[14,2,48],[14,2,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[19,2,45],[19,2,48],[19,2,50],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,41],[27,2,45],[27,2,48],[27,2,50],[30,2,41],[30,2,45],[30,2,48],[30,2,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[3,2,46],[3,2,50],[3,2,53],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,43],[11,2,46],[11,2,50],[11,2,53],[14,2,43],[14,2,46],[14,2,50],[14,2,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[19,2,46],[19,2,50],[19,2,52],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,43],[27,2,46],[27,2,50],[27,2,52],[30,2,43],[30,2,46],[30,2,50],[30,2,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[3,2,45],[3,2,48],[3,2,52],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,41],[11,2,45],[11,2,48],[11,2,52],[14,2,41],[14,2,45],[14,2,48],[14,2,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[19,2,45],[19,2,48],[19,2,50],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,41],[27,2,45],[27,2,48],[27,2,50],[30,2,41],[30,2,45],[30,2,48],[30,2,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[3,2,46],[3,2,50],[3,2,53],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,43],[11,2,46],[11,2,50],[11,2,53],[14,2,43],[14,2,46],[14,2,50],[14,2,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[19,2,46],[19,2,50],[19,2,52],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,43],[27,2,46],[27,2,50],[27,2,52],[30,2,43],[30,2,46],[30,2,50],[30,2,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[3,2,45],[3,2,48],[3,2,52],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,41],[11,2,45],[11,2,48],[11,2,52],[14,2,41],[14,2,45],[14,2,48],[14,2,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[19,2,45],[19,2,48],[19,2,50],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,41],[27,2,45],[27,2,48],[27,2,50],[30,2,41],[30,2,45],[30,2,48],[30,2,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[3,2,46],[3,2,50],[3,2,53],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,43],[11,2,46],[11,2,50],[11,2,53],[14,2,43],[14,2,46],[14,2,50],[14,2,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[19,2,46],[19,2,50],[19,2,52],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,43],[27,2,46],[27,2,50],[27,2,52],[30,2,43],[30,2,46],[30,2,50],[30,2,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[3,2,45],[3,2,48],[3,2,52],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,41],[11,2,45],[11,2,48],[11,2,52],[14,2,41],[14,2,45],[14,2,48],[14,2,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[19,2,45],[19,2,48],[19,2,50],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,41],[27,2,45],[27,2,48],[27,2,50],[30,2,41],[30,2,45],[30,2,48],[30,2,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,46],[14,1,43],[14,1,46],[14,1,50],[14,1,53],[15,1,43],[15,1,46],[15,1,50],[15,1,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,46],[30,1,43],[30,1,46],[30,1,50],[30,1,52],[31,1,43],[31,1,46],[31,1,50],[31,1,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,45],[14,1,41],[14,1,45],[14,1,48],[14,1,52],[15,1,41],[15,1,45],[15,1,48],[15,1,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,45],[30,1,41],[30,1,45],[30,1,48],[30,1,50],[31,1,41],[31,1,45],[31,1,48],[31,1,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,46],[14,1,43],[14,1,46],[14,1,50],[14,1,53],[15,1,43],[15,1,46],[15,1,50],[15,1,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,46],[30,1,43],[30,1,46],[30,1,50],[30,1,52],[31,1,43],[31,1,46],[31,1,50],[31,1,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,45],[14,1,41],[14,1,45],[14,1,48],[14,1,52],[15,1,41],[15,1,45],[15,1,48],[15,1,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,45],[30,1,41],[30,1,45],[30,1,48],[30,1,50],[31,1,41],[31,1,45],[31,1,48],[31,1,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,46],[14,1,43],[14,1,46],[14,1,50],[14,1,53],[15,1,43],[15,1,46],[15,1,50],[15,1,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,46],[30,1,43],[30,1,46],[30,1,50],[30,1,52],[31,1,43],[31,1,46],[31,1,50],[31,1,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,45],[14,1,41],[14,1,45],[14,1,48],[14,1,52],[15,1,41],[15,1,45],[15,1,48],[15,1,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,45],[30,1,41],[30,1,45],[30,1,48],[30,1,50],[31,1,41],[31,1,45],[31,1,48],[31,1,50]],
+   [[0,2,43],[0,2,46],[0,2,50],[0,2,53],[3,2,43],[6,2,43],[6,2,46],[6,2,50],[6,2,53],[8,2,43],[8,2,46],[8,2,50],[8,2,53],[11,2,46],[14,1,43],[14,1,46],[14,1,50],[14,1,53],[15,1,43],[15,1,46],[15,1,50],[15,1,53],[16,2,43],[16,2,46],[16,2,50],[16,2,52],[19,2,43],[22,2,43],[22,2,46],[22,2,50],[22,2,52],[24,2,43],[24,2,46],[24,2,50],[24,2,52],[27,2,46],[30,1,43],[30,1,46],[30,1,50],[30,1,52],[31,1,43],[31,1,46],[31,1,50],[31,1,52]],
+   [[0,2,41],[0,2,45],[0,2,48],[0,2,52],[3,2,41],[6,2,41],[6,2,45],[6,2,48],[6,2,52],[8,2,41],[8,2,45],[8,2,48],[8,2,52],[11,2,45],[14,1,41],[14,1,45],[14,1,48],[14,1,52],[15,1,41],[15,1,45],[15,1,48],[15,1,52],[16,2,41],[16,2,45],[16,2,48],[16,2,50],[19,2,41],[22,2,41],[22,2,45],[22,2,48],[22,2,50],[24,2,41],[24,2,45],[24,2,48],[24,2,50],[27,2,45],[30,1,41],[30,1,45],[30,1,48],[30,1,50],[31,1,41],[31,1,45],[31,1,48],[31,1,50]]],
+  [[[2,2,55],[6,2,67],[8,2,69],[10,2,70],[22,2,69],[24,2,72],[28,2,69]],
+   [[0,2,64],[6,2,60],[12,2,64],[16,2,65],[22,2,58],[28,2,58],[30,2,57]],
+   [[2,2,55],[6,2,67],[8,2,69],[10,2,70],[22,2,69],[24,2,72],[28,2,69]],
+   [[0,2,64],[6,2,60],[12,2,64],[16,2,65],[22,2,58],[28,2,58],[30,2,57]],
+   [[2,2,55],[6,2,67],[8,2,69],[10,2,70],[22,2,69],[24,2,72],[28,2,69]],
+   [[0,2,64],[6,2,60],[12,2,64],[16,2,65],[22,2,58],[28,2,58],[30,2,57]],
+   [[2,2,55],[6,2,67],[8,2,69],[10,2,70],[22,2,69],[24,2,72],[28,2,69]],
+   [[0,2,64],[6,2,60],[12,2,64],[16,2,65],[22,2,58],[28,2,58],[30,2,57]],
+   [[2,2,55],[6,2,74],[8,2,76],[10,2,77],[14,2,74],[16,2,72],[22,2,69],[24,2,72],[28,2,65]],
+   [[0,2,60],[6,2,60],[12,2,65],[16,2,69],[22,2,72],[28,2,76],[30,2,72]],
+   [[2,2,55],[6,2,74],[8,2,76],[10,2,77],[14,2,74],[16,2,72],[22,2,69],[24,2,72],[28,2,65]],
+   [[0,2,60],[6,2,60],[12,2,65],[16,2,69],[22,2,72],[28,2,76],[30,2,72]],
+   [[2,2,55],[6,2,74],[8,2,76],[10,2,77],[14,2,74],[16,2,72],[22,2,69],[24,2,72],[28,2,65]],
+   [[0,2,60],[6,2,60],[12,2,65],[16,2,69],[22,2,72],[28,2,76],[30,2,72]],
+   [[2,2,55],[6,2,74],[8,2,76],[10,2,77],[14,2,74],[16,2,72],[22,2,69],[24,2,72],[28,2,65]],
+   [[0,2,60],[6,2,60],[12,2,65],[16,2,69],[22,2,72],[28,2,76],[30,2,72]]],
+  [[[0,1,31],[1,1,31],[2,2,31],[4,1,31],[5,1,31],[6,2,31],[8,1,31],[9,1,31],[10,2,31],[12,1,31],[13,1,31],[14,2,31],[16,1,40],[17,1,40],[18,2,40],[20,1,40],[21,1,40],[22,2,40],[24,1,40],[25,1,40],[26,2,40],[28,1,40],[29,1,40],[30,2,40]],
+   [[0,1,41],[1,1,41],[2,2,41],[4,1,41],[5,1,41],[6,2,41],[8,1,41],[9,1,41],[10,2,41],[12,1,41],[13,1,41],[14,2,41],[16,1,38],[17,1,38],[18,2,38],[20,1,38],[21,1,38],[22,2,38],[24,1,38],[25,1,38],[26,2,38],[28,1,38],[29,1,38],[30,2,38]],
+   [[0,1,31],[1,1,31],[2,2,31],[4,1,31],[5,1,31],[6,2,31],[8,1,31],[9,1,31],[10,2,31],[12,1,31],[13,1,31],[14,2,31],[16,1,40],[17,1,40],[18,2,40],[20,1,40],[21,1,40],[22,2,40],[24,1,40],[25,1,40],[26,2,40],[28,1,40],[29,1,40],[30,2,40]],
+   [[0,1,41],[1,1,41],[2,2,41],[4,1,41],[5,1,41],[6,2,41],[8,1,41],[9,1,41],[10,2,41],[12,1,41],[13,1,41],[14,2,41],[16,1,38],[17,1,38],[18,2,38],[20,1,38],[21,1,38],[22,2,38],[24,1,38],[25,1,38],[26,2,38],[28,1,38],[29,1,38],[30,2,38]],
+   [[2,2,31],[6,2,31],[10,2,31],[14,2,31],[18,2,40],[22,2,40],[26,2,40],[30,2,40]],
+   [[2,2,41],[6,2,41],[10,2,41],[14,2,41],[18,2,38],[22,2,38],[26,2,38],[30,2,38]],
+   [[2,2,31],[6,2,31],[10,2,31],[14,2,31],[18,2,40],[22,2,40],[26,2,40],[30,2,40]],
+   [[2,2,41],[6,2,41],[10,2,41],[14,2,41],[18,2,38],[22,2,38],[26,2,38],[30,2,38]],
+   [[0,4,31],[4,4,34],[12,4,38],[16,4,40],[20,4,36],[24,4,40]],
+   [[4,4,41],[8,4,45],[12,4,36],[20,4,38],[24,4,41],[28,4,34]],
+   [[0,4,31],[4,4,34],[12,4,38],[16,4,40],[20,4,36],[24,4,40]],
+   [[4,4,41],[8,4,45],[12,4,36],[20,4,38],[24,4,41],[28,4,34]],
+   [[0,4,31],[4,4,34],[12,4,38],[16,4,40],[20,4,36],[24,4,40]],
+   [[4,4,41],[8,4,45],[12,4,36],[20,4,38],[24,4,41],[28,4,34]],
+   [[0,4,31],[4,4,34],[12,4,38],[16,4,40],[20,4,36],[24,4,40]],
+   [[4,4,41],[8,4,45],[12,4,36],[20,4,38],[24,4,41],[28,4,34]]]
+],
+  seq:[[0,0,0,0,5,6,7,8,9,10,11,12,13,14,15,16],[1,2,3,4,5,6,7,8,9,10,11,12,0,0,0,0],[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]],
+  drum:[
+  /* 1 */ [[0,DH],[1,DH],[3,DK],[3,DH],[4,DH],[4,DTH],[5,DTH],[6,DK],[6,DH],[7,DH],[8,DS],[9,DH],[12,DK],[12,DH],[13,DH],[14,DK],[16,DH],[17,DH],[19,DK],[19,DH],[20,DH],[20,DTH],[21,DTH],[22,DK],[22,DH],[23,DH],[24,DS],[25,DH],[28,DK],[28,DH],[29,DH],[30,DK]],
+  /* 2 */ [[0,DH],[1,DH],[3,DK],[3,DH],[4,DH],[4,DTH],[5,DTH],[6,DK],[6,DH],[7,DH],[8,DS],[9,DH],[12,DK],[12,DH],[13,DH],[14,DK],[16,DK],[16,DC],[18,DH],[20,DC],[22,DH],[24,DK],[24,DC],[26,DC],[28,DC],[29,DC],[30,DC],[30,DO],[31,DC]],
+  /* 3 */ [[0,DH],[1,DH],[2,DK],[3,DH],[4,DK],[4,DH],[5,DK],[6,DH],[7,DH],[8,DS],[9,DH],[10,DK],[10,DH],[11,DH],[12,DTH],[13,DTH],[14,DK],[14,DH],[15,DH],[16,DH],[17,DH],[18,DK],[19,DH],[20,DK],[20,DH],[21,DK],[22,DH],[23,DH],[24,DS],[25,DH],[26,DK],[26,DH],[27,DH],[28,DTH],[29,DTH],[30,DK],[30,DH],[31,DH]],
+  /* 4 */ [[0,DH],[1,DH],[2,DK],[3,DH],[4,DK],[4,DH],[5,DK],[6,DH],[7,DH],[8,DS],[9,DH],[10,DK],[10,DH],[11,DH],[12,DTH],[13,DTH],[14,DK],[14,DH],[15,DH],[16,DK],[16,DC],[18,DH],[20,DC],[22,DH],[24,DK],[24,DC],[26,DC],[28,DC],[29,DC],[30,DC],[30,DO],[31,DC]]
+],
+  dseq:[1,2,1,2,1,2,1,2,3,4,3,4,3,4,3,4]
+};
+var SONG_GARAGE_MUSIC_EDITING = SONG_GARAGE;   /* the export's own name */
+var garSongPrev = null;                        /* the song to bring back when the garage closes */
+function musSwapSafe(song){ try{ musArrive(song); }catch(e){} }
+
 /* Drop-off after a ride (build 65). The ride fades the music layers out
    (musMix: state 'abduct' is not 'playing'), setZone() swaps the map at the
    white-out WITHOUT touching the song, and this runs on landing: the new
@@ -3219,7 +3298,7 @@ function musSched(){
     var horizon=A.ctx.currentTime+0.12;
     /* Read once per pass rather than per tick: the horizon is 120ms, so the
        switch lands within a frame or two of the pickup either way. */
-    var rage = (dinoT>0), hot = (odT>0);
+    var rage = (dinoT>0) && state!=='garage', hot = (odT>0) && state!=='garage';   /* build 106: no power-up layers over the garage song */
     var tick = rage ? MUS_TICK_D : MUS_TICK;
     /* power-up layers (see POWER-UP MUSIC LAYERS): harmony and level trims only while one is on */
     var H = null, K = null;
@@ -3515,7 +3594,10 @@ function drumHit(type, when){
    a layer actually changes, so it costs nothing on a steady state. */
 function musMix(){
   if (!A || !A.mus) return;
-  var live = musicOn && (state==='playing' || state==='title' || state==='tutorial');
+  /* build 106: the garage has its own song; whatever was loaded comes back (from its bar 1) on the way out */
+  if (state==='garage'){ if (musCur!==SONG_GARAGE){ garSongPrev=musCur; musSwapSafe(SONG_GARAGE); } }
+  else if (musCur===SONG_GARAGE){ musSwapSafe(garSongPrev || (ZN && ZN.song) || MUS_SONG_VAPOR); garSongPrev=null; }
+  var live = musicOn && (state==='playing' || state==='title' || state==='tutorial' || state==='garage');
   /* All three lines are always audible: they were composed to be heard
      together, and gating one to a rare game state hid a whole melody. The
      adaptive part is now a swell on the lead rather than an on/off switch. */
@@ -3531,7 +3613,7 @@ function musMix(){
     try{ A.mus[i].gain.setTargetAtTime(tgt[i],A.ctx.currentTime,0.22); }catch(e){}
   }
   /* drums enter only while actually driving, so the title screen stays calm */
-  var dtgt = (musicOn && state==='playing') ? 1 : 0;
+  var dtgt = (musicOn && (state==='playing' || state==='garage')) ? 1 : 0;   /* build 106: the garage song has its drums */
   if (dtgt!==musDLast){
     musDLast=dtgt;
     try{ if (A.dbus) A.dbus.gain.setTargetAtTime(dtgt,A.ctx.currentTime,0.25); }catch(e){}
@@ -4324,6 +4406,8 @@ function syncPad(){
 
 cv.addEventListener('pointerdown', function(e){
   audioInit();
+  /* build 106: the desktop P PAUSE box is a button too (left mouse button only) */
+  if (e && (e.button===0 || e.button===undefined) && hudPauseAt(e)){ state = state==='playing' ? 'paused' : 'playing'; return; }
   if (state==='title'||state==='gameover'){ beginRun(); }
   else if (state==='garage' && e){         /* build 97: tabs, chips, cards, slots... drawn on the stage */
     var gr0=cv.getBoundingClientRect();
@@ -4371,7 +4455,7 @@ function trySpawn(){
 }
 
 function fire(){
-  if (spinT>0 || fireCd>0) return;
+  if (spinT>0 || fireCd>1e-6) return;   /* build 108: float crumbs don't cost a frame (15 frames = 0.25 s) */
   var col='#8ef4ff';
   if (odT>0){
     col=OD_COLS[odShotN%OD_COLS.length];   /* purple, green, orange, white */
@@ -4381,7 +4465,7 @@ function fire(){
     shots--;
   }
   fireCd = (odT>0 ? OD_CD : FIRE_CD);
-  pshots.push({z:position+Z_CAR+240, x:playerX, prevZ:position+Z_CAR, isShot:true, col:col});
+  pshots.push({z:position+Z_CAR+240, x:playerX, prevZ:position+Z_CAR, isShot:true, col:col, left:(odT>0?OD_PIERCE:SHOT_PIERCE)});
   shake=Math.max(shake, odT>0?3:4.5);
   blip(odT>0?1750:1500,0.05,'square',0.15);
   setTimeout(function(){ blip(680,0.12,'sawtooth',0.12); },45);
@@ -4655,7 +4739,7 @@ function update(dt){
     steerVel += (input*agility-steerVel)*Math.min(1,resp*dt);
   }
 
-  if (Math.abs(playerX)>1){
+  if (ofrOff()){
     if (speed > maxS*0.45) speed -= (maxS/2.0)*dt;
     shake=Math.max(shake, 2.4*spct);
     scrapeCd-=dt;                /* was up to 24 onsets a second: same crackle */
@@ -4943,20 +5027,22 @@ function update(dt){
      and there are two ways in: drive under the broken lamp (on the road) or, as before, right beside the alien. */
   var zcNow=position+Z_CAR, zcPrev=hailPrevZ;
   hailPrevZ=zcNow;
+  if (ofrUsed>=0 && ofrUsed*DECO_SPACE < zcNow+BAY_SHUT) ofrUsed=-1;   /* build 107: past its bay */
+  ofrLatchAhead();                                                     /* build 108: open / closed */
   /* build 88: the Halloween activator has its own, wider pass test (hwActPass); one that goes by while it can't
      take you is made up further on (hwActMakeup) */
   if (lap>=HAIL_LAP && !learn && ZN.id==='vapor' && hwK>0){
-    if (hailLive() && hwActPass()){ if (state==='playing'){ startMist('haunted'); return; } }
+    if (hwActPass()){ if (state==='playing'){ startMist('haunted'); return; } }   /* build 108: hwActPass tests the slot (ofrLive) */
     if (zcPrev>=0 && zcNow>zcPrev && zcNow-zcPrev<DECO_SPACE && Math.floor(zcNow/DECO_SPACE)>Math.floor(zcPrev/DECO_SPACE)
-        && isHwAct(Math.floor(zcNow/DECO_SPACE)) && !hailLive()) hwActMakeup();
+        && isHwAct(Math.floor(zcNow/DECO_SPACE)) && !ofrLive(Math.floor(zcNow/DECO_SPACE))) hwActMakeup();
   }
-  if (zcPrev>=0 && zcNow>zcPrev && zcNow-zcPrev<DECO_SPACE && hailLive()){
+  if (zcPrev>=0 && zcNow>zcPrev && zcNow-zcPrev<DECO_SPACE){
     var iNow=Math.floor(zcNow/DECO_SPACE);
     var hwAct=false;                    /* build 88: the activator is tested above (build 84: isHwAct(iNow)) */
-    if (iNow>Math.floor(zcPrev/DECO_SPACE) && (hwAct || isHailer(iNow))){
+    if (iNow>Math.floor(zcPrev/DECO_SPACE) && (hwAct || isHailer(iNow)) && ofrLive(iNow)){   /* build 108: this slot open */
       var hSide=hashAt(iNow,2)<0.5?-1:1;
-      if ((hSide*playerX >= actInner() && hSide*playerX < HAIL_HEAD_X+HAIL_LAMP_R) ||   /* build 91: inner edge = a quarter in the outer lane */
-          Math.abs(hSide*HAIL_LAT - playerX) < HAIL_R){
+      if (hSide*playerX >= ofrIn()){        /* build 107: only inside the off-ramp bay (was: a quarter of the car in the outer lane, or beside the alien) */
+        ofrUsed=iNow;
         if (hwAct){ if (state==='playing'){ startMist('haunted'); return; } }
         else if (ZN.look==='haunted'){ if (state==='playing'){ startMist('vapor'); return; } }   /* a hitchhiker: back to VAPOR */
         else callUfo();
@@ -5066,24 +5152,29 @@ function update(dt){
     if (dinoT===0) say(T('T_BACK_TO_CAR'),'#8a7ec4');
   }
 
-  /* rounds in flight: they pierce, so one shot can clear a whole queue */
+  /* rounds in flight: they pierce (build 107: up to SHOT_PIERCE cars, OD_PIERCE in overdrive) */
   var shotV=maxSpeedFor(lap)*1.5;
   for (i=pshots.length-1;i>=0;i--){
     var sh=pshots[i];
     sh.prevZ=sh.z;
     sh.z += shotV*dt;
+    var hits=[];                                 /* build 107: nearest first, at most sh.left of them */
     for (var j=cars.length-1;j>=0;j--){
       var tc=cars[j];
-      if (Math.abs(tc.x-sh.x)<0.22 && tc.z>sh.prevZ-340 && tc.z<=sh.z+340){
-        blasts.push({z:tc.z, x:tc.x, t:0, isBlast:true});
-        addScore(killScore());
-        if (learn) tutShot(tc);                  /* build 73: a bolt destroyed this car */
-        prKill();                                /* build 96: shots and overdrive fire */
-        cars.splice(j,1);
-        blip(150,0.20,'sawtooth',0.16);
-      }
+      if (Math.abs(tc.x-sh.x)<0.22 && tc.z>sh.prevZ-340 && tc.z<=sh.z+340) hits.push(tc);
     }
-    if (sh.z>position+MAXZ) pshots.splice(i,1);
+    if (hits.length>1) hits.sort(function(a,b){ return a.z-b.z; });
+    for (var hk=0;hk<hits.length && !(sh.left<=0);hk++){
+      var tc2=hits[hk];
+      blasts.push({z:tc2.z, x:tc2.x, t:0, isBlast:true});
+      addScore(killScore());
+      if (learn) tutShot(tc2);                   /* build 73: a bolt destroyed this car */
+      prKill();                                  /* build 96: shots and overdrive fire */
+      cars.splice(cars.indexOf(tc2),1);
+      blip(150,0.20,'sawtooth',0.16);
+      if (sh.left!==undefined) sh.left--;
+    }
+    if (sh.left<=0 || sh.z>position+MAXZ) pshots.splice(i,1);
   }
   for (i=blasts.length-1;i>=0;i--){
     blasts[i].t += dt/0.7;
@@ -5566,7 +5657,180 @@ function drawGround(){
   }
 }
 
+
+/* ---------------------------------------------------------------
+   OFF-RAMP (build 107, Carlos's picks 10-28). Before every zone-change activator the road opens a pull-off
+   BAY on its side: the asphalt widens by BAY_W of a road half-width, the old edge becomes a dashed line, the
+   lamp + alien / ghost / skeleton step out by the bay's width (OFR_SH). The bay is decided by the slot alone,
+   so the road never changes shape in front of you. While the activator can really take you (hailLive) - and
+   for the one you just took (ofrUsed) - its kerb lights up and four painted arrows (look 2 SHARP BEND) lead
+   into the bay and back out. Taking it needs the car INSIDE the bay (BAY_IN); the outer lane no longer counts.
+   Colours: waving alien green, Halloween pair orange, a hitchhiker in HAUNTED HIGHWAY (back to VAPOR) cyan.
+--------------------------------------------------------------- */
+var OFR_COL  = {alien:'#7cff4f', hw:'#ff9a2e', hitch:'#21e6ff'};
+var BAY_W = 0.42, BAY_OPEN = 17000, BAY_FULL = 10500, BAY_HOLD = -2400, BAY_SHUT = -6500;
+var BAY_IN = 1.00;            /* the car's centre this far out on the bay's side (the old road edge) = half the car (or the dino) in the bay */
+var OFR_LU = 1200;            /* one lateral unit (a road half-width) in road units (roadWidth): the arrow shapes need the ratio */
+var OFR_SH = 0;               /* lateral step-out of the prop being drawn */
+var ofrUsed = -1;             /* the slot whose activator just took you: its arrows stay lit until you are past them */
+function ofrIn(){ return BAY_IN; }
+/* build 108: OPEN or CLOSED, decided once per activator slot when its bay could first come into view. Open = the
+   cooldown will be over by the time you could get there at top speed, and no saucer is hunting. Open: bay, arrows,
+   kerb, chevron, waving, and it takes you (its cooldown no longer matters). Closed: no bay, dark lamp, no waving. */
+var ofrSt = {};
+function ofrForget(){ ofrSt = {}; }
+function ofrDecide(i){
+  var v=ofrSt[i]; if (v!==undefined) return v;
+  var dist=Math.max(0, i*DECO_SPACE-(position+Z_CAR));
+  var open = !(ufo && (ufo.hunt||ufo.cutting)) && hailCool <= dist/Math.max(1,maxSpeedFor(lap));
+  return (ofrSt[i] = open?1:0);
+}
+/* can the activator in slot i take you right now? (replaces hailLive() for a slot) */
+function ofrLive(i){
+  return !learn && lap>=HAIL_LAP && !!ofrKind(i) && ofrDecide(i)===1 && !(ufo && (ufo.hunt||ufo.cutting));
+}
+/* update(): decide every activator from just behind the car to the far edge of the view, then drop old decisions */
+function ofrLatchAhead(){
+  if (learn || lap<HAIL_LAP) return;
+  var zc=position+Z_CAR, i0=Math.max(1,Math.floor((zc+BAY_SHUT)/DECO_SPACE)), i1=Math.ceil((position+MAXZ+OFR_AHEAD)/DECO_SPACE);   /* build 109: the chevron row */
+  for (var i=i0;i<=i1;i++) if (ofrSlotPre(i) && ofrKind(i)) ofrDecide(i);
+  for (var k in ofrSt) if (+k < i0-2) delete ofrSt[k];
+}
+function ofrNow(){ return performance.now()/1000; }
+/* which activator stands in slot idx (decided by the slot, not by hailLive) */
+function ofrKind(idx){
+  if (learn || idx<1 || lap<HAIL_LAP) return null;
+  if (isHwAct(idx)) return 'hw';
+  if (isHailer(idx)) return ZN.look==='haunted' ? 'hitch' : 'alien';
+  return null;
+}
+function ofrBayW(d){                           /* d = units before the slot (negative = past it) */
+  if (d>BAY_OPEN || d<BAY_SHUT) return 0;
+  var k = d>BAY_FULL ? (BAY_OPEN-d)/(BAY_OPEN-BAY_FULL) : (d<BAY_HOLD ? (d-BAY_SHUT)/(BAY_HOLD-BAY_SHUT) : 1);
+  k=clamp(k,0,1); return BAY_W*k*k*(3-2*k);
+}
+function ofrSlotPre(i){ return !(hashAt(i,1) > Math.min(1,0.5*ZN.propDens) && !isHwAct(i) && !(ZN.id==='vapor' && isHailer(i))); }
+var ofrL = [];
+function ofrScan(){
+  ofrL.length=0;
+  if (learn || lap<HAIL_LAP) return;
+  var i0=Math.floor((position+BAY_SHUT)/DECO_SPACE), i1=Math.ceil((position+MAXZ+OFR_AHEAD)/DECO_SPACE);   /* build 109: the chevron row */
+  for (var i=Math.max(1,i0);i<=i1;i++){
+    if (!ofrSlotPre(i)) continue;
+    var k=ofrKind(i); if (!k) continue;
+    if (ofrDecide(i)!==1) continue;              /* build 108: a closed one has no bay */
+    ofrL.push({z:i*DECO_SPACE, side:hashAt(i,2)<0.5?-1:1, col:OFR_COL[k], idx:i, lit:(ofrLive(i) || i===ofrUsed)});
+  }
+}
+function ofrShiftAt(idx){
+  for (var j=0;j<ofrL.length;j++) if (ofrL[j].idx===idx) return ofrBayW(ofrL[j].z-(idx*DECO_SPACE-1));
+  return 0;
+}
+/* is world z inside a bay? its side, or 0 (roadside lamps and chevrons don't stand in it) */
+function ofrBayAt(z){
+  for (var j=0;j<ofrL.length;j++){ var d=ofrL[j].z-z; if (d<=OFR_AHEAD+600 && d>=BAY_SHUT) return ofrL[j].side; }   /* build 109: + the chevron row */
+  return 0;
+}
+/* the road edge on the car's side, where the car is (off-road starts past it); straight from the slots, so
+   update() never depends on the last frame drawn */
+function ofrEdge(){
+  if (learn || lap<HAIL_LAP) return 1;
+  var zc=position+Z_CAR, sd=playerX>0?1:-1;
+  var i0=Math.max(1,Math.floor((zc+BAY_SHUT)/DECO_SPACE)), i1=Math.ceil((zc+BAY_OPEN)/DECO_SPACE);
+  for (var i=i0;i<=i1;i++){
+    if (!ofrSlotPre(i) || (hashAt(i,2)<0.5?-1:1)!==sd || !ofrKind(i) || ofrDecide(i)!==1) continue;
+    var w=ofrBayW(i*DECO_SPACE-zc); if (w>0) return 1+w;
+  }
+  return 1;
+}
+function ofrOff(){ return Math.abs(playerX) > ofrEdge(); }
+/* ---- the arrows: centre lines (x = half-widths out on the bay's side, d = units before the slot), tail -> tip ---- */
+var OFR_ARROWS = [
+  [[[0.95,12900],[1.21,12200],[1.21,10400]], 0.055, 1000, 0.16],   /* 1: from the outer lane into the bay, then straight */
+  [[[1.21,9000],[1.21,7000]],                0.055, 1000, 0.16],   /* 2 */
+  [[[1.21,5000],[1.21,3000]],                0.055, 1000, 0.16],   /* 3 */
+  [[[1.21,-500],[1.21,-2500],[0.84,-4500]],  0.055, 1200, 0.16]    /* 4: after the lamp, straight then back out */
+];
+var ofrArwC = null;
+/* centre line + shaft half-width sw, head length hl (road units), head half-width hw -> shaft + head polygons */
+function ofrArwPoly(cl,sw,hl,hw){
+  var P=cl.map(function(p){ return [p[0]*OFR_LU, p[1]]; });
+  sw*=OFR_LU; hw*=OFR_LU;
+  var acc=0, i=P.length-1, base=null;
+  while (i>0){ var dx=P[i][0]-P[i-1][0], dy=P[i][1]-P[i-1][1], L=Math.hypot(dx,dy);
+    if (acc+L>=hl){ var f=(hl-acc)/L; base=[P[i][0]-dx*f, P[i][1]-dy*f]; break; } acc+=L; i--; }
+  var tip=P[P.length-1], sh=P.slice(0,i).concat([base]);
+  var nrm=function(a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1; return [-dy/L, dx/L]; };
+  var Lf=[], Rt=[];
+  for (var k=0;k<sh.length;k++){
+    var n1=k>0?nrm(sh[k-1],sh[k]):null, n2=k<sh.length-1?nrm(sh[k],sh[k+1]):null, n;
+    if (n1&&n2){ n=[n1[0]+n2[0],n1[1]+n2[1]]; var l=Math.hypot(n[0],n[1])||1; n=[n[0]/l,n[1]/l]; var c=n[0]*n1[0]+n[1]*n1[1]; n=[n[0]*sw/c,n[1]*sw/c]; }
+    else { n=n1||n2; n=[n[0]*sw,n[1]*sw]; }
+    Lf.push([sh[k][0]+n[0], sh[k][1]+n[1]]); Rt.push([sh[k][0]-n[0], sh[k][1]-n[1]]);
+  }
+  var nb=nrm(sh[sh.length-1],tip), hp=[[base[0]+nb[0]*hw, base[1]+nb[1]*hw], tip, [base[0]-nb[0]*hw, base[1]-nb[1]*hw]];
+  return [Lf.concat(Rt.reverse()), hp].map(function(pp){ var q=pp.map(function(p){ return [p[0]/OFR_LU, p[1]]; }), d0=1e9, d1=-1e9;
+    q.forEach(function(p){ d0=Math.min(d0,p[1]); d1=Math.max(d1,p[1]); }); return {p:q,d0:d0,d1:d1}; });
+}
+function ofrArw(){
+  if (ofrArwC) return ofrArwC;
+  var r=[]; OFR_ARROWS.forEach(function(a){ r=r.concat(ofrArwPoly(a[0],a[1],a[2],a[3])); });
+  return (ofrArwC=r);
+}
+/* x crossings of polygon p with the line at depth d, sorted */
+function ofrSpan(p,d){
+  var xs=[];
+  for (var i=0,j=p.length-1;i<p.length;j=i++){ var A=p[i],B=p[j];
+    if ((A[1]<=d)!==(B[1]<=d)) xs.push(A[0]+(d-A[1])*(B[0]-A[0])/(B[1]-A[1])); }
+  return xs.sort(function(u,v){ return u-v; });
+}
+/* one screen row: bay, kerb, arrows (called from drawRoad, world layer) */
+function ofrRow(y,z,zw,ppu,cx,col,even,rw){
+  for (var j=0;j<ofrL.length;j++){
+    var e=ofrL[j], d=e.z-zw, sd=e.side;
+    if (d>BAY_OPEN+500 || d<BAY_SHUT-500) continue;
+    var bw=ofrBayW(d), edge=1;
+    if (bw>0.004){
+      /* bay asphalt + its own kerb; the old kerb becomes a dashed line */
+      ctx.fillStyle=even?col.a:col.b;
+      var xa=cx+sd*ppu, xb=cx+sd*ppu*(1+bw);
+      ctx.fillRect(Math.min(xa,xb)-rw,y,Math.abs(xb-xa)+rw*2,1);
+      ctx.globalAlpha=0.08; ctx.fillStyle=e.col; ctx.fillRect(Math.min(xa,xb),y,Math.abs(xb-xa),1); ctx.globalAlpha=1;
+      if (ppu>6 && Math.floor(zw/(segLength*2))%2===0){
+        var lw=Math.max(1,ppu*0.018); ctx.fillStyle=col.ln; ctx.fillRect(xa-lw/2,y,lw,1);
+      }
+      edge=1+bw;
+      ctx.fillStyle=even?col.ra:col.rb;
+      ctx.fillRect(sd>0?xb:xb-rw,y,rw+1,1);
+    }
+    if (!e.lit) continue;
+    /* lit kerb: steady, in the arrows' colour (build 108: no running lights) */
+    if (d<17000 && d>-1500){
+      var fade=clamp((17000-d)/3000,0,1)*clamp((d+1500)/1200,0,1);
+      var kx=cx+sd*ppu*edge, kw=rw*1.6+1, k0=sd>0?kx:kx-rw*1.6;
+      ctx.globalAlpha=fade; ctx.fillStyle='#0c0618'; ctx.fillRect(k0,y,kw,1);
+      ctx.globalAlpha=fade; ctx.fillStyle=e.col; ctx.fillRect(k0,y,kw,1);
+      ctx.globalAlpha=1;
+    }
+    /* arrows, painted as spans of this row */
+    if (ppu>2.5){
+      var AP=ofrArw(), halo=Math.max(1,ppu*0.022);
+      ctx.fillStyle=e.col;
+      for (var q=0;q<AP.length;q++){
+        var pg=AP[q]; if (d<pg.d0 || d>pg.d1) continue;
+        var xs=ofrSpan(pg.p,d);
+        for (var m=0;m+1<xs.length;m+=2){
+          var xa_=cx+sd*ppu*xs[m], xb_=cx+sd*ppu*xs[m+1], x0=Math.min(xa_,xb_), x1=Math.max(xa_,xb_);
+          ctx.globalAlpha=0.30; ctx.fillRect(x0-halo,y,x1-x0+halo*2,1);
+          ctx.globalAlpha=0.95; ctx.fillRect(x0,y,Math.max(1,x1-x0),1);
+        }
+      }
+      ctx.globalAlpha=1;
+    }
+  }
+}
 function drawRoad(){
+  ofrScan();
   for (var y=topRow;y<H;y++){
     var z=rowZ[y]; if (z>MAXZ) continue;
     var ppu=rowPPU[y], col=rowCol[y];
@@ -5590,6 +5854,7 @@ function drawRoad(){
       ctx.fillRect(cx        -lw/2,y,lw,1);
       ctx.fillRect(cx+0.5*ppu-lw/2,y,lw,1);
     }
+    if (ofrL.length) ofrRow(y,z,zw,ppu,cx,col,even,rw);
   }
 }
 
@@ -7009,17 +7274,17 @@ function hwDeco(type,x,gy,u,idx,side,walk,hail,zRel){
    (one ?/! between them, the ghost's) and the flame burns green only while hailLive(): the mist can
    really take you then. */
 function hwActDraw(idx,zRel,p,a,side){
-  var live=hailLive(), t=performance.now()/1000;
+  var live=ofrLive(idx), t=performance.now()/1000;   /* build 108: this slot open */
   var zg=zRel+1600;                                /* far to near: the ghost, the lamp, the skeleton */
   if (zg<MAXZ){
     var pg=proj(zg), ag=1-fogAt(zg);
     if (pg.y>horizonY && ag>0.05){
-      var xg=W/2+pg.ppu*(bend(zg)+side*2.30-playerX);
+      var xg=W/2+pg.ppu*(bend(zg)+side*(2.30+OFR_SH)-playerX);
       if (xg>-pg.ppu*3 && xg<W+pg.ppu*3){ ctx.globalAlpha=ag; hwAlienA(xg,pg.y,pg.ppu,idx,side,0,live,live); }
     }
   }
   gasLampAt(zRel,p,side,live?hailFlick(t,idx):1,idx,HAIL_HEAD_X,live,1);
-  var xs=W/2+p.ppu*(bend(zRel)+side*HAIL_LAT-playerX);
+  var xs=W/2+p.ppu*(bend(zRel)+side*(HAIL_LAT+OFR_SH)-playerX);
   if (xs>-p.ppu*3 && xs<W+p.ppu*3){ ctx.globalAlpha=a; hwAlienB(xs,p.y,p.ppu,idx,side,0,live,false); }
   ctx.globalAlpha=1; ctx.lineCap='butt'; ctx.lineJoin='miter';
 }
@@ -7601,7 +7866,8 @@ function drawDecor(){
     var p=proj(zRel), a=1-fogAt(zRel);
     if (a<0.06||p.y<=horizonY||p.y>H) continue;
     var side=hashAt(idx,2)<0.5?-1:1;
-    if (lap>=HAIL_LAP && isHwAct(idx)){ hwActDraw(idx,zRel,p,a,side); continue; }   /* build 84: the Halloween activator */
+    OFR_SH=ofrShiftAt(idx);
+    if (lap>=HAIL_LAP && isHwAct(idx)){ hwActDraw(idx,zRel,p,a,side); OFR_SH=0; continue; }   /* build 84: the Halloween activator */
     if (ZN.look==='haunted' && isGiantHand(idx)){ drawHandSlot(idx,zRel,p,a,side); continue; }   /* build 87: the giant hand */
     var t=hashAt(idx,4);
     /* mast .22 | billboard .20 | kiosk .17 | tower .17 | dino .09 |
@@ -7637,9 +7903,9 @@ function drawDecor(){
        same hash decides it here and in isHailer(); HAIL_LAT is pinned so
        the pass distance is one number rather than a range. */
     var hailer = (type===6) && isHailer(idx) && lap>=HAIL_LAP;   /* build 89: isHailer (the same test elsewhere; VAPOR's scheduled) */
-    if (hailer) lat = side*HAIL_LAT;
+    if (hailer) lat = side*(HAIL_LAT+OFR_SH);
     /* build 77: it waves, and its lamp flickers, only while a call can really be made */
-    var hail = hailer && hailLive();
+    var hail = hailer && ofrLive(idx);   /* build 108: this slot open */
     if (hailer){
       if (ZN.lampKind==='gas') gasLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1,idx,HAIL_HEAD_X,hail,ZN.webs);   /* build 84 */
       else drawLampAt(zRel,p,side,hail?hailFlick(performance.now()/1000,idx):1);
@@ -7663,6 +7929,7 @@ function drawDecor(){
     else               decoAlien(zRel,lat,p.ppu,idx,side,hail);
     ctx.globalAlpha=1;
   }
+  OFR_SH=0;
   ctx.lineJoin='miter'; ctx.lineCap='butt';   /* build 81 */
 }
 
@@ -7697,15 +7964,55 @@ function drawPosts(){
   var cs=Math.floor(position/CHEV_SPACE)+1, ls=Math.floor(position/LAMP_SPACE)+1;
   var ci=Math.ceil(MAXZ/CHEV_SPACE)+1, li=Math.ceil(MAXZ/LAMP_SPACE)+1;
   /* far to near across both kinds, so a near lamp always paints over a far chevron */
+  var oc=ofrChevs(), oj=0;                               /* build 108: the bay chevrons, in the same far-to-near order */
   while (ci>=0 || li>=0){
     var zc = ci>=0 ? (cs+ci)*CHEV_SPACE-position : -1;
     var zl = li>=0 ? (ls+li)*LAMP_SPACE-position : -1;
+    while (oj<oc.length && oc[oj].zRel>Math.max(zc,zl)){ ofrChevDraw(oc[oj],t); oj++; }
     if (zc>=zl){ postChevron(cs+ci,zc,t); ci--; }
     else       { postLamp(ls+li,zl); li--; }
   }
+  while (oj<oc.length){ ofrChevDraw(oc[oj],t); oj++; }
   ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over'; ctx.lineJoin='miter'; ctx.lineCap='butt';
 }
 
+/* build 108: THE BAY CHEVRONS (build 109, Carlos: three, before the off-ramp begins). A row of OFR_CHEV_N curve-chevron-sized
+   chevrons in the arrows' colour on the road edge just before the bay starts to open, CHEV_SPACE apart, pointing into the bay;
+   they blink like the curve chevrons (glyphC + chevLit) and the light walks along the row toward the bay. */
+var OFR_CHEV_N   = 3;               /* how many */
+var OFR_CHEV_GAP = 300;             /* the nearest one stands this far before the bay's mouth (BAY_OPEN units before the slot) */
+var OFR_CHEV_LAT = 0.18;            /* how far outside the road edge (the curve chevrons stand 0.18 outside it) */
+var OFR_AHEAD    = BAY_OPEN+OFR_CHEV_GAP+(OFR_CHEV_N-1)*CHEV_SPACE;   /* the far chevron, in units before the slot */
+function ofrHex(h,k,w){             /* hex colour x k (darker), then mixed toward white by w */
+  var r=parseInt(h.substr(1,2),16), g=parseInt(h.substr(3,2),16), b=parseInt(h.substr(5,2),16);
+  var f=function(c){ c=c*k; c=c+(255-c)*w; return ('0'+Math.round(clamp(c,0,255)).toString(16)).slice(-2); };
+  return '#'+f(r)+f(g)+f(b);
+}
+var ofrChevC = {};
+function ofrChevs(){                /* the lit bays' chevrons this frame, far to near: {zRel, e} */
+  var r=[];
+  for (var j=0;j<ofrL.length;j++){ var e=ofrL[j]; if (!e.lit) continue;
+    for (var k=0;k<OFR_CHEV_N;k++){ var dk=BAY_OPEN+OFR_CHEV_GAP+k*CHEV_SPACE, zr=e.z-dk-position;
+      if (zr>200 && zr<=MAXZ) r.push({zRel:zr, e:e, d:dk, n:e.idx*OFR_CHEV_N+(OFR_CHEV_N-1-k)}); } }
+  return r.sort(function(a,b){ return b.zRel-a.zRel; });
+}
+function ofrChevDraw(o,t){
+  var zRel=o.zRel, e=o.e, p=proj(zRel); if (p.y<=horizonY||p.y>H) return;
+  var lat=1+ofrBayW(o.d)+OFR_CHEV_LAT, s=e.side, dir=s;
+  var x=W/2+p.ppu*(bend(zRel)+s*lat-playerX);
+  if (x<-80||x>W+80) return;
+  var C=ofrChevC[e.col]||(ofrChevC[e.col]=[e.col, ofrHex(e.col,0.72,0), ofrHex(e.col,0.42,0), ofrHex(e.col,1,0.78)]);
+  var keep=[CHEV_AMBER,CHEV_DIM,CHEV_SIDE,CHEV_CORE];
+  CHEV_AMBER=C[0]; CHEV_DIM=C[1]; CHEV_SIDE=C[2]; CHEV_CORE=C[3];
+  var a=1-fogAt(zRel), h=p.ppu*CHEV_H, dep=h*0.13, bot=p.y-p.ppu*0.045, cy=bot-dep-h/2;
+  if (p.ppu>=12){                                        /* two short legs, as the curve chevrons */
+    var lw=Math.max(1,p.ppu*0.016), ly=bot-dep-h*0.2;
+    ctx.globalAlpha=a*0.95; ctx.fillStyle=CHEV_DARK;
+    ctx.fillRect(x-h*0.22-lw/2,ly,lw,p.y-ly); ctx.fillRect(x+h*0.18-lw/2,ly,lw,p.y-ly);
+  }
+  glyphC(x,cy,h,dir,chevLit(o.n,t),a,p.ppu);   /* build 109: n grows toward the bay, so the light walks into it */
+  CHEV_AMBER=keep[0]; CHEV_DIM=keep[1]; CHEV_SIDE=keep[2]; CHEV_CORE=keep[3];
+}
 function postChevron(n,zRel,t){
   if (zRel<=200||zRel>MAXZ) return;
   var p=proj(zRel); if (p.y<=horizonY||p.y>H) return;
@@ -7713,6 +8020,7 @@ function postChevron(n,zRel,t){
   if (Math.abs(sl)<CHEV_SHARP) return;                   /* straight road or the gentle part of a bend */
   var dir=sl>0?1:-1, s=-dir;                             /* the outside of the bend only */
   if (hailerAt(n*CHEV_SPACE,750)===s) return;            /* build 77: the hailer's lamp stands on this side here */
+  if (ofrBayAt(n*CHEV_SPACE)===s) return;                /* build 107: nothing stands in the off-ramp bay */
   var x=W/2+p.ppu*(bend(zRel)+s*CHEV_LAT-playerX);
   if (x<-80||x>W+80) return;
   var a=1-fogAt(zRel), h=p.ppu*CHEV_H, dep=h*0.13, bot=p.y-p.ppu*0.045, cy=bot-dep-h/2;
@@ -7771,6 +8079,7 @@ function postLamp(n,zRel){
   var sl=slopeAt(n*LAMP_SPACE);
   /* build 81: never skipped in a bend; there it stands on the inside (the chevrons are on the outside) */
   var sd=Math.abs(sl)>=CHEV_S ? (sl>0?1:-1) : ((n&1)?-1:1);
+  if (ofrBayAt(n*LAMP_SPACE)===sd) return;               /* build 107: nothing stands in the off-ramp bay */
   if (ZN.lampKind==='gas') gasLampAt(zRel,p,sd,1,n,GAS_HEAD,false,ZN.webs);   /* build 84: the crooked gas lamp */
   else drawLampAt(zRel,p,sd,1);
 }
@@ -7779,7 +8088,7 @@ function postLamp(n,zRel){
    0 is a dead one (dark head, no halo or pool, only a faint lit edge). */
 function drawLampAt(zRel,p,s,k){
   var a=1-fogAt(zRel), cRoad=bend(zRel), col=ZN.lamp||ZN.posts[0], m=0.45+0.55*k;
-  var x=W/2+p.ppu*(cRoad+s*1.30-playerX), hx=W/2+p.ppu*(cRoad+s*HAIL_HEAD_X-playerX);
+  var x=W/2+p.ppu*(cRoad+s*(1.30+OFR_SH)-playerX), hx=W/2+p.ppu*(cRoad+s*(HAIL_HEAD_X+OFR_SH)-playerX);
   if (Math.max(x,hx)<-80||Math.min(x,hx)>W+80) return;
   var h=p.ppu*0.80, w=Math.max(1,p.ppu*0.028), top=p.y-h;
   if (p.ppu<7){                                          /* far lamp: a pole, a lit edge, a head dot, one pool */
@@ -7859,7 +8168,7 @@ function lampPool(x,y,ppu,k,a,col){
 }
 function gasLampAt(zRel,p,s,k,n,headLat,live,webs){
   var a=1-fogAt(zRel), t=performance.now()/1000, u=p.ppu, cR=bend(zRel);
-  var x=W/2+u*(cR+s*1.28-playerX), lx=W/2+u*(cR+s*headLat-playerX);
+  var x=W/2+u*(cR+s*(1.28+OFR_SH)-playerX), lx=W/2+u*(cR+s*(headLat+OFR_SH)-playerX);
   if (Math.max(x,lx)<-80||Math.min(x,lx)>W+80) return;
   var h=u*0.78, kk=live ? k : k*lampFlame(t,n);
   var hot=live?'#9dff6a':'#ff9a2e', warm=live?'#c8ffb0':'#ffb050';
@@ -9513,6 +9822,16 @@ function panel(x,y,w,h){
   rr(x,y,w,h,6); ctx.fill();
   ctx.strokeStyle='rgba(124,58,237,.55)'; ctx.lineWidth=1; ctx.stroke();
 }
+/* build 106: the desktop HUD's P PAUSE box (drawn in drawHUD, clicked through hudPauseAt) */
+var HUD_PB_W = 92, HUD_PB_H = 34;        /* the box: 92 x 34 (the SPEED box is 224 x 62; the BEST row is 34 tall) */
+var hudPauseR = null;                    /* where it was drawn this frame, or null */
+function hudPauseAt(e){
+  if (TOUCH || !hudPauseR || !e || (state!=='playing' && state!=='paused')) return false;
+  var r; try{ r=cv.getBoundingClientRect(); }catch(_){ return false; }
+  if (!r || !(r.width>0 && r.height>0)) return false;
+  var lx=(e.clientX-r.left)*W/r.width, ly=(e.clientY-r.top)*H/r.height, b=hudPauseR;
+  return lx>=b.x-4 && lx<=b.x+b.w+4 && ly>=b.y-4 && ly<=b.y+b.h+4;
+}
 function drawHUD(){
   var maxS=maxSpeedFor(lap), spct=clamp(speed/maxS,0,1);
   var kmh=Math.round(speed/40);
@@ -9559,7 +9878,24 @@ function drawHUD(){
     ctx.fillStyle='rgba(124,58,237,.5)'; ctx.fillRect(W/2-12,26,1,41);
   }
 
+  /* build 106: a small "P  PAUSE" box under SPEED, desktop only (phones have their own pause button). Same panel,
+     font and label colour as the rest of the top row; HUD_PB_W x HUD_PB_H is the size (the SPEED box is 224 x 62).
+     Clicking it pauses / resumes (hudPauseAt). RAMPAGE / OVERDRIVE now start under it. */
   var slot=80;
+  hudPauseR=null;
+  if (!TOUCH && (state==='playing' || state==='paused')){
+    var pbW=HUD_PB_W, pbH=HUD_PB_H, pbX=W-12-pbW, pbY=80, pls=TS.LABEL*UI;
+    panel(pbX,pbY,pbW,pbH);
+    ctx.font='700 '+pls+'px ui-monospace,Menlo,"Courier New",monospace';
+    var pWord=T('HUD_PAUSE'), pKc=18, pGap=8, pCw=pKc+pGap+ctx.measureText(pWord).width;
+    var pX0=Math.round(pbX+(pbW-pCw)/2), pKy=Math.round(pbY+(pbH-pKc)/2);
+    ctx.strokeStyle='rgba(169,159,220,.75)'; ctx.lineWidth=1;
+    rr(pX0+0.5,pKy+0.5,pKc,pKc,4); ctx.stroke();
+    monoText('P',pX0+pKc/2+0.5,pKy+pKc/2+5,pls,'#d9d2ff','center');
+    monoText(pWord,pX0+pKc+pGap,pKy+pKc/2+5,pls,'#8a7ec4');
+    hudPauseR={x:pbX,y:pbY,w:pbW,h:pbH};
+    slot=pbY+pbH+4;
+  }
   if (dinoT>0){
     var ending = dinoT<=DINO_WARN, beat = (Math.floor(dinoT*6)%2===0);
     panel(W-236,slot,224,34);
@@ -9699,7 +10035,7 @@ function drawHUD(){
 
   if (state==='playing') drawBendWarning();
 
-  if (Math.abs(playerX)>1 && state==='playing' && Math.floor(performance.now()/220)%2===0)
+  if (ofrOff() && state==='playing' && Math.floor(performance.now()/220)%2===0)
     glowText(T('OFF_ROAD'),W/2,H-72,TS.HERO,'#ffd23f','center',18);
 
   /* On the title the card is drawn by render() after drawTitle() instead
@@ -11544,6 +11880,7 @@ cv.addEventListener('pointermove', function(e){
     var r=cv.getBoundingClientRect();
     if (r.width>0 && r.height>0 && garHitAt((e.clientX-r.left)*W/r.width, (e.clientY-r.top)*H/r.height)>=0) want='pointer';
   }
+  else if (hudPauseAt(e)) want='pointer';   /* build 106 */
   if (cv.style.cursor!==want) cv.style.cursor=want;
 });
 
@@ -11628,6 +11965,7 @@ function drawGroundFog(){
    draw time, so nothing needs per-prop zone memory.
 --------------------------------------------------------------- */
 function setZone(id, keepSong){
+  ofrForget();                         /* build 108: the off-ramps' open / closed decisions belong to the zone */
   /* setZone owns `zoneI`. Nothing else may assign it — that split is
      exactly what let the two drift apart across a reset().
      keepSong (build 65): the ride swaps the map mid-cutscene but the song
