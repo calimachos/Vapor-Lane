@@ -661,6 +661,28 @@
   #leave button.stay{ color:#eaf6ff; background:rgba(33,230,255,.14); border:2px solid #21e6ff }
   #leave button.go{ color:#ffd23f; background:rgba(255,210,63,.1); border:2px solid #ffd23f }
   body.touch #leave button .k{ display:none }
+  /* build 116: the FPS REPORT (black box) */
+  #bbRep{ display:none; position:fixed; inset:0; z-index:85; align-items:center; justify-content:center; background:rgba(5,2,14,.72);
+          font-family:"Arial Black","VL Display","Segoe UI",Impact,system-ui,sans-serif }
+  #bbRep.on{ display:flex }
+  #bbRep .bBox{ box-sizing:border-box; width:min(96vw,980px); height:min(94vh,94svh,760px); display:flex; flex-direction:column;
+                padding:.6em .8em .7em; border-radius:12px; font-size:clamp(11px,2.2vmin,18px); background:rgba(8,4,18,.96);
+                border:2px solid #21e6ff; box-shadow:0 0 22px rgba(33,230,255,.35), inset 0 0 0 1px rgba(255,255,255,.12) }
+  #bbRep .bHead{ font-size:1.35em; color:#21e6ff; letter-spacing:.03em; text-shadow:0 0 10px rgba(33,230,255,.5) }
+  #bbRep .bSub{ font:700 .72em ui-monospace,Menlo,"Courier New",monospace; color:#8a7ec4; margin:.2em 0 .45em }
+  #bbRep pre{ flex:1; min-height:0; margin:0; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y;
+              white-space:pre-wrap; word-break:break-word; font:500 clamp(10px,1.55vmin,13px)/1.35 ui-monospace,Menlo,"Courier New",monospace;
+              color:#eaf0ff; background:rgba(0,0,0,.35); border-radius:8px; padding:.5em .6em;
+              -webkit-user-select:text; user-select:text }
+  #bbRep .bBtns{ display:flex; gap:.6em; justify-content:center; flex-wrap:wrap; margin-top:.55em; -webkit-user-select:none; user-select:none }
+  #bbRep button{ cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:.25em; min-width:7.5em; touch-action:manipulation;
+                 font:800 .85em ui-monospace,Menlo,"Courier New",monospace; letter-spacing:.06em; border-radius:9px; padding:.5em .9em;
+                 color:#eaf6ff; background:rgba(33,230,255,.12); border:2px solid #21e6ff }
+  #bbRep button .k{ font-size:.68em; letter-spacing:.12em; opacity:.8 }
+  #bbRep button .k:empty{ display:none }
+  #bbRep button.cl{ color:#ff8fa3; background:rgba(255,77,109,.08); border-color:#ff4d6d }
+  #bbRep button.bk{ color:#ffd23f; background:rgba(255,210,63,.1); border-color:#ffd23f }
+  body.touch #bbRep button .k{ display:none }
 </style>
 </head>
 <body>
@@ -723,6 +745,8 @@
 <div id="gate" role="button" tabindex="0"><div class="gBox"><div class="gHead"></div><div class="gGo"></div><div class="gSub"></div></div></div>
 <div id="leave" role="dialog" aria-modal="true"><div class="lBox"><div class="lHead"></div><div class="lBody"></div>
   <div class="lBtns"><button type="button" class="stay"><span class="t"></span><span class="k"></span></button><button type="button" class="go"><span class="t"></span><span class="k"></span></button></div></div></div>
+<div id="bbRep" role="dialog" aria-modal="true"><div class="bBox"><div class="bHead"></div><div class="bSub"></div><pre></pre>
+  <div class="bBtns"><button type="button" class="cp"><span class="t"></span><span class="k"></span></button><button type="button" class="sv"><span class="t"></span><span class="k"></span></button><button type="button" class="cl"><span class="t"></span><span class="k"></span></button><button type="button" class="bk"><span class="t"></span><span class="k"></span></button></div></div></div>
 
 <script>
 (function(){
@@ -738,7 +762,7 @@ function useWorld(){ ctx = ctxW; }
 function useTop(){ ctx = ctx2; }
 var wBlank = true;                 /* the world layer is empty (the garage covers the stage) */
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 109;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
+var BUILD_NO = 120;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -796,9 +820,12 @@ function fitCanvas(){
   var k=Math.min(d, Math.max(1, r.width*d/W));
   k=Math.round(k*100)/100;
   var cw=Math.round(W*k), chh=Math.round(H*k);
-  if (cw===cv.width && chh===cv.height){ dpr=k; return; }
-  dpr=k; cv.width=cw; cv.height=chh;           /* render() sets the transform */
-  cv2.width=cw; cv2.height=chh;                /* build 104: the top layer always matches the world layer */
+  var kw=resK<1 ? Math.round(k*resK*100)/100 : k, ww=Math.round(W*kw), wh=Math.round(H*kw);   /* build 118: the world layer's scale */
+  dprW=kw;
+  if (ww===cv.width && wh===cv.height && cw===cv2.width && chh===cv2.height){ dpr=k; return; }
+  dpr=k; cv.width=ww; cv.height=wh;           /* render() sets the transform */
+  cv2.width=cw; cv2.height=chh;                /* build 104: the top layer (build 118: always full size) */
+  cv.style.imageRendering = kw<k ? 'auto' : '';   /* build 118: a stepped-down world is drawn smooth, not pixel-doubled */
 }
 
 /* ---------------------------------------------------------------
@@ -809,6 +836,8 @@ var camDepth  = 1 / Math.tan((FOV/2) * Math.PI/180);
 var camH      = 1500;
 var yOff      = -38;
 var roadWidth = 1200;
+var CAM_ZOOM  = 1.5;     /* build 112: the camera's zoom (Carlos: close up behind the car). Scales the projection only:
+                            road, car, traffic, lamps and props all grow together, same shapes, same gameplay. 1 = builds <= 111 */
 var segLength = 200;
 /* A coarse pointer means fingers, not a mouse. Everything mobile-specific
    hangs off this one flag so the desktop build is bit-for-bit unchanged. */
@@ -833,7 +862,7 @@ var topRow    = Math.ceil(horizonY) + 2;
    camera, otherwise the picture and the physics disagree on a curve. */
 var PLAYER_Y = H - 34;
 var Z_CAR    = camDepth*camH*(H/2)/(PLAYER_Y - H/2 - yOff);
-var PPU_CAR  = (camDepth/Z_CAR)*roadWidth*W/2;
+var PPU_CAR  = (camDepth/Z_CAR)*roadWidth*CAM_ZOOM*W/2;
 
 var LANES = [-0.75, -0.25, 0.25, 0.75];
 var CAR_W = 0.26;                 // car width in road units (road spans -1..1)
@@ -863,6 +892,7 @@ var OD_COLS    = ['#b06cff','#7cff4f','#ff6a3d','#ffffff'];
 var DINO_TIME  = 15;     // seconds of rampage
 var DINO_WARN  = 2;      // ...with this long of a warning before it drops
 var DINO_CAR_W = 0.62;   // you, as a dinosaur, in road units (a car is 0.26)
+var DINO_DRAW_SC = 0.88; // build 113 (Carlos): the dino you become is DRAWN 12 % smaller (DINO_HIT unchanged)
 var DINO_PU_W  = 0.45;   // the pickup itself, a shade larger than the heart (1.5x)
 var DINO_HIT   = 0.44;   // half your width plus half a car's
 var HEART_W   = 0.285;  // heart and bolt pickups, both drawn from this (1.5x)
@@ -943,7 +973,7 @@ vapor: {
   props:['#7cff4f','#21e6ff','#ff2fbe','#ffd23f','#b06cff','#ff6a3d'],
   propStruct:'138,104,206', propWarm:'#ffb15a', gate:'#7cff4f',
   lamp:'#21e6ff',   /* build 76: swan-neck lamps, one colour */
-  traffic:['#f2f6ff','#ffd23f','#7cff4f','#ff6a3d','#3dffc0'],   /* build 76: no hot pink (Carlos); build 75: ice white for cyan, mint for violet */
+  traffic:['#f2f6ff','#7cff4f','#ff6a3d','#3dffc0'],   /* build 114: yellow removed (Carlos: yellow = lane switchers); build 76: no hot pink (Carlos); build 75: ice white for cyan, mint for violet */
   weather:'none', wcol:'#ffffff', wamt:0.5,
   bloom:1, grade:{bri:1, con:1, sat:1, hue:0},
   propMask:127, propDens:1, groundFog:0, fogMul:1, bloomMul:1, weatherAmt:1,
@@ -1002,7 +1032,7 @@ haunted: {
   lamp:'#ff9a2e', lampKind:'gas', webs:1,
   chev:['#ffa64a','#cf5f14','#7a3608','#ffe6c8'],
   look:'haunted', wisps:5,
-  traffic:['#f2ecd8','#ff9a2e','#9dff6a','#ffd23f'],
+  traffic:['#f2ecd8','#ff9a2e','#9dff6a'],   /* build 114: yellow removed (lane switchers only) */
   weather:'none', wcol:'#ffffff', wamt:0.5,
   bloom:1, grade:{bri:1, con:1, sat:1, hue:0},
   propMask:127, propDens:1.25, groundFog:0.42, fogMul:1, bloomMul:1, weatherAmt:1,
@@ -1058,7 +1088,7 @@ function rebuildRows(){
     var z = camDepth*camH*(H/2)/denom;
     var sc = camDepth/z;
     var f  = Math.pow(Math.min(1, z/MAXZ), pw);
-    rowZ[y]=z; rowPPU[y]=sc*roadWidth*W/2; rowFog[y]=f;
+    rowZ[y]=z; rowPPU[y]=sc*roadWidth*CAM_ZOOM*W/2; rowFog[y]=f;
     rowCol[y]={ a:mix(R.a,f), b:mix(R.b,f),
                 ra:mix(R.rumA,f), rb:mix(R.rumB,f), ln:mix(R.lane,f) };
   }
@@ -1068,7 +1098,7 @@ rebuildRows();
 function fogAt(z){ return Math.pow(Math.min(1, Math.max(0,z)/MAXZ), ZN.fogPow*ZN.fogMul); }
 function proj(zRel){
   var sc = camDepth/zRel;
-  return { ppu: sc*roadWidth*W/2, y: H/2 + sc*camH*(H/2) + yOff };
+  return { ppu: sc*roadWidth*CAM_ZOOM*W/2, y: H/2 + sc*camH*(H/2) + yOff };
 }
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
 function pad(n,l){ var s=String(n); while(s.length<l) s='0'+s; return s; }
@@ -1431,7 +1461,7 @@ var STR={
        480px-wide banner across the middle of an 800px stage \u2014 on a phone that
        is most of the road, arriving at the exact moment the road gets harder.
        The full explanation still lives on the HOW IT WORKS page (HAZ1). */
-    T_WEAVERS:'VANS AHEAD',
+    T_WEAVERS:'WATCH THE YELLOW ONES',   /* build 114 (was VANS AHEAD) */
     T_SPD:'SPD',
     T_HULL_UP:'+1 HEALTH', T_HULL_FULL:'HEALTH FULL  +10000',
     T_OD_REFRESH:'OVERDRIVE REFRESHED', T_OD_ON:'OVERDRIVE  ',
@@ -1467,6 +1497,11 @@ var STR={
     NEW_HERE:'NEW HERE?',
     NEW2:'OR PRESS C FOR CRUISE: NO CLOCK, NO DAMAGE', NEW2_TOUCH:'OR TRY CRUISE: NO CLOCK, NO DAMAGE',
     OVER_LEARN:'NEED A HAND?  T — TUTORIAL', OVER_LEARN_TOUCH:'NEED A HAND?  TAP TUTORIAL',
+    OVER_REPORT:'R \u2014 FPS REPORT', MOB_REPORT:'FPS report', BB_HEAD:'FPS REPORT \u00b7 BLACK BOX',
+    BB_SUB:'The last 5 races recorded with the FPS meter on. Copy it and paste it in the chat.',
+    BB_COPY:'COPY', BB_COPIED:'COPIED', BB_NOCOPY:'SELECTED: COPY BY HAND', BB_SAVE:'SAVE .TXT', BB_SAVED:'SAVED',
+    BB_CLEAR:'CLEAR', BB_SURE:'TAP AGAIN TO CLEAR', BB_BACK:'BACK',
+    BB_EMPTY:'No race recorded yet. Turn the FPS meter on (F on a keyboard; on a phone, 5 taps on v.NNN on the pause screen) and race.',
     LEARN_TAG:'TUTORIAL', LEARN_STEP:'STEP ',
     T_LEARN_CRASH:'CRASH — COSTS HEALTH AND TIME IN A RUN',
     TUT_GO:'DRIVE', TUT_AGAIN:'AGAIN', TUT_MENU:'MENU', TUT_MENU_K:'BACKSPACE',
@@ -1607,7 +1642,7 @@ var STR={
     T_LAP:'VUELTA ', T_LAP_END:'  \u00b7  M\u00c1S VELOCIDAD M\u00c1XIMA',
     T_HULL_N:' CURACIONES ESTE TRAMO', T_HULL_1:'CURACI\u00d3N ESTE TRAMO',
     T_ENERGY:'DISPARO DE ENERG\u00cdA ESTE TRAMO', T_RAMPAGE_LEG:'ARRASE ESTE TRAMO',
-    T_WEAVERS:'FURGONETAS',
+    T_WEAVERS:'OJO CON LOS AMARILLOS',   /* build 114 (was FURGONETAS) */
     T_SPD:'VEL',
     T_HULL_UP:'+1 SALUD', T_HULL_FULL:'SALUD AL M\u00c1XIMO  +10000',
     T_OD_REFRESH:'SOBRECARGA RENOVADA', T_OD_ON:'SOBRECARGA  ',
@@ -1635,6 +1670,11 @@ var STR={
     NEW_HERE:'\u00bfERES NUEVO?',
     NEW2:'O PULSA C PARA PASEO: SIN RELOJ NI DAÑO', NEW2_TOUCH:'O PRUEBA PASEO: SIN RELOJ NI DAÑO',
     OVER_LEARN:'¿NECESITAS AYUDA?  T — TUTORIAL', OVER_LEARN_TOUCH:'¿NECESITAS AYUDA?  TOCA TUTORIAL',
+    OVER_REPORT:'R \u2014 INFORME FPS', MOB_REPORT:'Informe FPS', BB_HEAD:'INFORME FPS \u00b7 CAJA NEGRA',
+    BB_SUB:'Las \u00faltimas 5 carreras grabadas con el medidor FPS. C\u00f3pialo y p\u00e9galo en el chat.',
+    BB_COPY:'COPIAR', BB_COPIED:'COPIADO', BB_NOCOPY:'SELECCIONADO: COPIA A MANO', BB_SAVE:'GUARDAR .TXT', BB_SAVED:'GUARDADO',
+    BB_CLEAR:'BORRAR', BB_SURE:'TOCA OTRA VEZ PARA BORRAR', BB_BACK:'VOLVER',
+    BB_EMPTY:'A\u00fan no hay carreras grabadas. Enciende el medidor FPS (F en un teclado; en un tel\u00e9fono, 5 toques en v.NNN en la pausa) y corre.',
     LEARN_TAG:'TUTORIAL', LEARN_STEP:'PASO ',
     T_LEARN_CRASH:'CHOQUE — CUESTA SALUD Y TIEMPO EN CARRERA',
     TUT_GO:'CONDUCIR', TUT_AGAIN:'OTRA VEZ', TUT_MENU:'MENÚ', TUT_MENU_K:'RETROCESO',
@@ -2195,7 +2235,7 @@ function hailerAt(z,win){
    Full rate from Oct 1 to Nov 7, a third of it to Nov 20, then none until next Oct 1 (it comes back by
    itself). Dates are month, day; each is one number to change. ?halloween=on / off forces it (testing). */
 var HW_ACT_ODDS = 0.0250;
-var HW_SEASON   = { from:[10,1], full:[11,7], fade:[11,20], fadeK:1/3 };
+var HW_SEASON   = { from:[10,1], full:[11,11], fade:[11,20], fadeK:1/3 }   /* build 120: full rate to Nov 11 (was Nov 7) */;
 var HW_SEASON_K = null;   /* tests: a number here overrides the date */
 var hwK = 0;              /* this run's activator rate, set by reset() */
 function hwSeasonK(d){
@@ -2218,7 +2258,7 @@ function hwSeasonK(d){
    down the lap, on a slot that holds a prop in VAPOR and is not a hailer, with no hailer within HW_ACT_GAP
    slots either side, so the alien's saucer can't take the call away just before it. One that goes by while it
    can't take you (a saucer is hunting, the cooldown is running) is made up further on, out of sight
-   (hwActMakeup). The season (hwK) still thins them after Nov 7: each one is kept with odds hwK. */
+   (hwActMakeup). The season (hwK) still thins them after Nov 11 (build 120; was Nov 7): each one is kept with odds hwK. */
 var HW_ACT_N       = [0.20, 0.50, 0.30];   /* share of laps with none / one / two                            */
 var HW_ACT_TWO_LEN = 250000;               /* a lap shorter than this gets one at most                         */
 var HW_ACT_GAP     = 6;                    /* slots kept clear of hailers on either side                       */
@@ -2385,6 +2425,8 @@ var stars=[], skyline=[], TILE=W+80;
 })();
 
 function reset(){
+  resReset();                            /* build 118: every race starts at full resolution */
+  sprRace();                             /* build 118: sprites on (meter on: alternate per race) */
   trackReset();
   position=0; playerX=0; speed=0; steerVel=0;
   health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0; coast=false; comboOwe=null;
@@ -3707,11 +3749,12 @@ window.addEventListener('keydown', function(e){
     return;
   }
   if (leaveUp){ leaveKey(e); return; }
+  if (bbRepUp){ bbKey(e); return; }            /* build 116: the FPS REPORT screen */
   audioInit();
   var c=e.code;
   if (c.indexOf('Arrow')===0 || c==='Space' || (c==='Tab' && state==='garage')) e.preventDefault();   /* build 97: Tab = next category */
 
-  if (state==='garage'){ garageKey(c); return; }
+  if (state==='garage'){ if (c==='Backspace'||c==='Delete') e.preventDefault(); garageKey(c, e.repeat); return; }   /* build 111: Backspace = back */
   if (state==='tutorial'){ if (c==='Backspace'||c==='Delete') e.preventDefault(); tutKey(c); return; }     /* build 72; 105: Backspace too */
   if (state==='info'){
     if (TOUCH && c==='ArrowLeft')  infoPage=(infoPage+INFO_PAGES-1)%INFO_PAGES;
@@ -3736,6 +3779,7 @@ window.addEventListener('keydown', function(e){
   }
   if (c==='KeyM'){ cycleAudio(); }
   if (c==='KeyF'){ toggleFps(); }                 /* build 71: FPS METER */
+  if (c==='KeyR' && state==='gameover' && fpsOn && !e.repeat){ e.preventDefault(); bbOpen(); }   /* build 116: FPS REPORT */
   /* ESC — back to the main menu: the desktop twin of the mobile MAIN MENU
      slab, and offered on exactly the same two screens it is. Not while
      playing, where one stray keypress would bin a live run, and not on the
@@ -4271,10 +4315,12 @@ function noteLandscape(){
 }
 
 /* The menu strip swaps its buttons to match whatever screen is showing. */
+var padFps=null;   /* build 116 */
 var padDrive=el('padDrive'), padMenu=el('padMenu'), padState=null, padAudio=null, padLang=null, padMode=null, padFull=null;
 var PAD_ACTS={
   start:  function(){ beginRun(); },
   learn:  function(){ startLearn(); },
+  report: function(){ if (state==='gameover') bbOpen(); },   /* build 116 */
   resume: function(){ state='playing'; },
   garage: function(){ if (!SLAB_ST[state]) return; garOpen(state); },   /* build 92: menus only; 97: garOpen */
   info:   function(){ if (!SLAB_ST[state]) return; infoFrom=state; infoPage=0; state='info'; },
@@ -4329,8 +4375,8 @@ function syncPad(){
   if (!TOUCH) return;
   var fsNow=fsActive();
   if (state===padState && audioMode===padAudio && lang===padLang &&
-      mode===padMode && fsNow===padFull) return;
-  padState=state; padAudio=audioMode; padLang=lang; padMode=mode; padFull=fsNow;
+      mode===padMode && fsNow===padFull && fpsOn===padFps) return;
+  padState=state; padAudio=audioMode; padLang=lang; padMode=mode; padFull=fsNow; padFps=fpsOn;   /* build 116: padFps */
   var driving = (state==='playing' || state==='tutorial');
   padDrive.style.display = driving ? 'flex' : 'none';
   /* The garage lays its arrows out as a cross, which needs grid rather than
@@ -4366,6 +4412,8 @@ function syncPad(){
               [[T('MOB_RACE_AGAIN'),'start'],
                [T('MOB_MAIN_MENU'),'menu'],
                [T('MOB_GARAGE'),'garage']]);
+    /* build 116: with the FPS METER on, GAME OVER's last slab is FPS REPORT (it takes TUTORIAL's place; the title still has it) */
+    if (state==='gameover' && fpsOn){ if (L.length>3) L.length=3; L.push([T('MOB_REPORT'),'report']); }
     var cl=document.createElement('div'); cl.className='col l';
     L.forEach(function(d,i){
       var sb=padBtn(d[0],d[1],'slab'+(i?'':' big')+(d[1]==='learn'?' tut':''));
@@ -4413,12 +4461,12 @@ cv.addEventListener('pointerdown', function(e){
     var gr0=cv.getBoundingClientRect();
     if (gr0.width>0 && gr0.height>0) garTap((e.clientX-gr0.left)*W/gr0.width, (e.clientY-gr0.top)*H/gr0.height);
   }
-  else if (state==='paused' && e){
-    /* build 71: the FPS METER line on the pause screen is a button */
+  /* build 111: the pause screen's FPS METER tap zone is gone with its line */
+  else if (state==='paused' && e){            /* build 112: 5 taps on the v.NNN corner within 3 s = FPS METER (hidden) */
     var r=cv.getBoundingClientRect();
     if (r.width>0 && r.height>0){
       var lx=(e.clientX-r.left)*W/r.width, ly=(e.clientY-r.top)*H/r.height;
-      if (Math.abs(ly-fpsLineY())<20 && Math.abs(lx-W/2)<250) toggleFps();
+      if (lx>W-FPS_TAP_W && ly>H-FPS_TAP_H) fpsTap();
     }
   }
 });
@@ -4446,12 +4494,13 @@ function trySpawn(){
   cars.push({
     z:z, lane:lane, x:LANES[lane],
     speed: top*(0.55+Math.random()*0.45),
-    color: weav ? '#ffd23f' : ZN.traffic[(Math.random()*ZN.traffic.length)|0],
+    color: weav ? tvSwCol() : ZN.traffic[(Math.random()*ZN.traffic.length)|0],   /* build 114: tvSwCol (amber-peach in ALIEN PLAINS) */
     passed:false,
     weaver:weav, phase:weav?'wait':null, sigT:0, moveT:0, sigDir:0,
     fromX:0, toLane:0,
     changeT: 0.8+Math.random()*1.6         // first move soon after it appears
   });
+  tvAssign(cars[cars.length-1]);            /* build 114: its body type */
 }
 
 function fire(){
@@ -4537,7 +4586,8 @@ function crash(rear){
   react('dizzy');                 /* build 94 */
   prCrash(false);                 /* build 96: a crash, counted before a crash can end the run */
   invT=2.3;
-  if (odT>0){
+  if (odT>0 || (mode==='cruise' && !learn)){
+    /* build 110: in CRUISE every crash is this bump too (Carlos: a chill ride, never a full stop) */
     /* no invulnerability, but the aura carries you through: half your speed
        and a jolt instead of a spin and a dead stop */
     speed*=0.5; spinT=0; shake=12;
@@ -4573,6 +4623,8 @@ function crash(rear){
    braking, shooting and drifting all still work. The run ends when the speed is down to COAST_END (10 %) of the
    lap's top speed. A lap gate reached on the roll adds time again (coast=false) and the run goes on.
 --------------------------------------------------------------- */
+var OFF_CAP = 0.22;      /* build 110: top speed off the road, share of the lap's top speed (was 0.45)            */
+var OFF_DRAG = 1.0;      /* build 110: seconds the off-road drag alone takes to shed full speed (was 2.0)          */
 var COAST_T = 4.2;       /* the idle drag is maxS/6.5 per second; the roll uses maxS/COAST_T                    */
 var COAST_END = 0.10;    /* game over at this share of the lap's top speed                                       */
 function coastStart(){
@@ -4740,7 +4792,9 @@ function update(dt){
   }
 
   if (ofrOff()){
-    if (speed > maxS*0.45) speed -= (maxS/2.0)*dt;
+    /* build 110: was 45 % of top speed with a soft drag (holding the gas lost only ~18 % a second, so
+       it took 3 s to slow down); now half that speed and a drag that gets you there in about a second */
+    if (speed > maxS*OFF_CAP) speed -= (maxS/OFF_DRAG)*dt;
     shake=Math.max(shake, 2.4*spct);
     scrapeCd-=dt;                /* was up to 24 onsets a second: same crackle */
     if (scrapeCd<=0 && Math.random()<spct*0.6){
@@ -4866,7 +4920,7 @@ function update(dt){
        out. If weaverOdds moves again, move this with it. */
     if (weaverOdds(lap)>0 && !taughtWeavers){
       taughtWeavers=true;
-      say(T('T_WEAVERS'),'#ffd23f',false,'warn',CP_MSG);
+      say(T('T_WEAVERS'),tvSayCol(),false,'warn',CP_MSG);   /* build 114: amber-peach in ALIEN PLAINS, like the switchers */
     }
     blip(660,0.10,'square',0.2);
     setTimeout(function(){ blip(990,0.16,'square',0.2); },110);
@@ -5290,7 +5344,7 @@ var bdCv=null, bdKey='', orbCv=null, orbKey='', orbHalf=0, fogCv=null, fogKey=''
    (`contextrestored`). The main picture redraws every frame anyway; these
    cached layers are painted once, so they have to be told. Without this the
    sun, fog, haze and sky stayed blank for the rest of the zone. */
-function dropCaches(){ bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; moonKey=''; ridgeKey=''; glowCv={}; wispCv=null;
+function dropCaches(){ zcDrop(); sprDrop(); bdKey=''; orbKey=''; fogKey=''; hzKey=''; tagCache={}; tagN=0; moonKey=''; ridgeKey=''; glowCv={}; wispCv=null;
   glowB={}; pkHaloCv=null; wispSpK=''; bodyCv={}; bodyN=0; trlGhostCv=null; }   /* build 88, 94 */
 function offCv(c, w, h, opaque){
   if (!c){
@@ -5313,8 +5367,9 @@ function blitDev(img, sx0, sy0, sw, sh, dx, dy){
 /* sky over [0, horizonY+1), ground over [horizonY, H) -- the same two fills,
    in the same order, as drawSky()/drawGround() used to make */
 function backdrop(){
-  var key=zoneI+'|'+dpr+'|'+cv.width+'x'+cv.height;
+  var key=ZC[0].key();
   if (bdCv && bdKey===key) return bdCv;
+  if (zcSwap(0,key)) return bdCv;   /* build 117: painted ahead */
   bdCv=offCv(bdCv, cv.width, cv.height, true);
   var g=bdCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
   var sg=g.createLinearGradient(0,0,0,horizonY);
@@ -5329,8 +5384,9 @@ function backdrop(){
    margin: a canvas shadow is a gaussian with sigma = shadowBlur/2 DEVICE
    pixels (shadowBlur ignores the transform), so 2x shadowBlur covers it. */
 function orbSprite(){
-  var o=ZN.orb, gb=50*GB, key=zoneI+'|'+dpr+'|'+gb;   /* not blur(): see GQ */
+  var o=ZN.orb, gb=50*GB, key=ZC[1].key();   /* not blur(): see GQ */
   if (orbCv && orbKey===key) return orbCv;
+  if (zcSwap(1,key)) return orbCv;
   var half=Math.ceil(o.r*dpr + 2*gb) + 4;
   orbCv=offCv(orbCv, half*2, half*2);
   var g=orbCv.getContext('2d'), R=o.r;
@@ -5349,8 +5405,9 @@ function orbSprite(){
 }
 /* ALIEN PLAINS' low fog band, painted at the same device rows it lands on */
 function fogSprite(){
-  var top=horizonY, h=H-horizonY, F=ZN.fog, key=zoneI+'|'+dpr+'|'+cv.width;
+  var top=horizonY, h=H-horizonY, F=ZN.fog, key=ZC[2].key();
   if (fogCv && fogKey===key) return fogCv;
+  if (zcSwap(2,key)) return fogCv;
   var y0=Math.floor(top*dpr), y1=Math.ceil((top+h*0.62)*dpr);
   fogCv=offCv(fogCv, cv.width, Math.max(1,y1-y0));
   var g=fogCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,-y0);
@@ -5362,8 +5419,9 @@ function fogSprite(){
 }
 /* ALIEN PLAINS' horizon haze (VAPOR's is off), same treatment */
 function hazeSprite(){
-  var hz=ZN.haze, key=zoneI+'|'+dpr+'|'+cv.width;
+  var hz=ZN.haze, key=ZC[3].key();
   if (hzCv && hzKey===key) return hzCv;
+  if (zcSwap(3,key)) return hzCv;
   var y0=Math.floor((horizonY-hz.h)*dpr), y1=Math.ceil((horizonY+2)*dpr);
   hzCv=offCv(hzCv, cv.width, Math.max(1,y1-y0));
   var g=hzCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,-y0);
@@ -5406,8 +5464,9 @@ function deadTree(g,x,y,h,seed,lw){
   g.lineCap='round'; br(x,y,h*0.42,-Math.PI/2+(hashAt(seed,1)-0.5)*0.25,lw,3); g.lineCap='butt';
 }
 function moonSprite(){
-  var m=ZN.moon, key=zoneI+'|'+dpr+'|'+m.kind+'|'+m.r;
+  var m=ZN.moon, key=ZC[4].key();
   if (moonCv && moonKey===key) return moonCv;
+  if (zcSwap(4,key)) return moonCv;
   var R=m.r, half=Math.ceil(R*3.6*dpr)+4;
   moonCv=offCv(moonCv, half*2, half*2);
   var g=moonCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,half,half);   /* origin = the moon's centre */
@@ -5459,8 +5518,9 @@ function ridgeH(x,mansion){
   return Math.max(2,h);
 }
 function ridgeSprite(){
-  var rd=ZN.ridge, mansion=rd.kind==='mansion', key=zoneI+'|'+dpr+'|'+rd.kind+'|'+rd.col;
+  var rd=ZN.ridge, mansion=rd.kind==='mansion', key=ZC[5].key();
   if (ridgeCv && ridgeKey===key) return ridgeCv;
+  if (zcSwap(5,key)) return ridgeCv;
   ridgeCv=offCv(ridgeCv, Math.ceil(RIDGE_W*dpr), Math.ceil(RIDGE_H*dpr));
   var g=ridgeCv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
   var HY=RIDGE_H-2, x, i, col=rd.col||'#0b0612';
@@ -5550,11 +5610,14 @@ function drawMoonSky(){
 }
 /* the mist's wisps: slow pale bands drifting across the road, over the ground fog (zones with `wisps`) */
 var wispCv=null;
-function mistWisps(n){
+function wispBase(){                     /* build 117: split out of mistWisps() so a ride can make it ahead */
   if (!wispCv){                                  /* one soft pale blob, painted once and stretched into each wisp */
     wispCv=offCv(null,128,128); var g=wispCv.getContext('2d'), gr=g.createRadialGradient(64,64,0,64,64,64);
     gr.addColorStop(0,'rgba(190,170,215,1)'); gr.addColorStop(1,'rgba(190,170,215,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
   }
+}
+function mistWisps(n){
+  wispBase();
   var t=performance.now()/1000, A0=ctx.globalAlpha, S=wispSprites(n);   /* build 88: ready-sized, on whole pixels */
   ctx.save(); ctx.setTransform(1,0,0,1,0,0);
   for (var i=0;i<n;i++){
@@ -5566,6 +5629,7 @@ function mistWisps(n){
 function drawSky(){
   /* sky rows only; drawGround() copies the rest after the skyline, which
      paints a pixel or two below the horizon and must stay covered */
+  if (zcWarm.length || sprWarm.length) zcWarmDraw();       /* build 117: layers painted ahead, touched once before the sky covers them */
   var bd=backdrop(), hy=Math.floor(horizonY*dpr);
   blitDev(bd, 0, 0, bd.width, hy, 0, 0);
 
@@ -5880,7 +5944,7 @@ function v3(lx,ly,lz,rot,lat,zRelBase){
   var rx=lx*cs - lz*sn, rz=lx*sn + lz*cs;
   var zr=zRelBase + rz*roadWidth;
   if (zr<250) zr=250;
-  var sc=camDepth/zr, ppu=sc*roadWidth*W/2;
+  var sc=camDepth/zr, ppu=sc*roadWidth*CAM_ZOOM*W/2;
   return { x: W/2 + ppu*(bend(zr) + lat + rx - playerX),
            y: H/2 + sc*camH*(H/2) + yOff - ppu*ly,
            zr: zr, ppu: ppu };
@@ -6182,7 +6246,7 @@ function decoKioskFuel(x,gy,u,idx,side){
 }
 /* TOWER, STEPPED DECO. Three setbacks with neon pinstripes, warm and
    neon windows (a few switch on and off), a spire with a white beacon. */
-function decoBuildingStep(x,gy,u,idx){
+function decoBuildingStep117(x,gy,u,idx){
   var col=propCol(idx), wR=1.6+hashAt(idx,6)*0.7, hR=3.6+hashAt(idx,7)*2.0, t=performance.now();
   var tiers=[[wR,hR*0.58],[wR*0.74,hR*0.26],[wR*0.48,hR*0.16]], y=gy, ti, r, c;
   var warm=new Path2D(), neon=new Path2D();
@@ -6214,7 +6278,7 @@ function decoBuildingStep(x,gy,u,idx){
 }
 /* TOWER, GLASS CROWN. A glass slab with lit floors and mullions, a
    slanted crown traced in neon, an elevator light riding up and down. */
-function decoBuildingGlass(x,gy,u,idx){
+function decoBuildingGlass117(x,gy,u,idx){
   var col=propCol(idx), wR=1.5+hashAt(idx,6)*0.8, hR=3.4+hashAt(idx,7)*2.2, t=performance.now(), r, i;
   var w=u*wR, h=u*hR, bx=x-w/2, by=gy-h, crown=u*0.75, sd=hashAt(idx,9)<0.5?-1:1;
   var g=ctx.createLinearGradient(0,by,0,gy); g.addColorStop(0,'#160c32'); g.addColorStop(1,'#08041a');
@@ -6726,7 +6790,7 @@ function monsterHands(x,gy,u,pk){
 }
 /* A: JACK-O'-LANTERN STACK. Hay bales and four carved pumpkins, each candle flickering on its own;
    build 84 (Carlos): the top pumpkins sit at the corners and a big green monster peeks between them. */
-function hwBillboardA(x,gy,u,idx,side,zRel){
+function hwBillboardA117(x,gy,u,idx,side,zRel){
   var t=tnow(), A0=ctx.globalAlpha, pk=(u>=8)?peekAt(zRel):0;
   shadowOn(x,gy,u*0.9,u);
   if (pk>0.01) monsterHead(x,gy,u,idx,side,pk,t);
@@ -6799,7 +6863,7 @@ function madSkull(r,t,idx,u){
 }
 /* B: HAUNTED BILLBOARD. A torn poster on rusty legs; build 84 (Carlos): a mad skull with a grinding
    grin fades in through the tear, twitching and lunging, glitching in slices; one spotlight is dying. */
-function hwBillboardB(x,gy,u,idx,side){
+function hwBillboardB117(x,gy,u,idx,side){
   var t=tnow(), A0=ctx.globalAlpha, bw=u*1.9, bh=u*1.05, by=gy-u*1.05-bh;
   shadowOn(x,gy,u*1.1,u);
   ctx.fillStyle='#2a1c22'; ctx.fillRect(x-bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh); ctx.fillRect(x+bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh);
@@ -7338,7 +7402,7 @@ function hwSpookClear(){
   scareDueD=SPOOK_FIRST*lapLength(lap); handDueD=SPOOK_FIRST*0.7*lapLength(lap);
 }
 function hwLerp(a,b,k){ return a+(b-a)*k; }
-function hwCamH(){ return camH*H/(roadWidth*W); }            /* the camera's height in road units */
+function hwCamH(){ return camH*H/(roadWidth*CAM_ZOOM*W); }   /* build 112: zoom-aware (where the camera's eye line is) */            /* the camera's height in road units */
 /* a prop slot's type, the same decision drawDecor makes (-1 = an empty slot) */
 function hwSlotType(idx){
   if (hashAt(idx,1) > Math.min(1,0.5*ZN.propDens)) return -1;
@@ -7951,6 +8015,7 @@ function drawDecor(){
    No shadowBlur.
 --------------------------------------------------------------- */
 var CHEV_SPACE = 2140;               /* build 80: 1500 -> 30 % fewer (1500/0.7) */
+var LAMP_TALL  = 1.2;                /* build 113 (Carlos): every lamp post 20 % taller (swan neck + gas lamp) */
 var LAMP_SPACE = 3430;               /* mockup 2400 -> 30 % fewer (2400/0.7) */
 var CHEV_S     = 0.10*S_PEAK;        /* |slope| at or above this counts as a bend: lamps step to the inside */
 var CHEV_SHARP = 0.40*S_PEAK;        /* build 81: chevrons only where the bend is at least this sharp */
@@ -8086,11 +8151,11 @@ function postLamp(n,zRel){
 
 /* One swan-neck lamp. s = side, k = how lit it is: 1 is the normal steady lamp (identical to build 76),
    0 is a dead one (dark head, no halo or pool, only a faint lit edge). */
-function drawLampAt(zRel,p,s,k){
+function drawLampAt117(zRel,p,s,k){
   var a=1-fogAt(zRel), cRoad=bend(zRel), col=ZN.lamp||ZN.posts[0], m=0.45+0.55*k;
   var x=W/2+p.ppu*(cRoad+s*(1.30+OFR_SH)-playerX), hx=W/2+p.ppu*(cRoad+s*(HAIL_HEAD_X+OFR_SH)-playerX);
   if (Math.max(x,hx)<-80||Math.min(x,hx)>W+80) return;
-  var h=p.ppu*0.80, w=Math.max(1,p.ppu*0.028), top=p.y-h;
+  var h=p.ppu*0.80*LAMP_TALL, w=Math.max(1,p.ppu*0.028), top=p.y-h;   /* build 113: LAMP_TALL */
   if (p.ppu<7){                                          /* far lamp: a pole, a lit edge, a head dot, one pool */
     if (k>0){ ctx.globalAlpha=a*0.13*k; ctx.fillStyle=col; ctx.fillRect(hx-p.ppu*0.3,p.y-1,p.ppu*0.6,1); }
     ctx.globalAlpha=a*0.9; ctx.fillStyle='#140a26'; ctx.fillRect(x-w,top,w*2,h);
@@ -8166,11 +8231,11 @@ function lampPool(x,y,ppu,k,a,col){
   ctx.beginPath(); ctx.ellipse(x,y,ppu*0.34,Math.max(1,ppu*0.07),0,0,Math.PI*2); ctx.fill();
   if (ppu>=16){ ctx.globalAlpha=a*0.12*k; ctx.beginPath(); ctx.ellipse(x,y,ppu*0.17,Math.max(1,ppu*0.035),0,0,Math.PI*2); ctx.fill(); }
 }
-function gasLampAt(zRel,p,s,k,n,headLat,live,webs){
+function gasLampAt117(zRel,p,s,k,n,headLat,live,webs){
   var a=1-fogAt(zRel), t=performance.now()/1000, u=p.ppu, cR=bend(zRel);
   var x=W/2+u*(cR+s*(1.28+OFR_SH)-playerX), lx=W/2+u*(cR+s*(headLat+OFR_SH)-playerX);
   if (Math.max(x,lx)<-80||Math.min(x,lx)>W+80) return;
-  var h=u*0.78, kk=live ? k : k*lampFlame(t,n);
+  var h=u*0.78*LAMP_TALL, kk=live ? k : k*lampFlame(t,n);   /* build 113: LAMP_TALL */
   var hot=live?'#9dff6a':'#ff9a2e', warm=live?'#c8ffb0':'#ffb050';
   if (u<7){ ctx.globalAlpha=a*0.9; ctx.fillStyle='#140a14'; ctx.fillRect(x-1,p.y-h,2,h);
     if (Math.abs(lx-x)>2) ctx.fillRect(Math.min(x,lx),p.y-h,Math.abs(lx-x)+1,1);
@@ -8295,7 +8360,7 @@ function vanChevrons(x,yTop,w,dir){
   ctx.lineCap='butt'; ctx.lineJoin='miter'; ctx.lineWidth=1;
 }
 
-function drawTraffic(c){
+function drawTrafficOld(c){   /* build 113's boxes (TV_MODE 0) */
   var zRel=c.z-position;
   if (zRel<=180||zRel>MAXZ) return;
   var p=proj(zRel), a=1-fogAt(zRel);
@@ -8391,6 +8456,1426 @@ function drawTraffic(c){
   ctx.globalAlpha=1;
 }
 
+/* ---------------------------------------------------------------
+   TRAFFIC LOOKS (build 114, Carlos's traffic picker 11-02; step 1 of TV).
+   Every vehicle is exactly CAR_W wide (= the hitbox); size shows as height.
+   Drawn in "car widths" (ctx.scale(w,w)), origin = bottom centre.
+   Lane switchers: box trucks + tankers (by zone) + four yellow cars;
+   regular traffic: five body types, tinted, tail lights + a brake flare.
+   TV_MODE 0 = the old boxes (build 113's drawTrafficOld), for tests.
+--------------------------------------------------------------- */
+var TV_MODE=1;                 /* 0 = build 113's boxes */
+var TV_TRUCK_H=1.6;            /* pick 1: truck height vs a car (a car is 0.66 w tall) */
+var TV_TINT=0.30;              /* pick 6: share of the car's colour in its body (0 = dark body + outline) */
+var TV_SW=[['box',36],['tank',24],['cab',10],['minicab',10],['works',10],['racer',10]];   /* picks 2-4: trucks 60 (box 60 % / tanker 40 %), yellow cars 40 */
+var TV_REG=['hatch','sedan','coupe','pickup','suv'];   /* pick 5 */
+var TV_BRAKE=1;                /* pick 8: brake flare on a car close ahead in your lane that you are catching */
+var TV_APY=1;                  /* pick 10: ALIEN PLAINS switchers amber-peach (raw values; the grade cannot show yellow) */
+var TVC={y:'#ffd23f', yd:'#8a6a12', a:'#ffb020', al:'#ffe07a', sign:'#fff4c4', slime:'#7cff4f', say:'#ffd23f'};
+var TVC_AP={y:'#6b94ce', yd:'#2e4a70', a:'#5284b5', al:'#8ca5ce', sign:'#a5b5c5', slime:'#b584ce', say:'#fca160'};
+var tvW=10, tvDet=true, tvNow=0, TV_ZID=null, tvGr={};
+function tvZid(){ return TV_ZID||ZN.id; }
+function tvZ(){ return (tvZid()==='vapor-edit' && TV_APY) ? TVC_AP : TVC; }
+function tvSwCol(){ return TV_MODE ? tvZ().y : '#ffd23f'; }        /* a lane switcher's colour (spawn, zone change) */
+function tvSayCol(){ return TV_MODE ? tvZ().say : '#ffd23f'; }     /* the lap-5 warning, in the colour you see them in */
+/* the looks have their own random stream, so the traffic itself (lanes, speeds, spawns) is exactly build 113's */
+var tvSeed=(Date.now()%2147483646)+1;
+function tvRnd(){ tvSeed=(tvSeed*16807)%2147483647; return (tvSeed-1)/2147483646; }
+function tvPick(list){ var s=0,i; for (i=0;i<list.length;i++) s+=list[i][1];
+  var r=tvRnd()*s; for (i=0;i<list.length;i++){ r-=list[i][1]; if (r<=0) return list[i][0]; } return list[0][0]; }
+function tvAssign(c){             /* called for every new car (spawner + tutorial) */
+  if (!TV_MODE) return;
+  if (c.weaver){ c.vt=tvPick(TV_SW); c.color=tvZ().y; }
+  else if (TV_RIVAL && !c.scripted && tvRnd()<TV_RIVAL){ c.vt='rival'; c.lk=tvRandLook(); }   /* build 115: pick 9 */
+  else c.vt=TV_REG[(tvRnd()*TV_REG.length)|0];
+}
+function tvHeight(vt){
+  switch(vt){
+    case 'box': case 'tank': return 0.66*TV_TRUCK_H;
+    case 'sedan': case 'cab': return 0.60;
+    case 'coupe': case 'racer': return 0.50;
+    case 'rival': return 0.62;          /* build 115: paintCar's body height */
+    case 'pickup': case 'works': return 0.70;
+    case 'suv': return 0.80;
+    default: return 0.66;          /* hatch, minicab */
+  }
+}
+function tvIsSw(vt){ return vt==='box'||vt==='tank'||vt==='cab'||vt==='minicab'||vt==='works'||vt==='racer'; }
+function tvLw(px){ return Math.max(1,tvW*px)/tvW; }
+function tvMix(hex,a){            /* a share of hex over the dark body colour */
+  var n=parseInt(hex.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  var dr=16, dg=10, db=28;
+  return 'rgb('+Math.round(dr+(r-dr)*a)+','+Math.round(dg+(g-dg)*a)+','+Math.round(db+(b-db)*a)+')';
+}
+function tvFill(col){ return TV_TINT ? tvMix(col,TV_TINT) : '#100a1c'; }
+function tvGrad(key,mk){ var g=tvGr[key]; if (!g){ g=mk(); tvGr[key]=g; } return g; }   /* gradients in car widths: made once */
+function tvRect(x,y,w,h,col){ ctx.fillStyle=col; ctx.fillRect(x,y,w,h); }
+function tvTrap(yb,wb,yt,wt,r){    /* a cabin: bottom y + width, top y + width */
+  ctx.beginPath();
+  ctx.moveTo(-wb/2,yb); ctx.lineTo(-wt/2,yt+r); ctx.quadraticCurveTo(-wt/2,yt,-wt/2+r,yt);
+  ctx.lineTo(wt/2-r,yt); ctx.quadraticCurveTo(wt/2,yt,wt/2,yt+r); ctx.lineTo(wb/2,yb); ctx.closePath();
+}
+function tvStroke(col,px){ ctx.lineWidth=tvLw(px); ctx.strokeStyle=col; ctx.stroke(); }
+function tvGlowRect(x,y,w,h,col,glow){
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(16,tvW*glow));
+  ctx.fillStyle=col; ctx.fillRect(x,y,w,h); ctx.shadowBlur=0;
+}
+function tvGlowPair(x,y,w,h,col,glow){   /* two mirrored lamps under one glow */
+  ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(16,tvW*glow)); ctx.fillStyle=col;
+  ctx.beginPath(); ctx.rect(-x-w,y,w,h); ctx.rect(x,y,w,h); ctx.fill(); ctx.shadowBlur=0;
+}
+function tvTyres(h,wide,dual){
+  ctx.fillStyle='#05030a';
+  var tw=wide?0.13:0.11;
+  ctx.fillRect(-0.51,-h,tw,h); ctx.fillRect(0.51-tw,-h,tw,h);
+  if (dual){ ctx.fillRect(-0.51+tw+0.015,-h,tw,h); ctx.fillRect(0.51-2*tw-0.015,-h,tw,h); }
+}
+/* tail lights (+ the amber blinker on the side it is going, + brake glow) */
+function tvTails(x,y,w,h,st){
+  tvGlowPair(x,y,w,h,st.brk?'#ff3a3a':'#ff4747',st.brk?1.1:0.30);
+  if (st.brk){ ctx.fillStyle='#ffd0d0'; ctx.fillRect(-x-w+w*0.2,y+h*0.25,w*0.6,h*0.5); ctx.fillRect(x+w*0.2,y+h*0.25,w*0.6,h*0.5); }
+  if (st.sig && st.on){
+    var Z=tvZ(), bx = st.sig<0 ? -x-w : x;
+    tvGlowRect(bx, y-h*0.95, w, h*0.85, Z.a, 0.6);
+  }
+}
+function tvThird(y,st){ if (st.brk){ tvGlowRect(-0.13,y,0.26,0.03,'#ff3a3a',0.9); ctx.fillStyle='#ffd0d0'; ctx.fillRect(-0.09,y+0.008,0.18,0.014); } }
+function tvPlate(y){ if (!tvDet) return; ctx.fillStyle='rgba(215,222,240,.55)'; ctx.fillRect(-0.10,y,0.20,0.065); }
+function tvText(txt,x,y,size,col){  /* text drawn unscaled (tiny fractional font sizes are unreliable) */
+  ctx.save(); ctx.scale(1/tvW,1/tvW); ctx.fillStyle=col; ctx.font='900 '+Math.max(4,size*tvW).toFixed(1)+'px Arial, sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,x*tvW,y*tvW); ctx.restore();
+}
+function tvSign(y,txt,col){        /* a lit roof sign */
+  var Z=tvZ();
+  ctx.shadowColor=Z.al; ctx.shadowBlur=blur(Math.min(14,tvW*0.3));
+  rr(-0.15,y,0.30,0.085,0.02); ctx.fillStyle=col||Z.sign; ctx.fill(); ctx.shadowBlur=0;
+  if (tvDet && txt) tvText(txt,0,y+0.046,0.066,'#120c06');
+}
+
+/* ---- regular bodies ---- */
+function tvSedan(col,st,paint){
+  tvTyres(0.15);
+  var f=paint||tvFill(col), lc=paint?'#0a0612':col;
+  tvTrap(-0.36,0.84,-0.60,0.58,0.05); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  tvTrap(-0.38,0.70,-0.56,0.48,0.03); ctx.fillStyle=paint?'rgba(14,8,30,.85)':'rgba(120,200,255,.16)'; ctx.fill();
+  rr(-0.5,-0.40,1,0.32,0.07); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  if (tvDet){ ctx.fillStyle=paint?'rgba(0,0,0,.25)':hexA(col,0.35); ctx.fillRect(-0.44,-0.335,0.88,tvLw(0.012)); }
+  tvTails(0.24,-0.34,0.21,0.075,st);
+  tvPlate(-0.25); tvThird(-0.585,st);
+}
+function tvHatch(col,st,paint){
+  tvTyres(0.15);
+  var f=paint||tvFill(col), lc=paint?'#0a0612':col;
+  tvTrap(-0.40,0.92,-0.66,0.74,0.08); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  tvTrap(-0.42,0.74,-0.62,0.62,0.04); ctx.fillStyle=paint?'rgba(14,8,30,.85)':'rgba(120,200,255,.16)'; ctx.fill();
+  rr(-0.5,-0.44,1,0.36,0.08); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  if (tvDet){ ctx.fillStyle=paint?'rgba(0,0,0,.35)':hexA(col,0.8); ctx.fillRect(-0.30,-0.685,0.60,0.03); }   /* roof lip */
+  tvTails(0.37,-0.52,0.10,0.20,st);
+  tvPlate(-0.27); tvThird(-0.645,st);
+}
+function tvCoupe(col,st,paint,deco){
+  tvTyres(0.14,true);
+  var f=paint||tvFill(col), lc=paint?'#0a0612':col;
+  tvTrap(-0.30,0.74,-0.50,0.44,0.05); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  tvTrap(-0.31,0.62,-0.47,0.36,0.03); ctx.fillStyle=paint?'rgba(14,8,30,.85)':'rgba(120,200,255,.16)'; ctx.fill();
+  rr(-0.5,-0.34,1,0.27,0.06); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  if (deco) deco();
+  tvGlowRect(-0.44,-0.285,0.88,0.05,st.brk?'#ff3a3a':'#ff4747',st.brk?1.1:0.28);      /* full-width strip */
+  if (st.brk){ ctx.fillStyle='#ffd0d0'; ctx.fillRect(-0.40,-0.272,0.80,0.024); }
+  if (st.sig && st.on) tvGlowRect(st.sig<0?-0.44:0.30,-0.285,0.14,0.05,tvZ().a,0.6);
+  /* ducktail wing */
+  ctx.fillStyle=paint?'#0a0612':col; ctx.fillRect(-0.30,-0.36,0.03,0.05); ctx.fillRect(0.27,-0.36,0.03,0.05);
+  rr(-0.47,-0.395,0.94,0.04,0.015); ctx.fillStyle=paint?'#140c1e':tvFill(col); ctx.fill(); tvStroke(paint?'#0a0612':col,0.03);
+  if (tvDet){ ctx.fillStyle='#05030a'; ctx.beginPath(); ctx.arc(-0.30,-0.13,0.035,0,Math.PI*2); ctx.arc(0.30,-0.13,0.035,0,Math.PI*2); ctx.fill(); }
+  tvThird(-0.48,st);
+}
+function tvPickup(col,st,paint){
+  tvTyres(0.18,true);
+  var f=paint||tvFill(col), lc=paint?'#0a0612':col;
+  rr(-0.40,-0.70,0.80,0.32,0.06); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);          /* cab */
+  rr(-0.26,-0.655,0.52,0.13,0.03); ctx.fillStyle=paint?'rgba(14,8,30,.85)':'rgba(120,200,255,.16)'; ctx.fill();
+  ctx.fillStyle='#07040d'; ctx.fillRect(-0.47,-0.445,0.94,0.05);                          /* the bed's inside */
+  rr(-0.5,-0.42,1,0.32,0.04); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);               /* tailgate */
+  if (tvDet){ ctx.fillStyle=paint?'rgba(0,0,0,.35)':hexA(col,0.5); ctx.fillRect(-0.09,-0.36,0.18,0.035); }
+  tvTails(0.40,-0.40,0.09,0.20,st);
+  ctx.fillStyle='#05030a'; ctx.fillRect(-0.04,-0.11,0.08,0.06);                            /* hitch */
+  tvPlate(-0.24); tvThird(-0.705,st);
+}
+function tvSuv(col,st,paint){
+  tvTyres(0.17,true);
+  var f=paint||tvFill(col), lc=paint?'#0a0612':col;
+  rr(-0.5,-0.80,1,0.72,0.10); ctx.fillStyle=f; ctx.fill(); tvStroke(lc,0.045);
+  rr(-0.38,-0.76,0.76,0.24,0.05); ctx.fillStyle=paint?'rgba(14,8,30,.85)':'rgba(120,200,255,.16)'; ctx.fill();
+  if (tvDet){ ctx.fillStyle=hexA(paint?'#ffffff':col,0.5); ctx.fillRect(-0.40,-0.835,0.06,0.04); ctx.fillRect(0.34,-0.835,0.06,0.04);
+    ctx.fillRect(-0.40,-0.84,0.80,tvLw(0.015)); }
+  /* the spare wheel */
+  ctx.fillStyle='#05030a'; ctx.beginPath(); ctx.arc(0,-0.34,0.165,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,-0.34,0.095,0,Math.PI*2); ctx.strokeStyle=hexA(col,0.6); ctx.lineWidth=tvLw(0.03); ctx.stroke();
+  if (tvDet){ ctx.fillStyle=hexA(col,0.45); ctx.beginPath(); ctx.arc(0,-0.34,0.03,0,Math.PI*2); ctx.fill(); }
+  tvTails(0.39,-0.54,0.09,0.22,st);
+  tvRect(-0.5,-0.15,1,0.05,'#07040d'); tvThird(-0.785,st);
+}
+
+/* ---- lane switchers ---- */
+function tvChev(yTop,dir){          /* the old van's chevrons, in the zone's lane-switcher colour */
+  var Z=tvZ(), bw=0.78, x0=-bw/2, cw=bw/3, h=Math.max(2.2/tvW,0.17), i, cx, lit;
+  var ph=(Math.floor(tvNow/105))%4;
+  ctx.lineWidth=Math.max(1.4/tvW,0.062); ctx.lineCap='round'; ctx.lineJoin='round';
+  for (i=0;i<3;i++){
+    lit = ph > (dir>0 ? i : (2-i));
+    ctx.strokeStyle = lit ? Z.y : hexA(Z.yd,0.85);
+    if (lit){ ctx.shadowColor=Z.a; ctx.shadowBlur=blur(Math.min(22,tvW*0.55)); }
+    cx=x0+cw*(i+0.5);
+    ctx.beginPath(); ctx.moveTo(cx-dir*cw*0.24,yTop); ctx.lineTo(cx+dir*cw*0.24,yTop+h/2); ctx.lineTo(cx-dir*cw*0.24,yTop+h); ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+  ctx.lineCap='butt'; ctx.lineJoin='miter'; ctx.lineWidth=1;
+}
+function tvHazardBar(x,y,w,h){      /* yellow / black diagonal stripes */
+  var Z=tvZ();
+  ctx.fillStyle=Z.y; ctx.fillRect(x,y,w,h);
+  if (!tvDet) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.fillStyle='#0c0810'; ctx.beginPath();
+  for (var s=x-h; s<x+w; s+=h*1.6){ ctx.moveTo(s,y+h); ctx.lineTo(s+h*0.8,y+h); ctx.lineTo(s+h*1.6,y); ctx.lineTo(s+h*0.8,y); ctx.closePath(); }
+  ctx.fill(); ctx.restore();
+}
+function tvChassis(st){
+  tvTyres(0.20,true,true);
+  tvHazardBar(-0.30,-0.19,0.60,0.07);
+  ctx.fillStyle='#07040d'; ctx.fillRect(-0.5,-0.25,1,0.06);
+}
+function tvTruckLamps(top){        /* three amber ID lamps + two corner markers, one glow */
+  var Z=tvZ();
+  ctx.shadowColor=Z.a; ctx.shadowBlur=blur(Math.min(10,tvW*0.18)); ctx.fillStyle=Z.al;
+  ctx.beginPath();
+  for (var k=-1;k<=1;k++){ ctx.moveTo(k*0.085+0.022,top+0.035); ctx.arc(k*0.085,top+0.035,0.022,0,Math.PI*2); }
+  ctx.rect(-0.47,top+0.02,0.06,0.03); ctx.rect(0.41,top+0.02,0.06,0.03);
+  ctx.fill(); ctx.shadowBlur=0;
+}
+function tvBox(st){
+  var Z=tvZ(), H=0.66*TV_TRUCK_H, top=-H, bot=-0.25;
+  tvChassis(st);
+  ctx.fillStyle='#15121f'; ctx.fillRect(-0.5,top,1,bot-top);
+  /* the roll-up door: ribbed metal slats */
+  var dx=-0.42, dw=0.84, dy=top+0.075, dh=bot-0.03-dy, n=tvDet?12:6, sh=dh/n, i, yy;
+  ctx.fillStyle=tvGrad('box'+H,function(){ var g=ctx.createLinearGradient(0,dy,0,dy+dh); g.addColorStop(0,'#7d8296'); g.addColorStop(1,'#464a5c'); return g; });
+  ctx.fillRect(dx,dy,dw,dh);
+  ctx.beginPath(); for (i=0;i<n;i++){ yy=dy+i*sh; ctx.rect(dx,yy,dw,Math.max(1/tvW,sh*0.16)); }
+  ctx.fillStyle='rgba(225,232,250,.55)'; ctx.fill();
+  ctx.beginPath(); for (i=0;i<n;i++){ yy=dy+i*sh; ctx.rect(dx,yy+sh*0.78,dw,Math.max(1/tvW,sh*0.22)); }
+  ctx.fillStyle='rgba(8,6,16,.55)'; ctx.fill();
+  if (tvDet){ ctx.fillStyle='#2a2c38'; ctx.fillRect(-0.09,dy+dh-sh*1.4,0.18,sh*0.6);
+    ctx.fillStyle='rgba(225,232,250,.7)'; ctx.fillRect(-0.075,dy+dh-sh*1.25,0.15,sh*0.25); }
+  /* the frame: yellow posts, header and sill */
+  ctx.fillStyle=Z.y;
+  ctx.fillRect(-0.5,top,0.08,bot-top); ctx.fillRect(0.42,top,0.08,bot-top);
+  ctx.fillRect(-0.5,top,1,0.075); ctx.fillRect(-0.5,bot-0.035,1,0.035);
+  if (tvDet){ ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fillRect(-0.44,top,0.015,bot-top); ctx.fillRect(0.425,top,0.015,bot-top); }
+  ctx.beginPath(); ctx.rect(-0.5,top,1,-top-0.10); tvStroke('#0a0612',0.035);
+  tvTruckLamps(top);
+  tvTails(0.425,bot-0.20,0.07,0.11,st);
+}
+function tvTank(st){
+  var Z=tvZ(), zid=tvZid(), H=0.66*TV_TRUCK_H, cy=-0.25-(H-0.25)*0.50, ry=(H-0.25)*0.52, rx=0.49;
+  var hw=(zid==='haunted'), al=(zid==='vapor-edit');
+  tvChassis(st);
+  ctx.fillStyle='#07040d'; ctx.fillRect(-0.30,-0.30,0.60,0.08);         /* saddle */
+  if (tvDet){ ctx.strokeStyle='#5a5e70'; ctx.lineWidth=tvLw(0.02);          /* catwalk rail */
+    ctx.beginPath(); ctx.moveTo(-0.28,cy-ry-0.05); ctx.lineTo(0.28,cy-ry-0.05);
+    ctx.moveTo(-0.24,cy-ry-0.05); ctx.lineTo(-0.24,cy-ry+0.01); ctx.moveTo(0.24,cy-ry-0.05); ctx.lineTo(0.24,cy-ry+0.01); ctx.stroke(); }
+  if (hw && tvDet){ ctx.fillStyle='#3d6b1e'; ctx.fillRect(-0.035,cy-ry-0.07,0.07,0.08); }   /* pumpkin stem */
+  ctx.beginPath(); ctx.ellipse(0,cy,rx,ry,0,0,Math.PI*2);
+  ctx.fillStyle=tvGrad('tank'+(hw?'h':al?'a':'v')+H,function(){
+    var g=ctx.createRadialGradient(-0.12,cy-ry*0.35,0.02,0,cy,rx*1.05);
+    if (hw){ g.addColorStop(0,'#ffb75a'); g.addColorStop(0.55,'#e8680f'); g.addColorStop(1,'#6e2804'); }   /* pumpkin (HAUNTED) */
+    else if (al){ g.addColorStop(0,'#3c3654'); g.addColorStop(1,'#120c20'); }                           /* slime (ALIEN PLAINS) */
+    else { g.addColorStop(0,'#eef2fa'); g.addColorStop(0.5,'#8d93a8'); g.addColorStop(1,'#2a2c38'); }   /* fuel (VAPOR) */
+    return g; });
+  ctx.fill();
+  if (al || (hw && tvDet)){
+    ctx.save(); ctx.beginPath(); ctx.ellipse(0,cy,rx,ry,0,0,Math.PI*2); ctx.clip();
+    if (al){                           /* sight glass: glowing slime, sloshing */
+      var lv=cy+ry*0.05+Math.sin(tvNow/380)*ry*0.04;
+      ctx.fillStyle=Z.slime; ctx.shadowColor=Z.slime; ctx.shadowBlur=blur(Math.min(18,tvW*0.4));
+      ctx.beginPath(); ctx.moveTo(-rx,lv);
+      for (var k=0;k<=8;k++) ctx.lineTo(-rx+k*rx/4, lv+Math.sin(k*1.7+tvNow/260)*ry*0.05);
+      ctx.lineTo(rx,cy+ry); ctx.lineTo(-rx,cy+ry); ctx.closePath(); ctx.globalAlpha*=0.85; ctx.fill(); ctx.globalAlpha/=0.85; ctx.shadowBlur=0;
+      if (tvDet){ ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(-0.14,lv+ry*0.30,0.025,0,Math.PI*2); ctx.arc(0.06,lv+ry*0.55,0.018,0,Math.PI*2); ctx.arc(0.22,lv+ry*0.25,0.02,0,Math.PI*2); ctx.fill(); }
+    }
+    if (hw && tvDet){                  /* ribs */
+      ctx.strokeStyle='rgba(110,40,4,.65)'; ctx.lineWidth=tvLw(0.025);
+      for (var q=1;q<=2;q++){ ctx.beginPath(); ctx.ellipse(0,cy,rx*q*0.36,ry*0.98,0,0,Math.PI*2); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  ctx.beginPath(); ctx.ellipse(0,cy,rx,ry,0,0,Math.PI*2);
+  ctx.lineWidth=tvLw(0.045); ctx.strokeStyle=hw?'#0a0612':Z.y; ctx.stroke();
+  if (!hw && tvDet){ ctx.beginPath(); ctx.ellipse(0,cy,rx*0.80,ry*0.80,0,0,Math.PI*2); ctx.strokeStyle='rgba(10,6,18,.35)'; ctx.lineWidth=tvLw(0.02); ctx.stroke(); }
+  if (hw){                           /* carved face, lit from inside */
+    ctx.fillStyle='#ffd23f'; ctx.shadowColor='#ff9a2e'; ctx.shadowBlur=blur(Math.min(16,tvW*0.35));
+    ctx.beginPath(); ctx.moveTo(-0.26,cy-ry*0.12); ctx.lineTo(-0.10,cy-ry*0.12); ctx.lineTo(-0.18,cy-ry*0.50); ctx.closePath();
+    ctx.moveTo(0.26,cy-ry*0.12); ctx.lineTo(0.10,cy-ry*0.12); ctx.lineTo(0.18,cy-ry*0.50); ctx.closePath();
+    ctx.moveTo(-0.30,cy+ry*0.18);
+    var gx=[-0.30,-0.22,-0.15,-0.07,0,0.07,0.15,0.22,0.30], gy=[0.18,0.30,0.20,0.32,0.22,0.32,0.20,0.30,0.18];
+    for (var j=1;j<gx.length;j++) ctx.lineTo(gx[j],cy+ry*gy[j]);
+    ctx.quadraticCurveTo(0,cy+ry*0.80,-0.30,cy+ry*0.18); ctx.fill(); ctx.shadowBlur=0;
+  } else if (tvDet){                 /* hazard diamond: a flame (fuel) or a drop (slime) */
+    var dx=-0.22, dy=cy-ry*0.05, s=0.10;
+    ctx.beginPath(); ctx.moveTo(dx,dy-s); ctx.lineTo(dx+s,dy); ctx.lineTo(dx,dy+s); ctx.lineTo(dx-s,dy); ctx.closePath();
+    ctx.fillStyle=al?Z.y:'#ff6a3d'; ctx.fill(); ctx.lineWidth=tvLw(0.015); ctx.strokeStyle='#f4f6ff'; ctx.stroke();
+    ctx.fillStyle='#120c06'; ctx.beginPath();
+    if (al){ ctx.arc(dx,dy+s*0.18,s*0.30,0,Math.PI); ctx.lineTo(dx,dy-s*0.45); ctx.closePath(); }
+    else { ctx.moveTo(dx,dy-s*0.55); ctx.quadraticCurveTo(dx+s*0.42,dy,dx+s*0.22,dy+s*0.42); ctx.lineTo(dx-s*0.22,dy+s*0.42); ctx.quadraticCurveTo(dx-s*0.42,dy,dx,dy-s*0.55); }
+    ctx.fill();
+  }
+  if (tvDet && !hw){                 /* ladder up the right side */
+    ctx.strokeStyle=al?'#8a86a6':'#1c1e28'; ctx.lineWidth=tvLw(0.02);
+    var lx=0.16, lt=cy-ry*0.92, lb=-0.27;
+    ctx.beginPath(); ctx.moveTo(lx,lb); ctx.lineTo(lx,lt); ctx.moveTo(lx+0.10,lb); ctx.lineTo(lx+0.10,lt);
+    for (var r2=lb-0.05; r2>lt; r2-=0.065){ ctx.moveTo(lx,r2); ctx.lineTo(lx+0.10,r2); }
+    ctx.stroke();
+  }
+  tvTruckLamps(cy-ry-0.075);
+  tvTails(0.40,-0.245,0.10,0.07,st);
+}
+function tvCabBody(vt,st){         /* the yellow lane-switcher cars (pick 3) */
+  var Z=tvZ(), y=Z.y;
+  if (vt==='cab'){                  /* checker cab */
+    tvSedan(y,st,y);
+    if (tvDet){
+      var n=12, cw=0.96/n, i, r;
+      ctx.fillStyle='#f4f2ea'; ctx.fillRect(-0.48,-0.215,0.96,0.084);
+      ctx.fillStyle='#0c0810'; ctx.beginPath();
+      for (r=0;r<2;r++) for (i=0;i<n;i++) if (!((i+r)%2)) ctx.rect(-0.48+i*cw,-0.215+r*0.042,cw,0.042);
+      ctx.fill();
+    } else tvRect(-0.48,-0.215,0.96,0.084,'#3a3020');
+    tvSign(-0.69,'TAXI');
+  } else if (vt==='minicab'){       /* mini cab */
+    tvHatch(y,st,y);
+    tvRect(-0.5,-0.33,1,tvLw(0.03),'#0c0810');
+    if (tvDet){ ctx.fillStyle='#0c0810'; ctx.fillRect(-0.12,-0.23,0.24,0.08); tvText('TAXI',0,-0.19,0.055,y); }
+    tvSign(-0.76,'TAXI');
+  } else if (vt==='works'){         /* works pickup: hazard tailgate + a roof beacon bar */
+    tvPickup(y,st,y);
+    tvHazardBar(-0.40,-0.33,0.80,0.07);
+    var on=(Math.floor(tvNow/180)%2)===0;
+    tvRect(-0.30,-0.745,0.60,0.045,'#2a2010');
+    tvGlowRect(on?-0.28:0.04,-0.74,0.24,0.035,on?Z.a:Z.al,0.5);
+    tvRect(on?0.04:-0.28,-0.74,0.24,0.035,'rgba(120,90,20,.8)');
+  } else if (vt==='racer'){         /* stripe racer */
+    tvCoupe(y,st,y,function(){ ctx.fillStyle='#0c0810'; ctx.fillRect(-0.13,-0.47,0.075,0.40); ctx.fillRect(0.055,-0.47,0.075,0.40); });
+  }
+}
+
+function tvState(c,zRel){
+  var sig=(c.weaver && (c.sigT>0||c.phase==='move')) ? c.sigDir : 0;
+  var brk=(c.brk!==undefined) ? c.brk :
+    (TV_BRAKE && !c.weaver && zRel<5200 && Math.abs(c.x-playerX)<0.30 && speed>c.speed*1.15);
+  return {sig:sig, on:(Math.floor(tvNow/230)%2)===0, brk:brk};
+}
+function drawTraffic(c){
+  if (!TV_MODE || !c.vt){ drawTrafficOld(c); return; }
+  var zRel=c.z-position;
+  if (zRel<=180||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=CAR_W*p.ppu, hk=tvHeight(c.vt), h=w*hk, sw=tvIsSw(c.vt), Z=tvZ();
+  var x=W/2+p.ppu*(bend(zRel)+c.x-playerX);
+  if (x<-w||x>W+w) return;
+  tvNow=performance.now();
+  var col = sw ? Z.y : (c.vt==='rival' ? c.lk.paint.a : c.color);   /* build 115 */
+
+  ctx.globalAlpha=a*0.25; ctx.fillStyle=col;
+  ctx.beginPath(); ctx.ellipse(x,p.y,Math.max(1,w*0.62),Math.max(1,w*0.09),0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=a;
+
+  if (w<8){                          /* far away: the old strip, as tall as the vehicle */
+    var mw=Math.max(5,w), mh=Math.max(sw?6:4,h);
+    ctx.fillStyle=col; ctx.fillRect(x-mw/2,p.y-mh,mw,mh);
+    if (sw){
+      var fsg=(c.sigT>0||c.phase==='move')?c.sigDir:0, fon=(Math.floor(tvNow/(fsg?105:230))%2)===0;
+      if (fon && fsg){ ctx.shadowColor=Z.a; ctx.shadowBlur=blur(9); ctx.fillStyle=Z.al;
+        ctx.fillRect(x+(fsg>0?mw*0.05:-mw*0.55), p.y-mh-3, mw*0.5, 3); ctx.shadowBlur=0; }
+    }
+    ctx.fillStyle='#ff5555'; ctx.fillRect(x-mw/2,p.y-Math.min(mh,mw*0.66)*0.5,mw,Math.max(1,mh*0.18));
+    ctx.globalAlpha=1; return;
+  }
+  var st=tvState(c,zRel);
+  if (c.vt==='rival'){ ctx.save(); ctx.translate(x,p.y); tvDrawRival(c,w,st); ctx.restore(); ctx.globalAlpha=1; return; }   /* build 115 */
+  ctx.save(); ctx.translate(x,p.y); ctx.scale(w,w);
+  tvW=w; tvDet=w>=22;
+  switch(c.vt){
+    case 'hatch': tvHatch(c.color,st); break;
+    case 'sedan': tvSedan(c.color,st); break;
+    case 'coupe': tvCoupe(c.color,st); break;
+    case 'pickup': tvPickup(c.color,st); break;
+    case 'suv': tvSuv(c.color,st); break;
+    case 'box': tvBox(st); break;
+    case 'tank': tvTank(st); break;
+    default: tvCabBody(c.vt,st);
+  }
+  if (st.sig) tvChev(-hk-0.20-(c.vt==='cab'||c.vt==='minicab'||c.vt==='works'?0.10:0), st.sig);
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+/* HOW IT WORKS: the hazard icon is now the box truck, signalling (VAPOR colours: the info screen is never graded) */
+function iconVan(cx,cy,w){
+  if (!TV_MODE){ iconVanOld(cx,cy,w); return; }
+  var tw=w*0.76, hk=tvHeight('box'), side=(Math.floor(performance.now()/1500)%2)===0?1:-1;
+  var yb=cy+1+tw*(hk+0.31)/2;        /* centre the truck + its chevrons on cy (about as tall as the old van icon) */
+  TV_ZID='vapor'; tvNow=performance.now();
+  ctx.save(); ctx.translate(cx,yb); ctx.scale(tw,tw);
+  tvW=tw; tvDet=tw>=22;
+  var st={sig:side, on:(Math.floor(tvNow/230)%2)===0, brk:false};
+  tvBox(st); tvChev(-hk-0.14,side);
+  ctx.restore(); TV_ZID=null;
+}
+
+/* ---------------------------------------------------------------
+   RIVALS (build 115, TV step 2, Carlos's pick 9): about 10 % of the regular
+   traffic is a garage combo, drawn with the player's own paintCar(): any part,
+   locked ones too (a teaser), face shown, no reactions.
+   Each rival keeps its own little sprite cache (two canvases, reused): the car is
+   painted once per size step (x1.25, at most one new paint a frame) and brake state, then drawn as an image.
+   paintCar's shared body cache (bodyCv) is skipped while a sprite is painted
+   (tvSpr), so rivals never push the player's body out of it.
+   Live on top of the sprite: the CHROME / METAL glint. Frozen in the sprite:
+   blinks (never painted closed), PULSE bars, LED faces, HOLO plates.
+   Above TV_RCAP device px the car is painted live (only a rival right beside you).
+   Looks use tvRnd(), so lanes, speeds and spawns stay exactly build 114's.
+--------------------------------------------------------------- */
+var TV_RIVAL=0.10;             /* pick 9: share of regular traffic that is a rival */
+var TV_RSPR=1;                 /* 1 = sprite cache, 0 = paint live every frame (tests) */
+var TV_RSTEP=1.25;             /* size step between cached sprites (painted at the step's top size: only ever drawn smaller) */
+var TV_RCAP=560;               /* biggest cached sprite, device px of car width */
+var TV_RNOPAINT=['GOLD RUSH']; /* yellow stays the lane switchers' colour */
+var tvSpr=0;                   /* 1 while a sprite (or a live rival) is painted */
+var tvRPaintT=-1e9;            /* when the last sprite was painted: one new paint per frame, the others reuse their last image */
+var TVR_X0=-0.80, TVR_X1=0.80, TVR_Y0=-1.15, TVR_Y1=0.30;   /* sprite box, in car widths around the bottom centre (measured: every part fits in -0.72..0.71 x -1.07..0.25) */
+function tvAnyR(a){ return a[(tvRnd()*a.length)|0]; }
+function tvRandLook(){
+  var pl=['CLASSIC','YELLOW','NEON','HOLO',''], t='', L='ABCDEFGHJKLMNPRSTUVWXYZ', i, pt;
+  for (i=0;i<3;i++) t+=L.charAt((tvRnd()*L.length)|0);
+  for (i=0;i<3;i++) t+=((tvRnd()*10)|0);
+  do { pt=tvAnyR(PAINTS); } while (TV_RNOPAINT.indexOf(pt.n)>=0);
+  return { trim:tvAnyR(NEONS).c, light:tvAnyR(NEONS).c, wrapc:tvAnyR(NEONS).c, paint:pt,
+           shape:(tvRnd()*BARS.length)|0, eye:1+((tvRnd()*(EYES.length-1))|0),
+           fin:tvAnyR(FINISHES).k, liv:tvAnyR(LIVERIES).k, spo:tvAnyR(SPOILERS).k, tail:tvAnyR(TAILS).k,
+           plate:tvAnyR(pl), ptxt:t, exh:tvAnyR(EXHAUSTS).k, glow:tvAnyR(GLOWS).k };
+}
+function tvRivalLive(c,w,brk){
+  tvSpr=1;
+  try{ paintCar(w,{lk:c.lk, brake:brk}); } finally { tvSpr=0; }
+}
+function tvRivalSprite(c,w,brk){       /* the cached image for this size step + brake state, or null */
+  var sc=dpr;
+  try{ if (ctx.getTransform){ var m=ctx.getTransform(); sc=Math.sqrt(m.a*m.a+m.b*m.b); } }catch(_){}
+  sc=Math.max(0.5,sc);
+  var k=Math.max(0,Math.ceil(Math.log(w*sc/10)/Math.log(TV_RSTEP)-1e-9)), D=10*Math.pow(TV_RSTEP,k);
+  if (D>TV_RCAP) return null;
+  var key=k+'|'+(brk?1:0)+'|'+sc.toFixed(2), S=c.rs||(c.rs=[]), i, e;
+  for (i=0;i<S.length;i++) if (S[i].key===key){ e=S[i]; if (i){ S.splice(i,1); S.unshift(e); } return e; }
+  var now=performance.now();
+  if (S.length && now-tvRPaintT<8 && now>=tvRPaintT) return S[0];   /* another rival painted this frame: keep the last image a frame longer */
+  var pw=D/sc, cw=Math.ceil((TVR_X1-TVR_X0)*D), ch=Math.ceil((TVR_Y1-TVR_Y0)*D);
+  e = S.length>=2 ? S.pop() : {cv:null};      /* reuse the older canvas */
+  try{
+    e.cv=offCv(e.cv, cw, ch);
+    var g=e.cv.getContext('2d');
+    g.setTransform(sc,0,0,sc,-TVR_X0*D,-TVR_Y0*D);
+    var keep=ctx; ctx=g; tvSpr=1;
+    try{ paintCar(pw,{lk:c.lk, brake:brk}); } finally { ctx=keep; tvSpr=0; }
+  }catch(_){ return null; }
+  e.key=key; S.unshift(e); tvRPaintT=now;
+  return e;
+}
+function tvDrawRival(c,w,st){
+  if (TV_RSPR){
+    var e=tvRivalSprite(c,w,st.brk);
+    if (e) ctx.drawImage(e.cv, TVR_X0*w, TVR_Y0*w, (TVR_X1-TVR_X0)*w, (TVR_Y1-TVR_Y0)*w);
+    else tvRivalLive(c,w,st.brk);
+  } else tvRivalLive(c,w,st.brk);
+  var f=c.lk.fin;
+  if ((f==='CHROME'||f==='METAL') && w>=22) lkGlint(w,w*0.62,f);   /* the sweep stays live */
+}
+
+/* ---------------------------------------------------------------
+   BUILD 116 - THE BLACK BOX (an FPS flight recorder, like Neon Pain-T's _31)
+   While the FPS METER is on (F on a keyboard; 5 taps on v.NNN on the pause screen), every race is
+   recorded: each frame's interval, our own script time split into ten stages, and what was on the
+   road. The 10 worst hitches (late frames within half a second merge into one burst, kept by its worst
+   frame), the 5 worst seconds, a summary per zone and a frame-time histogram are kept for the last 5
+   races (localStorage vaporlane.bb). GAME OVER then offers FPS REPORT (R on a keyboard, a slab on the
+   phone): a scrollable text with COPY / SAVE .TXT / CLEAR / BACK. Nothing is timed while the meter is
+   off, except a ring of the title screen's frame intervals (the screen's real refresh, measured while
+   the game is light), so a race that holds half the refresh shows up as late instead of passing as
+   "a 30 Hz screen" (build 71's governor reads the race's own rhythm and cannot tell the two apart).
+   Late = an interval over 1.5x the refresh. Stages are JS time only: on a phone or a Mac the canvas is
+   drawn by the GPU after our script, so "not JS" (interval minus the previous frame's script) is where
+   GPU, compositing, garbage collection and the browser show up.
+--------------------------------------------------------------- */
+var BB_KEY='vaporlane.bb', BB_RUNS=5, BB_HITS=10, BB_SECS=5, BB_MERGE=500, BB_SAVE_MS=10000;
+var BB_BURST=1000;                       /* build 117: a burst is cut after 1 s, so a race that is late all the time still lists ten moments */
+var BB_NEAR=12000;                       /* "near" traffic: closer than this (road units) */
+var BB_ST=['update','sky','road','props','lamps','gate','traffic','fog+wx','car+fx','hud'];
+var BB_ZN={vapor:'VAPOR', vaporEdit:'ALIEN PLAINS', haunted:'HAUNTED HWY', ride:'RIDE (cutscene)'};
+var BB_HB=[12,18,25,34,50,100,250];      /* histogram edges, ms */
+var bbOn=false, bbT0=0, bbSi=0, bbSt=new Float64Array(10), bbPrev=new Float64Array(10), bbPrevTot=0;
+var bbMenuG=new Float32Array(120), bbMenuI=0;
+var bbCur=null, bbBurst=null, bbHeap=0, bbHid=false, bbLT=[], bbRepUp=false, bbTxt='', bbClr=0;
+function bbBegin(t){ bbOn=fpsOn; if (bbOn){ bbSt.fill(0); bbT0=t; bbSi=0; } }
+function bbM(i){ if (!bbOn) return; var t=performance.now(); bbSt[bbSi]+=t-bbT0; bbT0=t; bbSi=i; }
+try{
+  document.addEventListener('visibilitychange', function(){ bbHid=true; if (document.hidden) bbSave(); });
+  window.addEventListener('pagehide', function(){ bbSave(); });
+  if (window.PerformanceObserver && PerformanceObserver.supportedEntryTypes &&
+      PerformanceObserver.supportedEntryTypes.indexOf('longtask')>=0){
+    new PerformanceObserver(function(l){ l.getEntries().forEach(function(e){ bbLT.push([e.startTime,e.duration]); });
+      if (bbLT.length>24) bbLT.splice(0,bbLT.length-24); }).observe({type:'longtask', buffered:false});
+  }
+}catch(_){}
+function bbMed(a,n){ var v=Array.prototype.slice.call(a,0,n).sort(function(x,y){return x-y;}); return v[(n/2)|0]; }
+function bbR1(v){ return Math.round(v*10)/10; }
+function bbDev(){
+  var n=navigator, ua=n.userAgent||'', d={ua:ua}, m;
+  d.os = (m=/Android [\d.]+/.exec(ua)) ? m[0] : (/iPhone|iPad/.test(ua) ? 'iOS' : (/Mac OS X/.test(ua) ? 'macOS' : (/Windows/.test(ua)?'Windows':(/Linux/.test(ua)?'Linux':'?'))));
+  d.br = (m=/Edg\/(\d+)/.exec(ua)) ? 'Edge '+m[1] : (m=/(Chrome|CriOS)\/(\d+)/.exec(ua)) ? 'Chrome '+m[2] :
+         (m=/Firefox\/(\d+)/.exec(ua)) ? 'Firefox '+m[1] : (m=/Version\/([\d.]+).*Safari/.exec(ua)) ? 'Safari '+m[1] : '?';
+  if (n.brave) d.br='Brave ('+d.br+')';
+  d.cores=n.hardwareConcurrency||0; d.mem=n.deviceMemory||0; d.touch=TOUCH?1:0;
+  d.css=innerWidth+'x'+innerHeight; d.dpr=bbR1(window.devicePixelRatio||1)+''; d.cv=cv.width+'x'+cv.height; d.k=dpr;
+  d.scr=(screen.width||0)+'x'+(screen.height||0); d.frame=(window.top!==window.self)?1:0; d.fs=fsActive()?1:0;
+  try{ if (n.userAgentData && n.userAgentData.getHighEntropyValues)
+    n.userAgentData.getHighEntropyValues(['model','platformVersion']).then(function(h){ if (h.model) d.model=h.model; if (h.platformVersion) d.pv=h.platformVersion; }); }catch(_){}
+  try{ if (n.getBattery) n.getBattery().then(function(b){ d.bat=Math.round(b.level*100)+'% '+(b.charging?'charging':'on battery'); }); }catch(_){}
+  return d;
+}
+function bbStart(){
+  var mi=Math.min(bbMenuI,120);
+  var mref = mi>=30 ? bbMed(bbMenuG,mi) : 0;
+  bbCur={v:BUILD_NO, at:Date.now(), mode:mode, dev:bbDev(), menuMs:mref, hzMax:0,
+         t:0, n:0, late:0, lost:0, gap:0, js:0, worst:0, hist:[0,0,0,0,0,0,0,0], zn:{}, hit:[], sec:[], gov:[], gt:gov.tier, g0:gov.tier, cap:0, thr:0, scr:0,
+         spr:(SPR_ON?sprN:-1), smb:+(sprPx*4/1048576).toFixed(1),   /* build 118 */
+         s:null, hn:0, end:'', lap:1, saveT:0};
+  bbBurst=null; bbHeap=0; bbHid=false;
+}
+function bbRef(){ return refTgt(); }     /* build 117: the shared yardstick (116: max of title and race rhythm) */
+function bbFrame(raw, w1, now){
+  if (bbOn) bbSt[bbSi]+=w1-bbT0;
+  if (!fpsOn){ if (bbCur) bbEnd('meter off'); return; }
+  var live=(state==='playing'||state==='abduct');
+  if (!bbCur){
+    if (live && !learn) bbStart(); else { bbKeep(); return; }
+  } else if (learn || state==='title' || state==='gameover'){
+    bbEnd(state==='gameover' ? (endReason||'game over') : 'menu'); bbKeep(); return;
+  }
+  var c=bbCur, hid=bbHid; bbHid=false;
+  if (!live || hid || document.hidden || leaveUp || bbRepUp){ bbKeep(); return; }
+  if (gov.tier!==c.gt){ c.gov.push([Math.round(c.t), gov.tier, zoneI, gov.fps, gov.lateShow]); c.gt=gov.tier; }
+  if (gov.hz>c.hzMax && gov.hz<400 && c.t>2500) c.hzMax=gov.hz;
+  var ref=refTgt(), thr=refThr(), late=raw>thr, js=0, i, zk=state==='abduct'?'ride':zoneI;   /* build 117 */
+  c.thr=bbR1(thr); c.scr=Math.round(1000/refScr()); if (capOn){ var cf=Math.round(1000/ref); if (cf>c.cap) c.cap=cf; }
+  for (i=0;i<10;i++) js+=bbSt[i];
+  c.t+=raw; c.n++; c.gap+=raw; c.js+=js; c.lap=lap; if (raw>c.worst) c.worst=raw;
+  for (i=0;i<7 && raw>=BB_HB[i];i++); c.hist[i]++;
+  /* what is on the road */
+  var cv0=0, nr=0, rv=0, tr=0, q, zr;
+  for (i=0;i<cars.length;i++){ q=cars[i]; zr=q.z-position; if (zr<=0 || zr>MAXZ) continue; cv0++;
+    if (zr<BB_NEAR){ nr++; if (q.vt==='rival') rv++; else if (q.vt==='box'||q.vt==='tank') tr++; } }
+  var fl=(odT>0?1:0)|(dinoT>0?2:0)|(drifting?4:0)|(ufo?8:0)|(blasts.length?16:0)|(pshots.length?32:0)|
+         ((ZN.weather&&ZN.weather!=='none'&&ZN.wamt*ZN.weatherAmt>0.01)?64:0)|(shake>2?128:0);
+  var Z=c.zn[zk]||(c.zn[zk]={t:0,n:0,late:0,lost:0,js:0,worst:0,cv:0,st:[0,0,0,0,0,0,0,0,0,0]});
+  Z.t+=raw; Z.n++; Z.js+=js; Z.cv+=cv0; if (raw>Z.worst) Z.worst=raw;
+  for (i=0;i<10;i++) Z.st[i]+=bbSt[i];
+  var hp=0; try{ hp=(performance.memory&&performance.memory.usedJSHeapSize)||0; }catch(_){}
+  var gc = (bbHeap && hp && bbHeap-hp>1048576) ? (bbHeap-hp)/1048576 : 0; bbHeap=hp;
+  /* the second this frame belongs to */
+  var sk=Math.floor(c.t/1000);
+  if (!c.s || c.s.k!==sk){ bbSecEnd(); c.s={k:sk, n:0, late:0, lost:0, js:0, worst:0, z:zk, lap:lap, cv:0, nr:0, rv:0, tr:0, fl:0}; }
+  var S=c.s; S.n++; S.js+=js; S.cv+=cv0; S.nr+=nr; S.rv+=rv; S.tr+=tr; S.fl|=fl; if (raw>S.worst) S.worst=raw;
+  if (late){
+    var lost=raw-ref; c.late++; c.lost+=lost; Z.late++; Z.lost+=lost; S.late++; S.lost+=lost;
+    var lt=0, a=now-raw;
+    for (i=0;i<bbLT.length;i++){ var e0=bbLT[i][0], e1=e0+bbLT[i][1]; if (e1>a && e0<now) lt+=Math.min(e1,now)-Math.max(e0,a); }
+    var D={t:Math.round(c.t), gap:bbR1(raw), js:bbR1(bbPrevTot), now:bbR1(js), st:Array.prototype.map.call(bbPrev,bbR1),
+           z:zk, lap:lap, spd:Math.round(100*speed/Math.max(1,maxSpeedFor(lap))), cv:cv0, nr:nr, rv:rv, tr:tr,
+           pk:pickups.length, fx:fx.length, fl:fl, gl:gov.tier, gc:bbR1(gc), lt:Math.round(lt)};
+    if (bbBurst && c.t-bbBurst.last<BB_MERGE && c.t-bbBurst.t0<BB_BURST){ bbBurst.n++; bbBurst.last=c.t; if (raw>bbBurst.d.gap) bbBurst.d=D; }
+    else { bbBurstEnd(); bbBurst={n:1, last:c.t, t0:c.t, d:D}; }
+  } else if (bbBurst && c.t-bbBurst.last>BB_MERGE) bbBurstEnd();
+  if (c.t-c.saveT>BB_SAVE_MS){ c.saveT=c.t; bbSave(); }
+  bbKeep(); c.hn=c.hit.length+(bbBurst?1:0);
+}
+function bbKeep(){ bbPrev.set(bbSt); var s=0; for (var i=0;i<10;i++) s+=bbSt[i]; bbPrevTot=s; }
+function bbBurstEnd(){
+  if (!bbBurst || !bbCur) { bbBurst=null; return; }
+  var d=bbBurst.d; d.bn=bbBurst.n; var h=bbCur.hit;
+  h.push(d); h.sort(function(a,b){ return b.gap-a.gap; }); if (h.length>BB_HITS) h.length=BB_HITS;
+  bbBurst=null;
+}
+function bbSecEnd(){
+  var c=bbCur, S=c&&c.s; if (!S || S.n<5) return;
+  if (!(S.late>0)) return;
+  var o={k:S.k, n:S.n, late:S.late, lost:Math.round(S.lost), js:bbR1(S.js/S.n), worst:bbR1(S.worst), z:S.z, lap:S.lap,
+         cv:bbR1(S.cv/S.n), nr:bbR1(S.nr/S.n), rv:bbR1(S.rv/S.n), tr:bbR1(S.tr/S.n), fl:S.fl};
+  c.sec.push(o); c.sec.sort(function(a,b){ return b.lost-a.lost; }); if (c.sec.length>BB_SECS) c.sec.length=BB_SECS;
+}
+function bbPack(c){                       /* what is stored: rounded, small */
+  var o={}, k; for (k in c) if (k!=='s' && k!=='saveT' && k!=='hn') o[k]=c[k];
+  o.zn={}; for (k in c.zn){ var Z=c.zn[k]; o.zn[k]={t:Math.round(Z.t), n:Z.n, late:Z.late, lost:Math.round(Z.lost), js:bbR1(Z.js),
+    worst:bbR1(Z.worst), cv:Z.cv, st:Z.st.map(function(v){ return Math.round(v); })}; }
+  o.gap=Math.round(c.gap); o.js=Math.round(c.js); o.t=Math.round(c.t); o.lost=Math.round(c.lost); o.worst=bbR1(c.worst);
+  if (bbBurst){ var d=JSON.parse(JSON.stringify(bbBurst.d)); d.bn=bbBurst.n; o.hit=c.hit.concat([d]).sort(function(a,b){return b.gap-a.gap;}).slice(0,BB_HITS); }
+  return o;
+}
+function bbLoad(){ try{ var a=JSON.parse((store&&store.getItem(BB_KEY))||'[]'); return Array.isArray(a)?a:[]; }catch(_){ return []; } }
+function bbSave(){
+  if (!bbCur || !saveOK || bbCur.n<30) return;
+  try{ var a=bbLoad(); if (a.length && a[0].at===bbCur.at) a.shift();
+       a.unshift(bbPack(bbCur)); if (a.length>BB_RUNS) a.length=BB_RUNS; store.setItem(BB_KEY, JSON.stringify(a)); }catch(_){}
+}
+function bbEnd(why){
+  if (!bbCur) return;
+  bbBurstEnd(); bbSecEnd(); bbCur.end=why; bbSave(); bbCur=null; bbBurst=null;
+}
+
+/* ---- the report as text ---- */
+function bbPad(s,n){ s=String(s); while (s.length<n) s+=' '; return s; }
+function bbLeft(s,n){ s=String(s); while (s.length<n) s=' '+s; return s; }
+function bbClock(ms){ var s=Math.round(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+function bbFl(f){ var o=[]; if (f&1) o.push('OVERDRIVE'); if (f&2) o.push('DINO'); if (f&4) o.push('DRIFT'); if (f&8) o.push('UFO');
+  if (f&16) o.push('BLAST'); if (f&32) o.push('SHOTS'); if (f&64) o.push('WEATHER'); if (f&128) o.push('SHAKE'); return o.join(' '); }
+function bbTop(st,n,div){
+  var ix=[0,1,2,3,4,5,6,7,8,9].sort(function(a,b){ return st[b]-st[a]; });
+  return ix.slice(0,n).filter(function(i){ return st[i]/div>=0.05; }).map(function(i){ return BB_ST[i]+' '+(st[i]/div).toFixed(1); }).join(' · ');
+}
+function bbRunText(r,ix,of){
+  var L=[], d=r.dev||{}, ref=(function(){ var hz=Math.max(r.menuMs>0?1000/r.menuMs:0, r.hzMax||0); return hz>0?Math.max(4,Math.min(40,1000/hz)):16.7; })();
+  var dt=new Date(r.at), two=function(v){ return ('0'+v).slice(-2); };
+  L.push('=== RACE '+(ix+1)+' of '+of+(ix===0?' (newest)':'')+' · v.'+r.v+' · '+dt.getFullYear()+'-'+two(dt.getMonth()+1)+'-'+two(dt.getDate())+
+         ' '+two(dt.getHours())+':'+two(dt.getMinutes())+' ===');
+  L.push(bbPad('RACE',8)+(r.mode==='cruise'?'CRUISE':'RUN')+' · '+bbClock(r.t)+' recorded · ended: '+(r.end||'?')+' · lap '+r.lap);
+  L.push(bbPad('DEVICE',8)+(d.model?d.model+' · ':'')+(d.os||'?')+(d.pv?' ('+d.pv+')':'')+' · '+(d.br||'?')+' · '+(d.cores||'?')+' cores'+
+         (d.mem?' · '+d.mem+' GB':'')+(d.touch?' · touch':'')+(d.frame?' · inside a frame (itch)':'')+(d.fs?' · fullscreen':''));
+  L.push(bbPad('SCREEN',8)+d.css+' css @'+d.dpr+' (screen '+d.scr+') · canvas '+d.cv+' (scale '+d.k+') x 2 layers');
+  L.push(bbPad('REFRESH',8)+'title screen '+(r.menuMs>0?Math.round(1000/r.menuMs)+' Hz':'not measured')+(r.thr ? ' · screen in race '+(r.hzMax?r.hzMax+' Hz':'--')+' · cap '+(r.cap?r.cap+' fps':'off')+' · late = over '+r.thr.toFixed(1)+' ms'
+         : ' · race rhythm '+(r.hzMax?r.hzMax+' Hz':'--')+' · late = over '+(1.5*ref).toFixed(1)+' ms'));   /* build 117 */
+  if (d.bat) L.push(bbPad('BATTERY',8)+d.bat);
+  var gl=['FULL','LITE','LITE+','LITE+ '+resName()], gs=gl[r.g0||0];   /* build 117: the tier the race started at */
+  (r.gov||[]).forEach(function(g){ gs+=' → '+gl[g[1]]+' at '+bbClock(g[0])+' ('+(BB_ZN[g[2]]||g[2])+', '+g[3]+' fps, '+g[4]+' late)'; });
+  L.push(bbPad('GLOW',8)+gs);
+  if (r.spr!=null) L.push(bbPad('SPRITES',8)+(r.spr<0?'off':'on · '+r.spr+' ready at the start ('+r.smb+' MB)'));   /* build 118 */
+  var n=Math.max(1,r.n), fps=r.t>0?Math.round(r.n*1000/r.t):0;
+  L.push(bbPad('OVERALL',8)+fps+' fps avg · '+Math.round(100*r.late/n)+'% frames late · '+(r.t>0?Math.round(100*r.lost/r.t):0)+'% of the time lost · worst '+Math.round(r.worst)+' ms');
+  L.push(bbPad('',8)+'frame '+(r.gap/n).toFixed(1)+' ms avg · our JS '+(r.js/n).toFixed(1)+' ms · not JS '+((r.gap-r.js)/n).toFixed(1)+' ms');
+  var hs=[], e=['<'+BB_HB[0]]; for (var i=0;i<BB_HB.length-1;i++) e.push(BB_HB[i]+'-'+BB_HB[i+1]); e.push('>'+BB_HB[BB_HB.length-1]);
+  for (i=0;i<8;i++) if (r.hist[i]) hs.push(e[i]+':'+(100*r.hist[i]/n<1?(100*r.hist[i]/n).toFixed(1):Math.round(100*r.hist[i]/n))+'%');
+  L.push(bbPad('FRAMES',8)+hs.join('  ')+'  (ms)');
+  L.push('');
+  L.push('BY ZONE          time   fps  late  lost  JS ms  notJS  cars  biggest JS stages (ms per frame)');
+  Object.keys(r.zn).sort(function(a,b){ return r.zn[b].t-r.zn[a].t; }).forEach(function(k){
+    var Z=r.zn[k], zn=Math.max(1,Z.n);
+    L.push(bbPad(BB_ZN[k]||k,15)+bbLeft(bbClock(Z.t),6)+bbLeft(Z.t>0?Math.round(Z.n*1000/Z.t):0,6)+bbLeft(Math.round(100*Z.late/zn)+'%',6)+
+           bbLeft((Z.t>0?Math.round(100*Z.lost/Z.t):0)+'%',6)+bbLeft((Z.js/zn).toFixed(1),7)+bbLeft(((Z.t-Z.js)/zn).toFixed(1),7)+
+           bbLeft((Z.cv/zn).toFixed(0),6)+'  '+bbTop(Z.st,4,zn));
+  });
+  L.push('');
+  L.push('WORST '+r.sec.length+' SECONDS (by time lost)');
+  r.sec.forEach(function(s,j){
+    L.push(' '+(j+1)+') '+bbClock(s.k*1000)+' '+(BB_ZN[s.z]||s.z)+' lap '+s.lap+' · '+s.n+' fps · '+s.late+' late · '+s.lost+' ms lost · worst '+Math.round(s.worst)+
+           ' ms · JS '+s.js+' · cars '+s.cv+' (near '+s.nr+', rivals '+s.rv+', trucks '+s.tr+')'+(s.fl?' · '+bbFl(s.fl):''));
+  });
+  if (!r.sec.length) L.push(' (none: no late frames)');
+  L.push('');
+  L.push('WORST '+r.hit.length+' HITCHES (late frames within 0.5 s merged, up to 1 s; the worst frame of each)');
+  r.hit.forEach(function(h,j){
+    var parts=[]; for (var q=0;q<10;q++) if (h.st[q]>=0.3) parts.push(BB_ST[q]+' '+h.st[q]);
+    L.push(' '+(j+1)+') '+bbClock(h.t)+' · '+h.gap+' ms'+(h.bn>1?' ('+h.bn+' late in the burst)':'')+' · '+(BB_ZN[h.z]||h.z)+' lap '+h.lap+' · speed '+h.spd+'%');
+    L.push('    JS before '+h.js+' ms ('+(parts.join(', ')||'all stages small')+') · not JS '+bbR1(h.gap-h.js)+' ms · JS after '+h.now+' ms');
+    L.push('    cars '+h.cv+' (near '+h.nr+', rivals '+h.rv+', trucks '+h.tr+') · pickups '+h.pk+' · effects '+h.fx+' · glow '+gl[h.gl]+
+           (h.fl?' · '+bbFl(h.fl):'')+(h.gc?' · heap drop '+h.gc+' MB (GC)':'')+(h.lt?' · long task '+h.lt+' ms':''));
+  });
+  if (!r.hit.length) L.push(' (none)');
+  return L.join('\n');
+}
+function bbReport(){
+  var a=bbLoad();
+  if (!a.length) return T('BB_EMPTY');
+  var L=['VAPOR LANE · FPS REPORT · build '+BUILD_NO+' · last '+a.length+' race'+(a.length>1?'s':''),
+         'Stages = our script per frame: update (game logic), sky (sky + ground), road, props (roadside), lamps (lamp posts),',
+         'gate, traffic (cars, pickups, saucer, shots, blasts), fog+wx (ground fog + weather), car+fx (your car, effects), hud.',
+         '"not JS" = the frame interval minus our script: waiting for the screen, GPU drawing, layer compositing, garbage collection,',
+         'the browser. It only means trouble when frames are late (then it is mostly GPU / browser work).',
+         ''];
+  a.forEach(function(r,i){ L.push(bbRunText(r,i,a.length)); L.push(''); });
+  return L.join('\n');
+}
+
+/* ---- the report screen (#bbRep) ---- */
+function bbOpen(){
+  var b=el('bbRep'); if (!b) return;
+  if (bbCur) bbEnd(state==='gameover'?(endReason||'game over'):'menu');
+  bbTxt=bbReport(); bbRepUp=true; bbClr=0; bbLabels();
+  b.querySelector('pre').textContent=bbTxt; b.querySelector('pre').scrollTop=0;
+  b.classList.add('on'); b.querySelectorAll('button').forEach(function(x){ x._arm=0; });
+}
+function bbClose(){ bbRepUp=false; var b=el('bbRep'); if (b) b.classList.remove('on'); padState=null; }
+function bbLabels(){
+  var b=el('bbRep'); if (!b) return;
+  b.querySelector('.bHead').textContent=T('BB_HEAD');
+  b.querySelector('.bSub').textContent=T('BB_SUB');
+  var s=function(cl,t,k){ var x=b.querySelector('button.'+cl); x.querySelector('.t').textContent=t; x.querySelector('.k').textContent=k; };
+  s('cp',T('BB_COPY'),'C'); s('sv',T('BB_SAVE'),'S'); s('cl',bbClr?T('BB_SURE'):T('BB_CLEAR'),''); s('bk',T('BB_BACK'),'ESC');
+}
+function bbFlash(cl,key){
+  var b=el('bbRep'); if (!b) return; var x=b.querySelector('button.'+cl+' .t'); x.textContent=T(key);
+  setTimeout(function(){ if (bbRepUp) bbLabels(); }, 1600);
+}
+function bbCopy(){
+  var txt=bbTxt;
+  function hand(){
+    var ta=document.createElement('textarea'); ta.value=txt; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0'; document.body.appendChild(ta);
+    var ok=false; try{ ta.select(); ta.setSelectionRange(0,txt.length); ok=document.execCommand('copy'); }catch(_){}
+    document.body.removeChild(ta);
+    if (ok) bbFlash('cp','BB_COPIED');
+    else { try{ var r=document.createRange(), p=el('bbRep').querySelector('pre'); r.selectNodeContents(p);
+           var sl=window.getSelection(); sl.removeAllRanges(); sl.addRange(r); }catch(_){} bbFlash('cp','BB_NOCOPY'); }
+  }
+  try{ if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(function(){ bbFlash('cp','BB_COPIED'); }, hand); return; } }catch(_){}
+  hand();
+}
+function bbDownload(){
+  try{
+    var d=new Date(), two=function(v){ return ('0'+v).slice(-2); };
+    var u=URL.createObjectURL(new Blob([bbTxt],{type:'text/plain'})), a=document.createElement('a');
+    a.href=u; a.download='vapor-lane-fps-report-v'+BUILD_NO+'-'+d.getFullYear()+two(d.getMonth()+1)+two(d.getDate())+'-'+two(d.getHours())+two(d.getMinutes())+'.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+    bbFlash('sv','BB_SAVED');
+  }catch(_){}
+}
+function bbClear(){
+  if (!bbClr){ bbClr=1; bbLabels(); setTimeout(function(){ if (bbClr){ bbClr=0; if (bbRepUp) bbLabels(); } }, 3000); return; }
+  bbClr=0; try{ if (store) store.removeItem(BB_KEY); }catch(_){}
+  bbTxt=bbReport(); el('bbRep').querySelector('pre').textContent=bbTxt; bbLabels();
+}
+function bbKey(e){
+  var c=e.code; if (e.repeat) return;
+  if (c==='Escape'||c==='Backspace'||c==='Delete'||c==='Enter'||c==='KeyR'){ e.preventDefault(); bbClose(); }
+  else if (c==='KeyC' && !e.metaKey && !e.ctrlKey){ e.preventDefault(); bbCopy(); }
+  else if (c==='KeyS'){ e.preventDefault(); bbDownload(); }
+}
+(function(){
+  var b=el('bbRep'); if (!b) return;
+  leaveBtn(b.querySelector('button.cp'), bbCopy); leaveBtn(b.querySelector('button.sv'), bbDownload);
+  leaveBtn(b.querySelector('button.cl'), bbClear); leaveBtn(b.querySelector('button.bk'), bbClose);
+})();
+
+/* ---------------------------------------------------------------
+   BUILD 117 - THE 60 FPS CAP, THE GOVERNOR'S YARDSTICK, ZONE PREPAINT
+   (PF options A + B + F, picked by Carlos 11-02 from the black box readings)
+
+   A. The cap. Every screen callback's interval goes into a ring of 64; twice a
+   second its 25th percentile is the screen's refresh (`capMs`). On a screen
+   faster than ~105 Hz (`CAP_ON_MS`) the loop skips a callback that comes
+   sooner than 1/60 s minus half a refresh after the last drawn frame, so a
+   120 Hz phone draws every second callback (60 fps, even), 144 Hz every
+   second (72), 240 Hz every fourth (60). A 60 or 90 Hz screen is never
+   skipped. Skipped callbacks do no work, so they keep measuring the screen
+   while the cap is on, and the cap lets go by itself if the screen drops to
+   60 (the phone does that on its own). It can only skip a callback that came
+   early: a heavy frame is never held back.
+
+   B. One yardstick for the glow governor and the black box. A frame should
+   take `refTgt()` ms (the capped interval, or the screen's refresh), and it
+   is LATE past `refThr()` = that plus half a refresh (1.5x when uncapped, as
+   before; 20.8 ms under a 120 -> 60 cap, where a missed frame lands at 25).
+   Uncapped, the refresh is the faster of the title screen's (measured while
+   the game is light) and the race's own callbacks, so a race stuck at half
+   the screen's rate counts as late. The old 20 ms floor is gone.
+
+   F. Zone prepaint. The six painted-once zone layers (sky + ground backdrop,
+   sun, ground fog, haze, moon, ridge) each get a spare slot. During a ride,
+   before the map swaps, and on the GAME OVER / title screens for the start
+   zone, one layer of the destination is painted into its spare a frame,
+   then touched once on screen (a 1x1 copy at 1% alpha that the sky covers)
+   so a phone's graphics chip draws it then, not on arrival. On arrival the
+   builder finds its key in the spare and swaps the two slots: the zone you
+   left stays in the spare, so going back is free too. HAUNTED's mist wisps
+   are made ahead the same way. Same paint calls, same pixels.
+--------------------------------------------------------------- */
+var CAP_FPS=60, CAP_ON_MS=9.5, CAP_OFF_MS=11, CAP_OK=true;   /* CAP_OK=false: no cap (tests) */
+var capRing=new Float32Array(64), capSort=new Float32Array(64), capRI=0, capN=0, capMs=0, capOn=false, capDiv=1,
+    capLastCb=0, capT=0, capTitle=0;
+function capTrack(now){
+  var d=now-capLastCb; capLastCb=now;
+  if (document.hidden || !(d>2 && d<200)) return;
+  capRing[capRI]=d; capRI=(capRI+1)&63; if (capN<64) capN++;
+  if (state==='title'){ bbMenuG[bbMenuI%120]=d; bbMenuI++; }   /* the black box's title ring (116 fed it from loop's drawn frames) */
+  if (now-capT<500 || capN<16) return;
+  capT=now;
+  capSort.set(capRing); var v=capSort.subarray(0,capN); v.sort(); capMs=v[(capN*0.25)|0];
+  if (!capOn && CAP_OK && capMs<=CAP_ON_MS) capOn=true;
+  else if (capOn && (!CAP_OK || capMs>=CAP_OFF_MS)) capOn=false;
+  capDiv = capOn ? Math.max(2, Math.ceil((1000/CAP_FPS - capMs/2)/capMs)) : 1;
+  if (state==='title'){ var mi=Math.min(bbMenuI,120); if (mi>=30) capTitle=bbMed(bbMenuG,mi); }
+}
+function capSkip(now){ return capOn && now-last < 1000/CAP_FPS - capMs/2; }
+function refScr(){                        /* the screen's refresh interval, ms */
+  var r=capMs>0 ? capMs : 16.7;
+  if (!capOn && capTitle>9.5) r=Math.min(r, capTitle);   /* a slow title (60 Hz class) catches a race stuck at half rate */
+  return Math.max(4, Math.min(40, r));
+}
+function refTgt(){ return capOn ? Math.max(4, Math.min(40, capMs))*capDiv : refScr(); }   /* what a drawn frame should take */
+function refThr(){ return refTgt() + refScr()/2; }                                      /* later than this = late */
+
+/* the zone-keyed caches: their live slot's globals, the key their builder uses, when the zone draws them */
+var ZC_ON=true;                           /* false: no prepaint, no spare slots (tests) */
+var ZC=[
+  {on:function(){ return true; },                     key:function(){ return zoneI+'|'+dpr+'|'+cv.width+'x'+cv.height; },
+   paint:function(){ return backdrop(); },             get:function(){ return [bdCv,bdKey]; },          set:function(a){ bdCv=a[0]; bdKey=a[1]; },
+   blank:function(){ return [null,'']; }, sp:null},
+  {on:function(){ return !!(ZN.orb&&ZN.orb.on); },   key:function(){ return zoneI+'|'+dpr+'|'+(50*GB); },
+   paint:function(){ return orbSprite(); },            get:function(){ return [orbCv,orbKey,orbHalf]; }, set:function(a){ orbCv=a[0]; orbKey=a[1]; orbHalf=a[2]; },
+   blank:function(){ return [null,'',0]; }, sp:null},
+  {on:function(){ return ZN.groundFog>0.01; },        key:function(){ return zoneI+'|'+dpr+'|'+cv.width; },
+   paint:function(){ return fogSprite(); },            get:function(){ return [fogCv,fogKey,fogTop]; }, set:function(a){ fogCv=a[0]; fogKey=a[1]; fogTop=a[2]; },
+   blank:function(){ return [null,'',0]; }, sp:null},
+  {on:function(){ return !!(ZN.haze&&ZN.haze.a>0); }, key:function(){ return zoneI+'|'+dpr+'|'+cv.width; },
+   paint:function(){ return hazeSprite(); },           get:function(){ return [hzCv,hzKey,hzTop]; },    set:function(a){ hzCv=a[0]; hzKey=a[1]; hzTop=a[2]; },
+   blank:function(){ return [null,'',0]; }, sp:null},
+  {on:function(){ return !!ZN.moon; },                key:function(){ return zoneI+'|'+dpr+'|'+ZN.moon.kind+'|'+ZN.moon.r; },
+   paint:function(){ return moonSprite(); },           get:function(){ return [moonCv,moonKey,moonHalf]; }, set:function(a){ moonCv=a[0]; moonKey=a[1]; moonHalf=a[2]; },
+   blank:function(){ return [null,'',0]; }, sp:null},
+  {on:function(){ return !!(ZN.moon&&ZN.ridge); },    key:function(){ return zoneI+'|'+dpr+'|'+ZN.ridge.kind+'|'+ZN.ridge.col; },
+   paint:function(){ return ridgeSprite(); },          get:function(){ return [ridgeCv,ridgeKey,ridgeWin]; }, set:function(a){ ridgeCv=a[0]; ridgeKey=a[1]; ridgeWin=a[2]; },
+   blank:function(){ return [null,'',[]]; }, sp:null}
+];
+var zcWarm=[];                            /* canvases painted ahead, to be touched once on screen */
+function zcSwap(i,key){                   /* the builder missed: is the wanted layer in the spare? */
+  var z=ZC[i], s=z.sp; if (!s || s[1]!==key) return false;
+  z.sp=z.get(); z.set(s); return true;
+}
+function zcDrop(){ for (var i=0;i<ZC.length;i++) ZC[i].sp=null; zcWarm=[]; }
+function zcPre(i, to){                    /* paint layer i of zone `to` into its spare; true if it did any work */
+  var z=ZC[i], Zt=ZONES[to]; if (!Zt) return false;
+  var z0=zoneI, n0=ZN, g0=GB, did=false;
+  zoneI=to; ZN=Zt; GB=Zt.bloom*Zt.bloomMul;   /* the destination's context, for this call only (setZone still owns the real swap) */
+  try{
+    if (z.on()){
+      var k=z.key(), live=z.get();
+      if (live[1]!==k && !(z.sp && z.sp[1]===k)){
+        z.set(z.sp || z.blank());
+        try{ z.paint(); z.sp=z.get(); if (z.sp[0]) zcWarm.push(z.sp[0]); } finally { z.set(live); }
+        did=true;
+      }
+    }
+  } finally { zoneI=z0; ZN=n0; GB=g0; }
+  return did;
+}
+function zcStep(to){
+  if (resK<1 && dpr!==dprW){ var d0=dpr; dpr=dprW; try{ return zcStep(to); } finally { dpr=d0; } }   /* build 118 */                      /* one layer a frame, while a ride heads for `to` (or a menu waits for the start zone) */
+  if (!ZC_ON || !to || to===zoneI || !ZONES[to]) return;
+  for (var i=0;i<ZC.length;i++) if (zcPre(i,to)) return;
+  var n=ZONES[to].wisps;
+  if (n && (!wispCv || wispSpK!==dpr+'|'+n)){ wispBase(); var S=wispSprites(n); for (i=0;i<S.length;i++) zcWarm.push(S[i]); }
+}
+function zcWarmDraw(){                    /* drawSky(), before the backdrop covers it: make the chip draw them now */
+  var A0=ctx.globalAlpha;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=0.01; ctx.globalCompositeOperation='source-over';
+  for (var i=0;i<zcWarm.length;i++){ var c=zcWarm[i]; if (c && c.width>0 && c.height>0) ctx.drawImage(c,0,0,1,1,0,0,1,1); }
+  for (i=0;i<sprWarm.length;i++){ c=sprWarm[i]; if (c && c.width>0 && c.height>0) ctx.drawImage(c,0,0,1,1,0,0,1,1); }   /* build 118 */
+  ctx.restore(); ctx.globalAlpha=A0; zcWarm=[]; sprWarm=[];
+}
+
+
+/* ===============================================================
+   BUILD 118: SPRITES + THE RESOLUTION STEP (PF options 1 + 2, Carlos's pick 11-02 after the 117 phone reports)
+   The costliest shapes are painted ONCE into small offscreen canvases (sprites) and then copied each frame,
+   like 115's rival cars: the overdrive flame (16 phase frames per layer: its flicker repeats exactly), the
+   blast's cap and the shot's head (their glow baked in, so a phone at LITE+ gets the glow back for free),
+   the swan-neck lamps and HAUNTED's crooked gas lamps (the flicker stays: their light is a separate sprite
+   drawn with the flicker as its alpha; the flame, the glow and the pool stay live). A sprite is painted at
+   the size step at or above what is drawn (x1.25 apart) and drawn a little smaller.
+   Every sprite a zone needs is painted AHEAD: on the title / GAME OVER for the start zone and during the
+   ride for the next one (117's prepaint), a few per frame, then touched once on screen so a phone's
+   graphics chip takes them in before they are needed.
+   Option 2: when the glows are already off (LITE+) and frames still come late, the WORLD layer (#c: sky,
+   road, traffic, props, lamps, shots, blasts) steps down to 0.8 of the resolution for the rest of that race
+   (36 % fewer pixels, drawn smooth). The top layer (#c2: car, flame, HUD, menus) stays sharp.
+=============================================================== */
+var SPR_DEF    = true;    /* false: 117's live drawing everywhere (tests, quick revert) */
+var SPR_ON     = SPR_DEF; /* this race (see SPR_AB) */
+var SPR_DECO   = false;   /* build 119: lamps + the four props drawn live (117's code); true = 118's lamp / prop sprites */
+var SPR_AB     = false;   /* build 119: off (settled by the 118 reports) */    /* while the FPS meter is on, races alternate sprites ON / OFF (1st on, 2nd off, ...) so one black-box
+                             report compares both on the same phone; with the meter off the sprites are always on */
+var sprAB = 0;
+function sprRace(){                               /* reset(): every race start */
+  if (SPR_DEF && SPR_AB && fpsOn){ SPR_ON = (sprAB%2)===0; sprAB++; } else SPR_ON = SPR_DEF;
+}
+var SPR_STEP   = 1.25;    /* size steps: painted at the step at or above, drawn smaller */
+var SPR_PRE_MS = 3;       /* prepaint: ms of work per frame on the title / GAME OVER; the ride gets SPR_RIDE_MS */
+var SPR_RIDE_MS= 2;
+var AURA_N     = 16;      /* overdrive flame: phase frames per layer (a flicker cycle is 0.20 / 0.29 s) */
+var AURA_RES   = 0.5;     /* the flame's sprites hold half the screen's pixels (a soft glow; keeps the 32 frames ~4 MB) */
+var BL_RPX     = 64;      /* blast cap: most device px of radius a sprite holds (bigger caps: painted smaller, drawn up) */
+var SH_WPX     = 32;      /* shot head: most device px of width a sprite holds (a just-fired head is painted smaller, drawn up) */
+var LAMP_UMAX  = 140;     /* a lamp this big or bigger (scale, px per road unit) is drawn live: near, few, short-lived */
+var GAS_TH     = [10,12,16,18,20];   /* the gas lamp's detail thresholds: a sprite step never crosses one */
+var SWAN_TH    = [16];
+var sprC = {}, sprN = 0, sprPx = 0, sprWarm = [], sprPreOn = false, sprQ = null, sprQto = '';
+function sprD(){ return resSave || dpr; }          /* sprites are always painted at the screen's full scale */
+function sprStep(v, th){
+  var s = Math.pow(SPR_STEP, Math.ceil(Math.log(Math.max(v,0.05))/Math.log(SPR_STEP) - 1e-9));
+  if (th) for (var i=0;i<th.length;i++) if (v<th[i] && s>=th[i]){ s=th[i]*0.9999; break; }
+  return s;
+}
+function sprMake(key, x0, y0, x1, y1, R, paint){  /* bounds in stage units around the sprite's origin; R = sprite px per unit */
+  var ix0=Math.floor(x0*R)-2, iy0=Math.floor(y0*R)-2, ix1=Math.ceil(x1*R)+2, iy1=Math.ceil(y1*R)+2;
+  var cw=Math.max(1,ix1-ix0), ch=Math.max(1,iy1-iy0), c=document.createElement('canvas');
+  c.width=cw; c.height=ch;
+  var g=c.getContext('2d'), c0=ctx;
+  g.setTransform(R,0,0,R,-ix0,-iy0);
+  ctx=g; try{ paint(); } finally { ctx=c0; }       /* the game's own drawing code, pointed at the sprite */
+  var s={cv:c, x0:ix0/R, y0:iy0/R, w:cw/R, h:ch/R};
+  if (key){ sprC[key]=s; sprN++; sprPx+=cw*ch; } if (sprPreOn) sprWarm.push(c);
+  return s;
+}
+function sprBlit(s, x, y, f){ ctx.drawImage(s.cv, x+s.x0*f, y+s.y0*f, s.w*f, s.h*f); }
+function sprDrop(){ sprC={}; sprN=0; sprPx=0; sprWarm=[]; sprQ=null; sprQto=''; propC={}; }
+
+/* ---- props: the STILL body of a prop, one sprite per roadside slot, repainted at each size step as it nears
+        (115's rival method); its moving parts are drawn live on top. Glows baked in like the effects'. ---- */
+var PROP_PX  = 640;       /* a prop sprite holds at most this many device px of height; nearer props are drawn live */
+var PROP_NEW = 2;         /* new prop sprites a frame at most (over it: the previous step is drawn, or the prop live) */
+var propC = {}, propNew = 0, propF = 0;
+function propTick(){ propF++; propNew=0; if (!(propF%120)){ for (var k in propC) if (propF-propC[k].f>60) delete propC[k]; if (Object.keys(bsFl).length>200) bsFl={}; } }
+function propSpr(id, ver, u, hU, th, box, paint){
+  var D=sprD();
+  if (!SPR_ON || !SPR_DECO || u*hU*D>PROP_PX) return null;   /* null = the caller draws 117's live prop */
+  var us=sprStep(u,th), e=propC[id];
+  if (e && e.us===us && e.v===ver && e.D===D){ e.f=propF; return e; }
+  if (propNew>=PROP_NEW){ if (e && e.D===D){ e.f=propF; return e; } return null; }
+  propNew++;
+  var b=box(us), gq=GQ, s; GQ=1;
+  try{ s=sprMake(null, b[0], b[1], b[2], b[3], D, function(){ paint(us); }); } finally { GQ=gq; }
+  e={us:us, v:ver, s:s, D:D, f:propF}; propC[id]=e;
+  return e;
+}
+function propBlit(e, x, gy, u){ sprBlit(e.s, x, gy, u/e.us); }
+
+/* TOWER, STEPPED (VAPOR / ALIEN PLAINS): tiers, window grid, ledges, spire in the sprite; the light a window
+   flicks on and off picks the sprite's version; the spire's pulse stays live */
+var bsFl = {};
+function decoBuildingStep(x,gy,u,idx){
+  var col=propCol(idx), wR=1.6+hashAt(idx,6)*0.7, hR=3.6+hashAt(idx,7)*2.0, t=performance.now();
+  var tiers=[[wR,hR*0.58],[wR*0.74,hR*0.26],[wR*0.48,hR*0.16]], id=zoneI+'|bs'+idx;
+  var fl=bsFl[id], ver='', i, ti, r, c;
+  if (!fl){ fl=bsFl[id]=[];
+    for (ti=0;ti<3;ti++){ var cn0=Math.max(2,Math.round(tiers[ti][0]*2.6)), rn0=Math.max(2,Math.round(tiers[ti][1]*2.1));
+      for (r=0;r<rn0;r++) for (c=0;c<cn0;c++){ var h0=idx*131+ti*977+r*17+c; if (hashAt(h0,12)<0.10) fl.push(h0); } } }
+  for (i=0;i<fl.length;i++) ver+=(Math.floor(t/3200+hashAt(fl[i],13)*7)%2);
+  var m=1.6*10*GB/sprD(), e=propSpr(id, ver, u, hR+0.9, null,
+    function(us){ return [-us*wR/2-us*0.03-m-1, -us*hR-us*0.75-m-1, us*wR/2+us*0.03+m+1, 1]; },
+    function(us){
+      var y=0, warm=new Path2D(), neon=new Path2D();
+      for (ti=0;ti<3;ti++){
+        var w=us*tiers[ti][0], h=us*tiers[ti][1], bx=-w/2, by=y-h;
+        ctx.fillStyle='#0c0520'; ctx.fillRect(bx,by,w,h);
+        var cn=Math.max(2,Math.round(tiers[ti][0]*2.6)), rn=Math.max(2,Math.round(tiers[ti][1]*2.1));
+        var cw=w/cn, chh=h/rn, pad=Math.max(0.4,Math.min(cw,chh)*0.26);
+        for (r=0;r<rn;r++) for (c=0;c<cn;c++){
+          var hh=idx*131+ti*977+r*17+c, on=hashAt(hh,8)>=0.46;
+          if (hashAt(hh,12)<0.10) on=(Math.floor(t/3200+hashAt(hh,13)*7)%2)===0;
+          if (!on) continue;
+          (hashAt(hh,14)<0.58?warm:neon).rect(bx+c*cw+pad,by+r*chh+pad,Math.max(0.8,cw-pad*2),Math.max(0.8,chh-pad*2));
+        }
+        ctx.strokeStyle=hexA(col,0.85); ctx.lineWidth=Math.max(1,us*0.02);
+        ctx.beginPath(); ctx.moveTo(bx+0.5,0); ctx.lineTo(bx+0.5,by); ctx.moveTo(bx+w-0.5,0); ctx.lineTo(bx+w-0.5,by); ctx.stroke();
+        ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(10,us*0.2));
+        ctx.fillRect(bx-us*0.03,by-Math.max(1,us*0.025),w+us*0.06,Math.max(1,us*0.035)); ctx.shadowBlur=0;
+        y=by;
+      }
+      ctx.fillStyle='rgba(255,182,96,.9)'; ctx.shadowColor='#ffb15a'; ctx.shadowBlur=blur(Math.min(8,us*0.12)); ctx.fill(warm);
+      ctx.fillStyle=col; ctx.shadowColor=col; ctx.fill(neon); ctx.shadowBlur=0;
+      var sp=us*0.75; ctx.fillStyle='#1a0f30'; ctx.beginPath();
+      ctx.moveTo(-us*0.05,y); ctx.lineTo(0,y-sp); ctx.lineTo(us*0.05,y); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=hexA(col,0.9); ctx.lineWidth=Math.max(1,us*0.012); ctx.stroke();
+    });
+  if (!e) return decoBuildingStep117(x,gy,u,idx);
+  propBlit(e,x,gy,u);
+  var yT=gy-u*hR, sp=u*0.75, pul=0.55+0.45*Math.sin(t/420+idx);
+  ctx.save(); ctx.globalAlpha*=0.35*pul; ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(x,yT-sp,u*0.09,0,Math.PI*2); ctx.fill(); ctx.restore();
+  ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(x,yT-sp,Math.max(1,u*0.03),0,Math.PI*2); ctx.fill();
+}
+
+/* TOWER, GLASS CROWN: the slab, floors, mullions, neon crown, shaft and antenna in the sprite; the elevator light and
+   the blinking aviation light stay live */
+function decoBuildingGlass(x,gy,u,idx){
+  var col=propCol(idx), wR=1.5+hashAt(idx,6)*0.8, hR=3.4+hashAt(idx,7)*2.2, t=performance.now();
+  var sd=hashAt(idx,9)<0.5?-1:1, m=1.6*12*GB/sprD();
+  var e=propSpr(zoneI+'|bg'+idx, '', u, hR+1.15, [8,10],
+    function(us){ return [-us*wR/2-m-1, -us*hR-us*0.75-us*0.32-m-1, us*wR/2+m+1, 1]; },
+    function(u){
+      var r, i, w=u*wR, h=u*hR, bx=-w/2, by=-h, crown=u*0.75, gy=0;
+      var g=ctx.createLinearGradient(0,by,0,gy); g.addColorStop(0,'#160c32'); g.addColorStop(1,'#08041a');
+      ctx.fillStyle=g; ctx.fillRect(bx,by,w,h);
+      var rn=Math.max(4,Math.round(hR*3.0)), fh=h/rn, pad=Math.max(1,w*0.05);
+      for (r=0;r<rn;r++){
+        var lv=hashAt(idx*53+r,13); if (lv<0.25) continue;
+        ctx.fillStyle=hexA(col,0.16+0.50*lv); ctx.fillRect(bx+pad,by+r*fh+fh*0.30,w-pad*2,Math.max(1,fh*0.42));
+        if (lv>0.75 && u>10){ var wx=bx+pad+(w-pad*2)*hashAt(idx*91+r,16)*0.7; ctx.fillStyle='rgba(255,190,110,.85)'; ctx.fillRect(wx,by+r*fh+fh*0.30,(w-pad*2)*0.22,Math.max(1,fh*0.42)); }
+      }
+      if (u>8){ ctx.fillStyle='rgba(6,3,14,.85)'; var mn=Math.max(3,Math.round(wR*3));
+        for (i=1;i<mn;i++) ctx.fillRect(bx+i*w/mn-0.5,by,Math.max(1,u*0.012),h); }
+      var hl=sd>0?crown*0.25:crown, hr=sd>0?crown:crown*0.25;
+      ctx.fillStyle='#0d0622'; ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx,by-hl); ctx.lineTo(bx+w,by-hr); ctx.lineTo(bx+w,by); ctx.closePath(); ctx.fill();
+      if (u>10){ ctx.strokeStyle=hexA(col,0.25); ctx.lineWidth=1; ctx.beginPath();
+        for (i=1;i<=3;i++){ var f=i/4; ctx.moveTo(bx+w*f,by); ctx.lineTo(bx+w*f,by-(hl+(hr-hl)*f)); } ctx.stroke(); }
+      ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,u*0.025); ctx.shadowColor=col; ctx.shadowBlur=blur(Math.min(12,u*0.25));
+      ctx.beginPath(); ctx.moveTo(bx,by-hl); ctx.lineTo(bx+w,by-hr); ctx.stroke(); ctx.shadowBlur=0;
+      ctx.strokeStyle=hexA(col,0.45); ctx.lineWidth=Math.max(1,u*0.012); ctx.strokeRect(bx+0.5,by-0.5,w-1,h);
+      var sx=bx+w*(sd>0?0.12:0.88);
+      ctx.fillStyle=hexA(col,0.22); ctx.fillRect(sx-Math.max(1,u*0.012)/2,by,Math.max(1,u*0.012),h);
+      var ax=sd>0?bx+w-u*0.06:bx+u*0.06, ay=by-Math.max(hl,hr);
+      ctx.fillStyle=hexA(col,0.9); ctx.fillRect(ax-Math.max(1,u*0.015)/2,ay-u*0.32,Math.max(1,u*0.015),u*0.32);
+    });
+  if (!e) return decoBuildingGlass117(x,gy,u,idx);
+  propBlit(e,x,gy,u);
+  var w=u*wR, h=u*hR, bx=x-w/2, by=gy-h, crown=u*0.75, hl=sd>0?crown*0.25:crown, hr=sd>0?crown:crown*0.25;
+  var sx=bx+w*(sd>0?0.12:0.88);
+  var ey=gy-h*(0.06+0.86*(0.5+0.5*Math.sin(t/2600+idx*1.7)));
+  ctx.fillStyle='#eaffff'; ctx.shadowColor='#bff8ff'; ctx.shadowBlur=blur(Math.min(10,u*0.2));
+  ctx.fillRect(sx-u*0.03,ey-u*0.04,u*0.06,u*0.08); ctx.shadowBlur=0;
+  var ax=sd>0?bx+w-u*0.06:bx+u*0.06, ay=by-Math.max(hl,hr);
+  aviation(ax,ay-u*0.34,u*0.045,(Math.floor(t/700+idx)%2)===0);
+}
+
+/* HAUNTED: HAY-BALE PUMPKIN STAND. Shadow, bales, the pumpkins' bodies and the lantern post in the sprite; the
+   pumpkins' candle-lit faces, their halos and the lantern glow live. While the monster peeks: all live. */
+function pumpkinFace(x,y,r,k,face,a,seed){            /* pumpkin() after its body (build 118) */
+  ctx.globalAlpha=a;
+  if (!face || r<3) return;
+  var glow='rgba(255,'+Math.round(200+40*k)+','+Math.round(60+80*k)+','+(0.35+0.65*k).toFixed(3)+')';
+  ctx.fillStyle=k>0.05?glow:'#2a0c04';
+  ctx.beginPath();
+  ctx.moveTo(x-r*0.42,y-r*0.06); ctx.lineTo(x-r*0.26,y-r*0.38); ctx.lineTo(x-r*0.10,y-r*0.06); ctx.closePath();
+  ctx.moveTo(x+r*0.10,y-r*0.06); ctx.lineTo(x+r*0.26,y-r*0.38); ctx.lineTo(x+r*0.42,y-r*0.06); ctx.closePath();
+  ctx.moveTo(x-r*0.07,y+r*0.06); ctx.lineTo(x,y-r*0.08); ctx.lineTo(x+r*0.07,y+r*0.06); ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x-r*0.50,y+r*0.16);
+  var teeth=seed%2?5:4;
+  for (var j=0;j<=teeth*2;j++){ var fx=x-r*0.50+j*(r*1.0/(teeth*2)); ctx.lineTo(fx,y+r*(j%2?0.30:0.20)); }
+  ctx.lineTo(x+r*0.50,y+r*0.16); ctx.quadraticCurveTo(x,y+r*0.66,x-r*0.50,y+r*0.16); ctx.closePath(); ctx.fill();
+  if (k>0.05 && r>6 && !(ZN.look==='haunted' && glowBlit(pkHaloSpr(),'pkhalo',x,y,r*2.2,0.30*k*a))){ ctx.save(); ctx.globalCompositeOperation='lighter';
+    var hg=ctx.createRadialGradient(x,y,r*0.2,x,y,r*2.2);
+    hg.addColorStop(0,'rgba(255,140,40,'+(0.30*k*a).toFixed(3)+')'); hg.addColorStop(1,'rgba(255,90,20,0)');
+    ctx.fillStyle=hg; ctx.fillRect(x-r*2.2,y-r*2.2,r*4.4,r*4.4); ctx.restore(); }
+}
+function pumpkinBody(x,y,r){                            /* pumpkin() up to its face (build 118) */
+  var lobes=[[-0.52,0.86],[0.52,0.86],[-0.22,0.98],[0.22,0.98],[0,1]];
+  for (var i=0;i<lobes.length;i++){
+    var lx=x+lobes[i][0]*r*0.62, rw=r*lobes[i][1]*0.62;
+    var g=ctx.createRadialGradient(lx-rw*0.3,y-r*0.4,rw*0.1,lx,y,r);
+    g.addColorStop(0,'#ffb24a'); g.addColorStop(0.6,'#ef6a12'); g.addColorStop(1,'#8a2a06');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(lx,y,rw,r*0.82,0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle='#3a5a1a'; ctx.beginPath(); ctx.moveTo(x-r*0.08,y-r*0.74); ctx.lineTo(x+r*0.10,y-r*0.74); ctx.lineTo(x+r*0.18,y-r*1.02); ctx.lineTo(x+r*0.04,y-r*1.0); ctx.closePath(); ctx.fill();
+}
+function hwBalesP(x,gy,u){ return [[x-u*0.40,gy-u*0.66-u*0.14,u*0.17,0],[x-u*0.52,gy-u*0.34-u*0.19,u*0.21,1],[x+u*0.50,gy-u*0.34-u*0.23,u*0.25,2],[x+u*0.42,gy-u*0.66-u*0.12,u*0.15,3]]; }
+function hwBillboardA(x,gy,u,idx,side,zRel){
+  var pk=(u>=8)?peekAt(zRel):0;
+  if (pk>0.01) return hwBillboardA117(x,gy,u,idx,side,zRel);
+  var e=propSpr(zoneI+'|hA'+idx, '', u, 1.05, [16,20],
+    function(us){ return [-us*0.95-1, -us*1.02-1, us*0.95+1, Math.max(1,us*0.05)+1]; },
+    function(u){
+      var x=0, gy=0;
+      shadowOn(x,gy,u*0.9,u);
+      function bale(bx,by,bw,bh){
+        var g=ctx.createLinearGradient(0,by,0,by+bh); g.addColorStop(0,'#9a7a34'); g.addColorStop(1,'#4a3414');
+        ctx.fillStyle=g; rr(bx,by,bw,bh,bh*0.18); ctx.fill();
+        if (u>=16){ ctx.strokeStyle='rgba(30,16,6,.6)'; ctx.lineWidth=Math.max(1,u*0.008);
+          ctx.beginPath(); ctx.moveTo(bx+bw*0.3,by); ctx.lineTo(bx+bw*0.3,by+bh); ctx.moveTo(bx+bw*0.7,by); ctx.lineTo(bx+bw*0.7,by+bh); ctx.stroke();
+          ctx.strokeStyle='rgba(230,200,120,.35)';
+          for (var i=0;i<6;i++){ var sx=bx+hashAt(idx+i,7)*bw; ctx.beginPath(); ctx.moveTo(sx,by+bh*0.2); ctx.lineTo(sx+u*0.03,by+bh*0.55); ctx.stroke(); } }
+      }
+      bale(x-u*0.75,gy-u*0.34,u*0.80,u*0.34); bale(x+u*0.02,gy-u*0.34,u*0.80,u*0.34); bale(x-u*0.38,gy-u*0.66,u*0.80,u*0.32);
+      var P=hwBalesP(x,gy,u);
+      for (var p=0;p<P.length;p++) pumpkinBody(P[p][0],P[p][1],P[p][2]);
+      if (u>=20){ ctx.fillStyle='#2a0c04'; ctx.fillRect(x-u*0.62,gy-u*0.40,u*0.04,u*0.06); }
+    });
+  if (!e) return hwBillboardA117(x,gy,u,idx,side,zRel);
+  var t=tnow(), A0=ctx.globalAlpha;
+  propBlit(e,x,gy,u);
+  var P=hwBalesP(x,gy,u);
+  for (var p=0;p<P.length;p++){ var k=lampFlame(t*1.1,p+idx); pumpkinFace(P[p][0],P[p][1],P[p][2],k,u>=8,A0,p+idx); }
+  if (u>=20){ ctx.globalAlpha=A0; glowDot(x-u*0.60,gy-u*0.43,u*0.08,'#ffd27a',0.8*A0); }
+  ctx.globalAlpha=A0;
+}
+
+/* HAUNTED: THE MAD-SKULL BILLBOARD. Shadow, posts, brace, frame and the painted panel in the sprite; the glitching
+   skull and the two flickering lamps live */
+function hwBillboardB(x,gy,u,idx,side){
+  var e=propSpr(zoneI+'|hB'+idx, '', u, 2.2, [12,14],
+    function(us){ return [-us*1.1-1, -us*2.15-1, us*1.1+1, Math.max(1,us*0.05)+1]; },
+    function(u){
+      var x=0, gy=0, bw=u*1.9, bh=u*1.05, by=gy-u*1.05-bh;
+      shadowOn(x,gy,u*1.1,u);
+      ctx.fillStyle='#2a1c22'; ctx.fillRect(x-bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh); ctx.fillRect(x+bw*0.36-u*0.04,by+bh,u*0.08,gy-by-bh);
+      if (u>=14){ ctx.strokeStyle='#2a1c22'; ctx.lineWidth=Math.max(1,u*0.025); ctx.beginPath(); ctx.moveTo(x-bw*0.36,by+bh+u*0.1); ctx.lineTo(x+bw*0.36,gy-u*0.2); ctx.stroke(); }
+      ctx.fillStyle='#1a0e18'; ctx.fillRect(x-bw/2-u*0.04,by-u*0.04,bw+u*0.08,bh+u*0.08);
+      var pg=ctx.createLinearGradient(0,by,0,by+bh); pg.addColorStop(0,'#3a1a4a'); pg.addColorStop(1,'#16081e');
+      ctx.fillStyle=pg; ctx.fillRect(x-bw/2,by,bw,bh);
+      if (u>=12){
+        ctx.save(); ctx.beginPath(); ctx.rect(x-bw/2,by,bw,bh); ctx.clip();
+        ctx.fillStyle='rgba(255,122,26,.30)'; ctx.beginPath(); ctx.arc(x-bw*0.22,by+bh*0.70,bh*0.38,Math.PI,0); ctx.fill();
+        ctx.fillStyle='rgba(255,47,190,.20)'; for (var s=0;s<4;s++) ctx.fillRect(x-bw/2,by+bh*(0.55+s*0.1),bw*0.6,bh*0.03);
+        ctx.fillStyle='#0b0510';
+        ctx.beginPath(); ctx.moveTo(x-bw*0.05,by); ctx.lineTo(x+bw*0.50,by); ctx.lineTo(x+bw*0.50,by+bh);
+        for (var i=0;i<=8;i++){ var ty=by+bh-i*bh/8; ctx.lineTo(x+bw*(0.12+0.10*hashAt(idx+i,8))-(i%2)*bw*0.05,ty); }
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle='rgba(240,225,200,.55)'; ctx.lineWidth=Math.max(1,u*0.01); ctx.stroke();
+        ctx.restore();
+      }
+    });
+  if (!e) return hwBillboardB117(x,gy,u,idx,side);
+  var t=tnow(), A0=ctx.globalAlpha, bw=u*1.9, bh=u*1.05, by=gy-u*1.05-bh;
+  propBlit(e,x,gy,u);
+  if (u>=12){
+    var cyc=(t+idx*1.3)%6, vis=cyc<0.6?cyc/0.6:(cyc<3.8?1:(cyc<4.6?(4.6-cyc)/0.8:0)), gl=(Math.sin(t*37)>0.7)?1:0;
+    if (vis>0.01){
+      ctx.save(); ctx.beginPath(); ctx.rect(x-bw/2,by,bw,bh); ctx.clip();
+      var fx=x+bw*0.28, fy=by+bh*0.50, fr=bh*0.40;
+      var tw=(hashAt(Math.floor(t*6)+idx,13)-0.5)*0.24, lunge=1+0.12*clamp((cyc-0.6)/0.5,0,1)*clamp((3.8-cyc)/0.6,0,1);
+      glowDot(fx,fy,fr*2.0,'#ff3a3a',0.20*vis*A0);
+      for (var sl=0;sl<(gl?6:1);sl++){
+        var y0=fy-fr*1.30+sl*fr*0.44, off=gl*(hashAt(Math.floor(t*12)+sl,9)-0.5)*u*0.14;
+        ctx.save(); ctx.beginPath(); ctx.rect(fx-fr*1.5,y0,fr*3.0,gl?fr*0.44+0.5:fr*2.64+0.5); ctx.clip();
+        ctx.translate(fx+off,fy); ctx.rotate(tw); ctx.scale(lunge,lunge);
+        ctx.globalAlpha=A0*vis; madSkull(fr,t,idx,u);
+        ctx.restore();
+      }
+      ctx.globalAlpha=A0;
+      ctx.restore();
+    }
+  }
+  if (u>=10) for (var L=0;L<2;L++){
+    var lx=x+(L?0.25:-0.25)*bw, on=L===0?1:((Math.sin(t*17)*Math.sin(t*5.3+idx)>0.1)?1:0.15);
+    ctx.globalAlpha=A0; ctx.fillStyle=INK; ctx.fillRect(lx-u*0.06,by-u*0.14,u*0.12,u*0.06); ctx.fillRect(lx-u*0.01,by-u*0.08,u*0.02,u*0.08);
+    if (on>0.2){ ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=A0*0.18*on;
+      ctx.fillStyle='#ffe0a0'; ctx.beginPath(); ctx.moveTo(lx-u*0.05,by-u*0.09); ctx.lineTo(lx+u*0.05,by-u*0.09); ctx.lineTo(lx+bw*0.22,by+bh*0.8); ctx.lineTo(lx-bw*0.22,by+bh*0.8); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  }
+  ctx.globalAlpha=A0;
+}
+
+/* ---- the overdrive flame (drawAura): 16 phase frames per layer, the 8 sparks stay live ---- */
+function auraSpr(pw,ph,layer,j){
+  var D=sprD(), key=D+'|au'+layer+'|'+j+'|'+pw, s=sprC[key];
+  if (s) return s;
+  var sc=layer?1.0:0.70, cy=-ph*0.50, n=20, rx=pw*0.64, ry=ph*0.98, th=j*Math.PI/AURA_N, P=[], i;
+  var x0=1e9, y0=1e9, x1=-1e9, y1=-1e9;
+  for (i=0;i<=n;i++){
+    var a=(i/n)*Math.PI*2 - Math.PI/2, up=Math.max(0,-Math.sin(a));
+    var r=(0.80+0.36*Math.abs(Math.sin(i*2.3 + th)))*(1+up*0.80)*sc;
+    var px=Math.cos(a)*rx*r, py=cy+Math.sin(a)*ry*r;
+    P.push(px,py); if (px<x0) x0=px; if (px>x1) x1=px; if (py<y0) y0=py; if (py>y1) y1=py;
+  }
+  return sprMake(key, x0, y0, x1, y1, D*AURA_RES, function(){
+    var al=layer?0.26:0.50, q;
+    ctx.beginPath();
+    for (q=0;q<P.length;q+=2){ if (!q) ctx.moveTo(P[q],P[q+1]); else ctx.lineTo(P[q],P[q+1]); }
+    ctx.closePath();
+    var g=ctx.createRadialGradient(0,cy,pw*0.05,0,cy,rx*1.7);
+    g.addColorStop(0,'rgba(255,255,238,'+al.toFixed(3)+')');
+    g.addColorStop(0.48,'rgba(255,206,64,'+(al*0.72).toFixed(3)+')');
+    g.addColorStop(1,'rgba(255,120,10,0)');
+    ctx.fillStyle=g; ctx.fill();
+  });
+}
+function drawAura(pw,ph,fade){
+  if (!SPR_ON) return drawAura117(pw,ph,fade);
+  var t=performance.now()/1000, k, layer, cy=-ph*0.50;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  var A0=ctx.globalAlpha;
+  for (layer=0; layer<2; layer++){                 /* |sin(i*2.3 + t*w)| repeats every pi/w seconds: pick the nearest frame */
+    var th=(t*(11+layer*5))%Math.PI, j=Math.round(th/Math.PI*AURA_N)%AURA_N, s=auraSpr(pw,ph,layer,j);
+    ctx.globalAlpha=A0*fade; ctx.drawImage(s.cv, s.x0, s.y0, s.w, s.h);
+  }
+  ctx.globalAlpha=A0;
+  ctx.fillStyle='rgba(255,244,196,0.9)';
+  for (k=0;k<8;k++){
+    var pr=(t*1.9 + k*0.31)%1;
+    var sx=Math.sin(k*3.1+t*2.2)*pw*0.40;
+    var sy=cy - pr*ph*1.9 + ph*0.35;
+    var ss=Math.max(1,pw*0.022*(1-pr));
+    ctx.globalAlpha=(1-pr)*0.85*fade;
+    ctx.fillRect(sx-ss/2, sy, ss, ss*2.4);
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+/* ---- the blast's cap: one sprite per size step and zone bloom, glow baked in at every governor tier ---- */
+function blastSpr(Rs, gb){
+  var D=sprD(), key=D+'|bl'+Rs.toFixed(4)+'|'+gb, s=sprC[key];
+  if (s) return s;
+  var res=Math.min(1, BL_RPX/(Rs*D)), B=Math.min(26,Rs*0.9)*gb, m=1.6*B/D, R=D*res;
+  function cap(dx){ var g=ctx.createRadialGradient(dx,0,Rs*0.08,dx,0,Rs);
+    g.addColorStop(0,'#ffffff'); g.addColorStop(0.30,'#ffe487');
+    g.addColorStop(0.68,'#ff7a2f'); g.addColorStop(1,'rgba(255,50,30,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(dx,0,Rs,Rs*0.80,0,0,Math.PI*2); ctx.fill(); }
+  /* two sprites, the glow and the cap, each drawn at the blast's alpha: they stack exactly as 117's shadow + fill did */
+  s={ glow: sprMake(key+'g', -Rs-m, -Rs*0.8-m, Rs+m, Rs*0.8+m, R, function(){
+        ctx.shadowColor='#ff9b3d'; ctx.shadowBlur=B*res; ctx.shadowOffsetX=SPR_FAR;   /* the shape itself lands off the sprite */
+        cap(-SPR_FAR/R); ctx.shadowBlur=0; ctx.shadowOffsetX=0; }),
+      cap: sprMake(key+'c', -Rs, -Rs*0.8, Rs, Rs*0.8, R, function(){ cap(0); }) };
+  sprC[key]=s;
+  return s;
+}
+var SPR_FAR = 20000;      /* device px: a shape drawn this far off a sprite leaves only its shadow (the glow) on it */
+function drawBlast(bl){
+  if (!SPR_ON) return drawBlast117(bl);
+  var zRel=bl.z-position;
+  if (zRel<=140||zRel>MAXZ) return;
+  var p=proj(zRel), t=bl.t;
+  var a=(1-fogAt(zRel))*(1-t*t);
+  var x=W/2+p.ppu*(bend(zRel)+bl.x-playerX);
+  var gy=p.y;
+  var R=p.ppu*(0.10+0.34*Math.pow(t,0.5));
+  var rise=p.ppu*(0.08+0.62*Math.pow(t,0.75));
+
+  ctx.globalAlpha=a*0.5;                       /* shockwave on the tarmac */
+  ctx.strokeStyle='#ffd23f'; ctx.lineWidth=Math.max(1,p.ppu*0.025);
+  ctx.beginPath(); ctx.ellipse(x,gy,R*(1.1+t*1.6),Math.max(1,R*(0.26+t*0.4)),0,0,Math.PI*2); ctx.stroke();
+
+  var sw=R*0.34;                               /* stem */
+  ctx.globalAlpha=a*0.7;
+  var g2=ctx.createLinearGradient(x,gy,x,gy-rise);
+  g2.addColorStop(0,'rgba(255,120,40,.12)'); g2.addColorStop(1,'rgba(255,205,90,.8)');
+  ctx.fillStyle=g2;
+  ctx.beginPath();
+  ctx.moveTo(x-sw*0.5,gy); ctx.lineTo(x+sw*0.5,gy);
+  ctx.lineTo(x+sw,gy-rise); ctx.lineTo(x-sw,gy-rise);
+  ctx.closePath(); ctx.fill();
+
+  ctx.globalAlpha=a;                           /* cap: the sprite */
+  var Rs=sprStep(R), sp=blastSpr(Rs,GB);
+  sprBlit(sp.glow, x, gy-rise, R/Rs); sprBlit(sp.cap, x, gy-rise, R/Rs);
+  ctx.globalAlpha=1;
+}
+
+/* ---- the shot's head: one sprite per size step, colour and zone bloom; the trail stays live ---- */
+var SHOT_COLS = null;
+function shotSpr(ws, col, gb){
+  var D=sprD(), key=D+'|sh'+ws.toFixed(4)+'|'+col+'|'+gb, s=sprC[key];
+  if (s) return s;
+  var res=Math.min(1, SH_WPX/(ws*D)), B=Math.min(26,ws*2.4)*gb, m=1.6*B/D, R=D*res;
+  function head(dx){
+    ctx.globalAlpha=0.45; ctx.fillStyle=col;
+    ctx.beginPath(); ctx.ellipse(dx,0,ws*0.95,ws*1.5,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.ellipse(dx,0,ws*0.5,ws*0.85,0,0,Math.PI*2); ctx.fill(); }
+  s={ glow: sprMake(key+'g', -ws*0.95-m, -ws*1.5-m, ws*0.95+m, ws*1.5+m, R, function(){
+        ctx.shadowColor=col; ctx.shadowBlur=B*res; ctx.shadowOffsetX=SPR_FAR; head(-SPR_FAR/R); ctx.shadowBlur=0; ctx.shadowOffsetX=0; }),
+      head: sprMake(key+'h', -ws*0.95, -ws*1.5, ws*0.95, ws*1.5, R, function(){ head(0); }) };
+  sprC[key]=s;
+  return s;
+}
+function drawShot(sh){
+  if (!SPR_ON) return drawShot117(sh);
+  var zRel=sh.z-position;
+  if (zRel<=140||zRel>MAXZ) return;
+  var p=proj(zRel), a=1-fogAt(zRel);
+  var w=Math.max(3,0.13*p.ppu);
+  var x=W/2+p.ppu*(bend(zRel)+sh.x-playerX);
+  var y=p.y-w*1.5;
+  ctx.globalAlpha=a;
+  var tz=Math.max(150,zRel-2800), tp=proj(tz);
+  var tx=W/2+tp.ppu*(bend(tz)+sh.x-playerX), ty=tp.y-Math.max(3,0.13*tp.ppu)*1.5;
+  var g=ctx.createLinearGradient(x,y,tx,ty);
+  var sc=sh.col||'#8ef4ff';
+  g.addColorStop(0,'rgba(255,255,255,.85)'); g.addColorStop(1,hexA(sc,0));
+  ctx.strokeStyle=g; ctx.lineWidth=Math.max(1.5,w*0.6); ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(tx,ty); ctx.stroke();
+  var ws=sprStep(w), sp=shotSpr(ws,sc,GB);
+  sprBlit(sp.glow, x, y, w/ws); sprBlit(sp.head, x, y, w/ws);
+  ctx.globalAlpha=1;
+}
+
+/* ---- the swan-neck lamp (VAPOR, ALIEN PLAINS): a steady lamp is one sprite (pool, pole, arm, head) ---- */
+function swanSpr(us, s, col){
+  var D=sprD(), key=D+'|sw'+us.toFixed(4)+'|'+s+'|'+col, o=sprC[key];
+  if (o) return o;
+  var u=us, hx=s*u*(HAIL_HEAD_X-1.30), h=u*0.80*LAMP_TALL, w=Math.max(1,u*0.028), top=-h;
+  var near=u>=16, hw=u*0.14, hh=Math.max(2,u*0.035);
+  var xa=Math.min(-w,hx-hw*1.3)-2*w-1, xb=Math.max(w,hx+hw*1.3)+2*w+1;
+  return sprMake(key, xa, top-hh*1.3-2*w-1, xb, 1, D, function(){
+    var x=0;
+    ctx.globalAlpha=0.95; ctx.fillStyle='#140a26';            /* (the pool on the road is drawn live, under it) */            /* pole + lit edge */
+    ctx.fillRect(x-w,top+u*0.06,w*2,h-u*0.06);
+    ctx.fillStyle=col; ctx.fillRect(s<0?x+w*0.4:x-w,top+u*0.06,w*0.6,h-u*0.06);
+    ctx.lineCap='round';                                      /* swan-neck arm */
+    ctx.beginPath(); ctx.moveTo(x,top+u*0.08);
+    ctx.quadraticCurveTo(x,top-u*0.02,(x+hx)/2,top-u*0.01);
+    ctx.lineTo(hx,top+u*0.01);
+    if (near){ ctx.strokeStyle='#140a26'; ctx.lineWidth=w*1.6; ctx.stroke();
+      ctx.strokeStyle=hexA(col,0.8); ctx.lineWidth=Math.max(1,w*0.5); ctx.stroke(); }
+    else { ctx.strokeStyle=hexA(col,0.85); ctx.lineWidth=Math.max(1,w*1.1); ctx.stroke(); }
+    ctx.lineCap='butt';
+    ctx.globalAlpha=0.22; ctx.fillStyle=col;                  /* head */
+    ctx.beginPath(); ctx.ellipse(hx,top+hh*2,hw*1.3,hh*3.2,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.fillStyle='#140a26'; ctx.fillRect(hx-hw/2,top,hw,hh);
+    ctx.fillStyle='#fff6e6'; ctx.fillRect(hx-hw*0.4,top+hh,hw*0.8,Math.max(1,hh*0.7));
+  });
+}
+function drawLampAt(zRel,p,s,k){
+  if (!SPR_ON || !SPR_DECO || k!==1 || p.ppu<7 || p.ppu>=LAMP_UMAX) return drawLampAt117(zRel,p,s,k);
+  var a=1-fogAt(zRel), cRoad=bend(zRel), col=ZN.lamp||ZN.posts[0];
+  var x=W/2+p.ppu*(cRoad+s*(1.30+OFR_SH)-playerX), hx=W/2+p.ppu*(cRoad+s*(HAIL_HEAD_X+OFR_SH)-playerX);
+  if (Math.max(x,hx)<-80||Math.min(x,hx)>W+80) return;
+  var us=sprStep(p.ppu,SWAN_TH);
+  ctx.globalAlpha=a*0.13; ctx.fillStyle=col;                /* pool of light on the road (as 117) */
+  ctx.beginPath(); ctx.ellipse(hx,p.y,p.ppu*0.34,Math.max(1,p.ppu*0.07),0,0,Math.PI*2); ctx.fill();
+  if (p.ppu>=16){ ctx.globalAlpha=a*0.10; ctx.beginPath(); ctx.ellipse(hx,p.y,p.ppu*0.18,Math.max(1,p.ppu*0.035),0,0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha=a; sprBlit(swanSpr(us,s,col), x, p.y, p.ppu/us);
+}
+
+/* ---- HAUNTED's crooked gas lamp: four sprites (iron behind, firelight lines, glass, lantern iron + cobweb);
+        the pool, the lantern's glow and the flame stay live, so it still flickers ---- */
+function gasParts(us, s, web, flat){
+  var D=sprD(), key=D+'|gas'+us.toFixed(4)+'|'+s+'|'+(web?1:0)+'|'+(flat?1:0), o=sprC[key];
+  if (o) return o;
+  var u=us, w=Math.max(1,u*0.026), lean=s*u*0.05, h=u*0.78*LAMP_TALL, IRON='#21142a', hot='#ff9a2e';
+  var lx=s*u*(GAS_HEAD-1.28), bx=0, kx=lean*0.3, ky=-h*0.42, tx=-lean*0.5, ty=-h, ay=ty+u*0.02, cx2=lx;
+  var lw=u*0.11, lh=u*0.16, ly=ay+u*0.05, wr=u*0.15;
+  var xa=Math.min(0,lx)-u*0.08-3*w, xb=Math.max(0,lx)+u*0.08+3*w;
+  o={};
+  o.back=sprMake(key+'b', xa, ty-u*0.1-2*w, xb, 2*w, D, function(){
+    ctx.globalAlpha=0.96; ctx.strokeStyle=IRON; ctx.lineCap='round'; ctx.lineWidth=w*2;
+    ctx.beginPath(); ctx.moveTo(bx,0); ctx.lineTo(kx,ky); ctx.lineTo(tx,ty); ctx.stroke();
+    ctx.fillStyle=IRON; ctx.beginPath(); ctx.moveTo(bx-w*2.6,0); ctx.lineTo(bx+w*2.6,0); ctx.lineTo(bx+w*1.2,-u*0.06); ctx.lineTo(bx-w*1.2,-u*0.06); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.96; ctx.strokeStyle=IRON; ctx.lineWidth=w*1.6;
+    ctx.beginPath(); ctx.moveTo(tx,ay); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06,cx2,ay);
+    if (u>=16){ ctx.arc(cx2+s*-u*0.025,ay+u*0.02,u*0.025,-Math.PI/2,Math.PI*1.2,s>0); }
+    ctx.stroke();
+    if (u>=10){
+      ctx.globalAlpha=0.55; ctx.strokeStyle='#cbb8f0'; ctx.lineWidth=Math.max(0.7,w*0.4);
+      ctx.beginPath(); ctx.moveTo(tx,ay-w*0.8); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06-w*0.8,cx2,ay-w*0.8);
+      ctx.moveTo(bx+s*w*0.9,-u*0.06); ctx.lineTo(kx+s*w*0.9,ky); ctx.lineTo(tx+s*w*0.9,ty); ctx.stroke();
+    }
+    ctx.lineCap='butt';
+  });
+  o.lit = u<10 ? null : sprMake(key+'l', xa, ty-u*0.1-2*w, xb, 2*w, D, function(){
+    ctx.lineCap='round';
+    ctx.globalAlpha=0.7; ctx.strokeStyle=hot; ctx.lineWidth=Math.max(0.8,w*0.5);   /* firelight on the road side */
+    ctx.beginPath(); ctx.moveTo(bx-s*w*0.8,-u*0.06); ctx.lineTo(kx-s*w*0.8,ky); ctx.lineTo(tx-s*w*0.8,ty); ctx.stroke();
+    ctx.globalAlpha=0.65; ctx.lineWidth=Math.max(0.8,w*0.45);                          /* the lantern's light along the arm */
+    ctx.beginPath(); ctx.moveTo(tx,ay-w*0.7); ctx.quadraticCurveTo((tx+cx2)/2,ay-u*0.06-w*0.7,cx2,ay-w*0.7); ctx.stroke();
+    ctx.lineCap='butt';
+  });
+  o.glass=sprMake(key+'g', cx2-lw/2, ly, cx2+lw/2, ly+lh, D, function(){
+    if (flat) ctx.fillStyle='rgba(255,167,90,0.925)';
+    else { var gl=ctx.createLinearGradient(0,ly,0,ly+lh);
+      gl.addColorStop(0,'rgba(255,214,140,1.000)'); gl.addColorStop(1,'rgba(255,120,40,0.850)'); ctx.fillStyle=gl; }
+    ctx.fillRect(cx2-lw/2,ly,lw,lh);
+  });
+  var fx0=cx2-lw*0.7, fx1=cx2+lw*0.7, fy0=Math.min(ly-lh*0.28,ay), fy1=ly+lh+Math.max(1,lh*0.14);
+  if (web){ fx0=Math.min(fx0,tx,tx-s*wr); fx1=Math.max(fx1,tx,tx-s*wr); fy1=Math.max(fy1,ay+u*0.004+wr); }
+  o.front=sprMake(key+'f', fx0, fy0, fx1, fy1, D, function(){
+    ctx.globalAlpha=1; ctx.fillStyle=IRON;
+    ctx.beginPath(); ctx.moveTo(cx2-lw*0.7,ly); ctx.lineTo(cx2+lw*0.7,ly); ctx.lineTo(cx2+lw*0.35,ly-lh*0.28); ctx.lineTo(cx2-lw*0.35,ly-lh*0.28); ctx.closePath(); ctx.fill();
+    ctx.fillRect(cx2-w*0.5,ay,w,ly-ay-lh*0.2);
+    ctx.fillRect(cx2-lw*0.6,ly+lh,lw*1.2,Math.max(1,lh*0.14));
+    if (u>=20) ctx.fillRect(cx2-w*0.3,ly,Math.max(1,w*0.6),lh);
+    if (web) cobweb(tx,ay+u*0.004,wr,-s,1);
+  });
+  sprC[key]=o;
+  return o;
+}
+function gasLampAt(zRel,p,s,k,n,headLat,live,webs){
+  var u=p.ppu;
+  if (!SPR_ON || !SPR_DECO || live || headLat!==GAS_HEAD || u<7 || u>=LAMP_UMAX) return gasLampAt117(zRel,p,s,k,n,headLat,live,webs);
+  var a=1-fogAt(zRel), t=performance.now()/1000, cR=bend(zRel);
+  var x=W/2+u*(cR+s*(1.28+OFR_SH)-playerX), lx=W/2+u*(cR+s*(headLat+OFR_SH)-playerX);
+  if (Math.max(x,lx)<-80||Math.min(x,lx)>W+80) return;
+  var kk=k*lampFlame(t,n), hot='#ff9a2e', lit=0.4+0.6*kk;
+  var us=sprStep(u,GAS_TH), f=u/us, S=gasParts(us, s, !!(webs && u>=18 && (n%2===0)), ZN.look==='haunted' && u<12);
+  var ay=p.y-u*0.78*LAMP_TALL+u*0.02, lw=u*0.11, lh=u*0.16, ly=ay+u*0.05;
+  lampPool(lx,p.y,u,kk,a,hot);
+  ctx.globalAlpha=a; sprBlit(S.back,x,p.y,f);
+  if (S.lit){ ctx.globalAlpha=a*lit; sprBlit(S.lit,x,p.y,f); }
+  if (kk>0){ ctx.globalAlpha=1; glowDot(lx,ly+lh*0.5,u*0.32,hot,0.45*kk*a); }
+  ctx.globalAlpha=a*lit; sprBlit(S.glass,x,p.y,f);
+  ctx.globalAlpha=a; sprBlit(S.front,x,p.y,f);
+  if (u>=20){
+    ctx.fillStyle='rgba(255,250,220,'+(0.5+0.5*kk).toFixed(3)+')';   /* the flame */
+    ctx.beginPath(); ctx.ellipse(lx+Math.sin(t*9+n)*lw*0.05,ly+lh*0.55,lw*0.12,lh*0.24*(0.8+0.2*kk),0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ---- prepaint: every sprite zone `to` will need, a few each frame (title / GAME OVER / the ride) ---- */
+function sprSteps(v0, v1, th){                     /* every step sprStep() can return for sizes v0..v1 */
+  var r=[], last=-1, v;
+  for (v=v0; v<v1*1.0001; v*=1.01){ var s=sprStep(v,th); if (s!==last){ r.push(s); last=s; } }
+  return r;
+}
+function sprJobs(to){
+  var Z=ZONES[to], gb=Z.bloom*Z.bloomMul, J=[], i, j, L;
+  var ph=PW*0.62;
+  for (i=0;i<2;i++) for (j=0;j<AURA_N;j++) (function(l,q){ J.push(function(){ auraSpr(PW,ph,l,q); }); })(i,j);
+  sprSteps(Math.max(0.3,0.10*proj(MAXZ).ppu), 0.44*proj(141).ppu).forEach(function(r){ J.push(function(){ blastSpr(r,gb); }); });
+  var cols=['#8ef4ff'].concat(OD_COLS);
+  sprSteps(3, 0.13*proj(Z_CAR).ppu).forEach(function(w){ cols.forEach(function(c){ J.push(function(){ shotSpr(w,c,gb); }); }); });
+  if (!SPR_DECO){ /* build 119: lamps drawn live, nothing to prepaint */ }
+  else if (Z.lampKind==='gas'){
+    L=sprSteps(7, LAMP_UMAX*0.9999, GAS_TH);
+    L.forEach(function(u){ [-1,1].forEach(function(s){
+      J.push(function(){ gasParts(u,s,false,Z.look==='haunted' && u<12); });
+      if (Z.webs && u>=18) J.push(function(){ gasParts(u,s,true,Z.look==='haunted' && u<12); });
+    }); });
+  } else {
+    var col=Z.lamp||Z.posts[0];
+    L=sprSteps(7, LAMP_UMAX*0.9999, SWAN_TH);
+    L.forEach(function(u){ [-1,1].forEach(function(s){ J.push(function(){ swanSpr(u,s,col); }); }); });
+  }
+  return J;
+}
+function sprTrim(to){                            /* keep what the zone we are in and the zone we head for use (+ the flame) */
+  var A=[ZONES[to], ZN], gbs={}, cols={}, gas=false, k, i;
+  for (i=0;i<2;i++){ if (!A[i]) continue; gbs[''+A[i].bloom*A[i].bloomMul]=1; if (A[i].lampKind==='gas') gas=true; else cols[A[i].lamp||A[i].posts[0]]=1; }
+  for (k in sprC){
+    var f=k.split('|'), fam=(f[1]||'').slice(0,2), last=f[f.length-1], keep=true;
+    if (fam==='bl' || fam==='sh') keep=!!gbs[last.replace(/[gchl]$/,'')];   /* the glow / shape sprites end in a letter */
+    else if (fam==='sw') keep=!!cols[last];
+    else if (fam==='ga') keep=gas;
+    if (!keep){ var c=sprC[k]; if (c && c.cv){ sprPx-=c.cv.width*c.cv.height; sprN--; } delete sprC[k]; }
+  }
+}
+function sprPre(to, ms){
+  if (!SPR_ON || !to || !ZONES[to]) return;
+  var k=to+'|'+sprD();
+  if (sprQto!==k){ sprTrim(to); sprQ=sprJobs(to); sprQto=k; }
+  if (!sprQ.length) return;
+  var t0=performance.now(); sprPreOn=true;
+  try{ while (sprQ.length && performance.now()-t0<ms) sprQ.shift()(); } finally { sprPreOn=false; }
+}
+
+/* ---- option 2: THE RESOLUTION STEP (world layer only, one way per race) ---- */
+var RES_K   = 1;          /* the world layer's scale after the step (0.8 = 36 % fewer pixels); 1 = never */
+var RES_WIN = 1;          /* late 2-second windows at LITE+ (after the governor's 3 s hold) before it steps */
+var resK = 1, resBad = 0, resSave = 0, dprW = 1;
+function resStep(){
+  resK=RES_K; resBad=0; gov.hold=GOV_HOLD; fitCanvas();
+  var c=bbCur; if (c && c.gov) c.gov.push([Math.round(c.t), 3, zoneI, gov.fps, gov.lateShow]);
+}
+function resReset(){ resBad=0; if (resK!==1){ resK=1; fitCanvas(); } }
+function resName(){ return Math.round(RES_K*100)+'% RES'; }
+
 function heartPath(x,y,s){
   ctx.beginPath();
   ctx.moveTo(x,y);
@@ -8429,7 +9914,7 @@ function drawHeart(hh){
 
 var BOLT=[[-0.10,-1.00],[0.62,-1.00],[0.16,-0.18],[0.72,-0.18],
           [-0.28,1.00],[0.02,0.10],[-0.50,0.10]];
-function drawShot(sh){
+function drawShot117(sh){
   var zRel=sh.z-position;
   if (zRel<=140||zRel>MAXZ) return;
   var p=proj(zRel), a=1-fogAt(zRel);
@@ -8453,7 +9938,7 @@ function drawShot(sh){
 }
 
 /* a small mushroom cloud where a car used to be */
-function drawBlast(bl){
+function drawBlast117(bl){
   var zRel=bl.z-position;
   if (zRel<=140||zRel>MAXZ) return;
   var p=proj(zRel), t=bl.t;
@@ -8488,14 +9973,23 @@ function drawBlast(bl){
 }
 
 var UFO_W=0.62;
+var UFO_CUT_SC=0.60;   /* build 113 (Carlos): the saucer 40 % smaller during the beam-up ride (the 1.5 camera made it huge) */
+function ufoCutSc(uf){ /* 1 while it roams or hunts; eases to UFO_CUT_SC over the ride's lock, so it never pops */
+  return (uf && uf.cutting && cut) ? 1-(1-UFO_CUT_SC)*clamp(cut.t/cut.dur/0.16,0,1) : 1;
+}
 /* build 85 (Carlos): during the abduction the saucer's dome stays just below the LAP/TIME panel (it ends at
    y 74), not behind it. Its bob calms from 0.10 to 0.03 of its width over the lock, so it never pokes up. */
 var UFO_CUT_TOP=80;
 function ufoBobA(uf){ return uf.cutting && cut ? 0.10-0.07*clamp(cut.t/cut.dur/0.16,0,1) : 0.10; }
 function ufoCutMin(w,bobA){ return UFO_CUT_TOP+w*(0.30+bobA); }   /* the dome reaches 0.30 w above y */
 function ufoCutDrop(uf){                 /* how far the cut lowers it: the car rises that much less */
-  var p=proj(Math.max(181,uf.z-position)), w=Math.max(5,UFO_W*p.ppu);
+  var p=proj(Math.max(181,uf.z-position)), w=Math.max(5,UFO_W*p.ppu*ufoCutSc(uf));   /* build 113 */
   return Math.max(0, ufoCutMin(w,0.03)-(p.y-uf.hover*p.ppu));
+}
+function ufoCutLift(uf){                 /* build 113: how far the car rises in the ride: up to the dome (0.27 w above the hull) */
+  var p=proj(Math.max(181,uf.z-position)), w=Math.max(5,UFO_W*p.ppu*ufoCutSc(uf));
+  var y=Math.max(p.y-uf.hover*p.ppu, ufoCutMin(w,0.03));
+  return PLAYER_Y-(y-0.27*w);
 }
 /* THE SAUCER (build 83: the Cutaway Lab v2's saucer, ported).
    A metal hull with a rim light and a seam, an under-glow, a glass dome with
@@ -8521,7 +10015,7 @@ function drawUfo(uf){
   if (zRel<=180||zRel>MAXZ) return;
   var p=proj(zRel), a=(1-fogAt(zRel))*uf.fade;
   if (a<=0.01) return;
-  var w=Math.max(5,UFO_W*p.ppu), dh=Math.max(1.5,w*0.19);
+  var csc=ufoCutSc(uf), w=Math.max(5,UFO_W*p.ppu*csc), dh=Math.max(1.5,w*0.19);   /* build 113: csc */
   var x=W/2+p.ppu*(bend(zRel)+uf.x-playerX);
   if (x<-w*3||x>W+w*3) return;
   var gy=p.y;
@@ -8535,7 +10029,7 @@ function drawUfo(uf){
   if (uf.beamOn && (!live || uf.beamK>0.01)){
     var k  = live ? uf.beamK : 1;
     /* the beam is drawn at EXACTLY the width it is tested at (build 82) */
-    var bw = live ? UFO_BEAM_R*p.ppu*(0.55+0.45*k) : UFO_BEAM_R*p.ppu;
+    var bw = (live ? UFO_BEAM_R*p.ppu*(0.55+0.45*k) : UFO_BEAM_R*p.ppu)*csc;   /* build 113: csc is 1 while hunting */
     var top=y+dh*0.55, x0=w*0.20, s=(live?1:0.55)*k*a;
     ctx.save();
     ctx.globalCompositeOperation='lighter';
@@ -8918,7 +10412,7 @@ function drawLightBar(pw,ph,col,shape){
 /* A face in the rear window. Blinks now and then, and squints under braking. */
 function drawEyes(pw,ph,style,braking,rx){
   if (style===0) return;
-  var t=performance.now(), blink=(t%4300)<130;
+  var t=performance.now(), blink=!tvSpr && (t%4300)<130;   /* build 115: a rival's sprite is never painted mid-blink */
   if (style>=7){ lkFace(pw,ph,(EYES[style]&&EYES[style].k)||'',blink,rx); return; }   /* build 94 */
   var wk=(rx&&rx.k==='wink')?rx.a:0;                   /* build 94: a near miss winks */
   var ex=pw*0.15, ey=-ph*0.76, r=pw*0.055, s, cx;
@@ -8988,7 +10482,7 @@ function drawEyes(pw,ph,style,braking,rx){
 /* Super-saiyan flare: two flickering envelopes drawn additively so they
    blow out where they overlap, taller than they are wide, with embers
    climbing out of the top. Replaces the car's underglow while it burns. */
-function drawAura(pw,ph,fade){
+function drawAura117(pw,ph,fade){
   var t=performance.now()/1000, i, k, layer;
   var cx=0, cy=-ph*0.50, n=20;
   var rx=pw*0.64, ry=ph*0.98;
@@ -9127,16 +10621,32 @@ function lkLivery(pw,ph,kind,c1,c2){
 /* finishes, over paint + livery, clipped to the body. STOCK ('') draws nothing. */
 function lkFinish(pw,ph,f,p){
   ctx.save(); lkBody(pw,ph); ctx.clip();
+  /* build 110: CHROME and METAL used to lay a grey sheet over the car (Carlos: the paint and wrap vanished).
+     Now they blend with the paint (soft-light / overlay keep the colour and only move light and dark), plus a
+     few thin lines; the moving shine is lkGlint(), drawn live on top of the cached body. */
   if (f==='METAL'){
-    for (var i=0;i<40;i++){ ctx.fillStyle='rgba(255,255,255,'+(0.04+((i*13)%7)/80).toFixed(3)+')'; ctx.fillRect(-pw/2,-ph+i*ph/40,pw,ph/80); }
-    var g2=ctx.createLinearGradient(-pw/2,-ph,pw/2,0);
-    g2.addColorStop(0.3,'rgba(255,255,255,0)'); g2.addColorStop(0.45,'rgba(255,255,255,.35)'); g2.addColorStop(0.6,'rgba(255,255,255,0)');
+    ctx.globalCompositeOperation='overlay';
+    for (var i=0;i<48;i++){                                       /* brushed grain: light and dark hairlines */
+      var a=(0.10+((i*13)%7)/50).toFixed(3);
+      ctx.fillStyle=(i%2)?'rgba(255,255,255,'+a+')':'rgba(0,0,0,'+a+')'; ctx.fillRect(-pw/2,-ph+i*ph/48,pw,ph/48);
+    }
+    var g2=ctx.createLinearGradient(-pw/2,-ph,pw/2,0);             /* two soft satin highlights */
+    g2.addColorStop(0.15,'rgba(255,255,255,0)'); g2.addColorStop(0.30,'rgba(255,255,255,.45)'); g2.addColorStop(0.42,'rgba(255,255,255,0)');
+    g2.addColorStop(0.62,'rgba(255,255,255,0)'); g2.addColorStop(0.72,'rgba(255,255,255,.30)'); g2.addColorStop(0.82,'rgba(255,255,255,0)');
     ctx.fillStyle=g2; ctx.fillRect(-pw/2,-ph,pw,ph);
+    ctx.globalCompositeOperation='source-over';
   } else if (f==='CHROME'){
+    ctx.globalCompositeOperation='overlay';
     var g3=ctx.createLinearGradient(0,-ph,0,0);
-    g3.addColorStop(0,'#ffffff'); g3.addColorStop(0.35,'#9aa3c7'); g3.addColorStop(0.5,'#2b2f4a');
-    g3.addColorStop(0.55,'#e6ecff'); g3.addColorStop(0.8,'#7f86ad'); g3.addColorStop(1,'#d9defa');
-    ctx.globalAlpha=0.55; ctx.fillStyle=g3; ctx.fillRect(-pw/2,-ph,pw,ph); ctx.globalAlpha=1;
+    g3.addColorStop(0,'rgba(255,255,255,.85)'); g3.addColorStop(0.30,'rgba(255,255,255,.25)'); g3.addColorStop(0.43,'rgba(0,0,0,.25)');
+    g3.addColorStop(0.47,'rgba(0,0,0,.80)'); g3.addColorStop(0.49,'rgba(255,255,255,.85)'); g3.addColorStop(0.70,'rgba(255,255,255,.15)');
+    g3.addColorStop(1,'rgba(0,0,0,.55)');
+    ctx.fillStyle=g3; ctx.fillRect(-pw/2,-ph,pw,ph);
+    ctx.globalCompositeOperation='screen';
+    ctx.fillStyle='rgba(200,220,255,.10)'; ctx.fillRect(-pw/2,-ph,pw,ph);                          /* a cool mirror sheen */
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='rgba(255,255,255,.65)'; ctx.fillRect(-pw/2,-ph*0.515,pw,Math.max(0.8,ph*0.02));  /* the horizon line */
+    ctx.fillStyle='rgba(255,255,255,.40)'; ctx.fillRect(-pw/2,-ph*0.975,pw,Math.max(0.8,ph*0.03));  /* top edge highlight */
   } else if (f==='NEONGLOW'){
     ctx.globalCompositeOperation='lighter';
     var g5=ctx.createRadialGradient(0,-ph*0.45,2,0,-ph*0.45,pw*0.6);
@@ -9155,7 +10665,7 @@ function lkBodyLive(pw,ph,L){
 }
 var bodyCv={}, bodyN=0;
 function lkBodyDraw(pw,ph,L){
-  if (!L.liv && !L.fin){ lkBodyLive(pw,ph,L); return; }      /* today's plain body: drawn as before */
+  if ((!L.liv && !L.fin) || tvSpr){ lkBodyLive(pw,ph,L); return; }      /* today's plain body: drawn as before; build 115: a rival (tvSpr) never uses bodyCv */
   var sc=dpr;
   try{ if (ctx.getTransform){ var m=ctx.getTransform(); sc=Math.sqrt(m.a*m.a+m.b*m.b); } }catch(_){}
   sc=Math.min(4,Math.max(1,Math.round(sc*4)/4));
@@ -9174,6 +10684,21 @@ function lkBodyDraw(pw,ph,L){
   }
   if (e) ctx.drawImage(e.c, -pw/2-e.mg, -ph-e.mg, e.w, e.h);
   else lkBodyLive(pw,ph,L);
+  if (L.fin==='CHROME' || L.fin==='METAL') lkGlint(pw,ph,L.fin);   /* build 110 */
+}
+/* build 110: a slanted shine that sweeps across a CHROME or METAL body every few seconds (live, not cached).
+   CHROME: narrow and bright, every GLINT_CH s. METAL: wide and soft, every GLINT_ME s. */
+var GLINT_CH = 2.6, GLINT_ME = 3.8, GLINT_SWEEP = 0.75;
+function lkGlint(pw,ph,f){
+  var ch=(f==='CHROME'), per=ch?GLINT_CH:GLINT_ME, t=(performance.now()/1000)%per;
+  if (t>GLINT_SWEEP) return;
+  var u=t/GLINT_SWEEP, x=-pw*0.95+u*pw*1.9, w=pw*(ch?0.09:0.22), pk=ch?0.60:0.26;
+  ctx.save(); lkBody(pw,ph); ctx.clip();
+  ctx.translate(x,0); ctx.transform(1,0,0.55,1,0,0);
+  var g=ctx.createLinearGradient(-w,0,w,0);
+  g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(0.5,'rgba(255,255,255,'+pk+')'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fillRect(-w,-ph,2*w,ph);
+  ctx.restore();
 }
 
 /* spoilers: painted in the paint's darker colour, edged in the trim */
@@ -9742,7 +11267,7 @@ function paintCar(pw,o){
 }
 
 function drawPlayerDino(lean){
-  var w=DINO_CAR_W*PPU_CAR, h=w*0.72;
+  var w=DINO_CAR_W*PPU_CAR*DINO_DRAW_SC, h=w*0.72;   /* build 113 */
   var frame = speed>300 ? 1+((Math.floor(position/700))&1) : 0;
   var t=performance.now();
   var fade = (dinoT<=DINO_WARN && (Math.floor(dinoT*8)%2===0)) ? 0.40 : 1;
@@ -10411,7 +11936,7 @@ function drawPause(){
   if (unp) monoText(unp,W/2,TOUCH?H/2+84:H/2+186,TS.LABEL,'#7cff4f','center');   /* under the menu lines, clear of the message card */
   if (TOUCH){
     monoText(T('PAUSE_TOUCH'),W/2,H/2+16,TS.LABEL,'#a99fdc','center');
-    monoText(T('FPS_TAP')+'  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'),W/2,fpsLineY(),TS.LABEL,'#8a7ec4','center');
+    /* build 111: the FPS METER line is hidden (Carlos) */
   } else {
     monoText(T('PAUSE_RESUME'),W/2,H/2+12,TS.LABEL,'#a99fdc','center');
     monoText(T('PAUSE_GARAGE'),W/2,H/2+36,TS.LABEL,'#21e6ff','center');
@@ -10422,7 +11947,10 @@ function drawPause(){
     monoText(T('PAUSE_SOUND')+'  \u00b7  '+T(AUD_MSG[audioMode]),W/2,H/2+84,TS.LABEL,'#b06cff','center');
     monoText(T('PAUSE_LANG'),W/2,H/2+108,TS.LABEL,'#ff2fbe','center');
     monoText(T('MENU_LINE'),W/2,H/2+132,TS.LABEL,'#ffd23f','center');
-    monoText(T('PAUSE_FPS')+'  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'),W/2,fpsLineY(),TS.LABEL,'#8a7ec4','center');
+    /* build 111: the FPS METER line is hidden (Carlos); F still toggles it on a keyboard */
+  }
+  if (fpsNoteT > performance.now()){          /* build 112: the hidden gesture's note, above the v.NNN label */
+    monoText('FPS  \u00b7  '+T(fpsOn?'FPS_ON':'FPS_OFF'), W-24, H-34, TS.LABEL, '#7cff4f', 'right');
   }
 }
 
@@ -10436,7 +11964,7 @@ function drawPause(){
 
 /* An amber van, as seen from behind on the road, with its blinker
    alternating sides so the icon reads as "this one changes lane". */
-function iconVan(cx,cy,w){
+function iconVanOld(cx,cy,w){   /* build 113's van icon (TV_MODE 0) */
   var vh=w*0.94, x=cx-w/2, yb=cy+vh/2;
   ctx.fillStyle='#171019';
   rr(x,yb-vh,w,vh,w*0.09); ctx.fill();
@@ -10657,6 +12185,7 @@ function drawOver(){
   monoText(T('MENU_LINE'),W/2,418,TS.LABEL,'#ffd23f','center');
   /* build 74: a run that ended on lap 4 or earlier offers the tutorial, always */
   if (tutOffer()) monoText(T(TOUCH?'OVER_LEARN_TOUCH':'OVER_LEARN'),W/2,442,TS.LABEL,'#7cff4f','center');
+  if (fpsOn && !TOUCH) monoText(T('OVER_REPORT'),W/2,tutOffer()?466:442,TS.LABEL,'#21e6ff','center');   /* build 116 */
 }
 
 function swatchRow(label,yy,list,sel,active,paintSw,rowId){
@@ -11051,13 +12580,14 @@ function garDrive(){
 }
 
 /* ---- keys (desktop) ---- */
-function garageKey(code){
+function garageKey(code, rpt){
   var gr=GROWS[garRow]||GROWS[0];
   garSyncCat();
+  var bk = (code==='Backspace'||code==='Delete');   /* build 111: BACKSPACE leaves (was ESC: a fullscreen frame eats ESC) */
   if (garPick){
     var dg=/^(?:Digit|Numpad)([1-3])$/.exec(code);
     if (dg){ garSaveTo(+dg[1]); return; }
-    if (code==='Escape'||code==='KeyS'){ garBack(); return; }
+    if (bk||code==='KeyS'){ if (!rpt) garBack(); return; }   /* a held key closes the picker, never the garage too */
   }
   if (code==='Tab'){ garCatGo(garCat+1); return; }
   if (code==='ArrowUp'){   garPartGo(garPart-1); return; }
@@ -11082,7 +12612,7 @@ function garageKey(code){
   var d=/^(?:Digit|Numpad)([1-3])$/.exec(code);
   if (d){ garSlotTap(+d[1]); return; }
   if (code==='Enter'||code==='Space'){ garDrive(); return; }
-  if (code==='Escape'||code==='KeyG'){ garBack(); }
+  if (bk||code==='KeyG'){ if (!rpt) garBack(); }   /* the PLATE TEXT row took Backspace above (delete a letter) */
 }
 
 /* ---- every frame (from update) ---- */
@@ -11206,7 +12736,7 @@ function garBtn(x,y,w,h,o){                   /* o: {on, dim, col, glow} */
   if (o.glow){ ctx.shadowColor=col; ctx.shadowBlur=hb(o.glow); }
   ctx.stroke(); ctx.restore();
 }
-function garPx(){ return Math.max(1, Math.min(4, cv.width/W)); }   /* backing pixels per stage pixel */
+function garPx(){ return Math.max(1, Math.min(4, cv2.width/W)); }   /* backing pixels per stage pixel */
 
 /* ---- card pictures, painted once per look and cached ---- */
 var garCardC={}, garCardN=0;
@@ -11576,15 +13106,15 @@ function garDesk(){
   garBtn(714,84,58,28,{dim:sd, on:garPick, col:'#ffd23f', glow:garPick?10:0});
   ctx.save(); if (sd) ctx.globalAlpha=0.35; garText(T('G_SAVE'), 743, 103, 10, garPick?'#ffd23f':'#ffffff', 'center', 800); ctx.restore();
   if (!sd) garHit(714,84,58,28,garSaveBtn);
-  garText('1 2 3  \u00b7  S', 598, 130, 9, '#8a7ec4');
+  garKeys(598, 131, ['1','2','3','\u00b7','S'], '#8a7ec4', 9);   /* build 110: key caps */
   garBtn(586,148,196,30,{dim:sd, col:'#ffd23f'});
-  ctx.save(); if (sd) ctx.globalAlpha=0.35; garDice(604,163,14,'#ffd23f'); garText(T('G_RANDOM'), 622, 168, 11, '#ffffff', 'left', 800); garText('R', 768, 168, 11, '#ffd23f', 'right', 800); ctx.restore();
+  ctx.save(); if (sd) ctx.globalAlpha=0.35; garDice(604,163,14,'#ffd23f'); garText(T('G_RANDOM'), 622, 168, 11, '#ffffff', 'left', 800); garKey(770, 167, 'R', '#ffd23f', 10, 'right'); ctx.restore();
   if (!sd) garHit(586,148,196,30,garRandom);
   var pl=garLooseLocked();                   /* build 98: no photo of a car wearing a locked item */
   garBtn(586,186,196,30,{col:'#7cff4f', dim:pl});
   ctx.save(); if (pl) ctx.globalAlpha=0.35;
-  garCam(604,201,15,'#7cff4f'); garText(T('G_PHOTO'), 622, 206, 11, '#ffffff', 'left', 800); garText('P', 768, 206, 11, '#7cff4f', 'right', 800);
-  if (pl) prLockIcon(752,201,10,'#ff6ad5');
+  garCam(604,201,15,'#7cff4f'); garText(T('G_PHOTO'), 622, 206, 11, '#ffffff', 'left', 800); garKey(770, 205, 'P', '#7cff4f', 10, 'right');
+  if (pl) prLockIcon(740,201,10,'#ff6ad5');   /* build 110: left of the P cap */
   ctx.restore();
   garHit(586,186,196,30,garPhoto);
   /* the car */
@@ -11597,25 +13127,62 @@ function garDesk(){
   else garPlateDesk(row);
   garStatus(458,12,440);
   /* BACK / DRIVE */
-  garBtn(18,442,132,32,{col:'#a99fdc'}); garText('ESC', 30, 463, 9, '#8a7ec4', 'left', 800); garText(T('G_BACK'), 100, 463, 13, '#ffffff', 'center', 800);
+  garBtn(18,442,132,32,{col:'#a99fdc'}); garBkspCap(28, 449); garText(T('G_BACK'), 100, 463, 13, '#ffffff', 'center', 800);   /* build 111: backspace cap (was ESC) */
   garHit(18,442,132,32,garBack);
   ctx.save(); ctx.fillStyle='#7cff4f'; ctx.shadowColor='#7cff4f'; ctx.shadowBlur=hb(14); rr(650,442,132,32,6); ctx.fill(); ctx.restore();
   garText('ENTER', 662, 463, 9, '#123d06', 'left', 800); garText(T('G_DRIVE'), 735, 463, 14, '#071a02', 'center', 900);
   garHit(650,442,132,32,garDrive);
   garFooter(row);
 }
+/* build 110: a small keyboard key (rounded square, the key inside), like the Q / E caps; returns its width.
+   align 'left' = x is the left edge, 'right' = x is the right edge. y = the text baseline the old letter used. */
+var GKEY_H = 17;
+function garKeyW(k,F){ garFont(F,800); return Math.max(GKEY_H, Math.ceil(ctx.measureText(k).width)+9); }
+function garKey(x,y,k,col,F,align){
+  var w=garKeyW(k,F), h=GKEY_H, x0=(align==='right')?x-w:x, y0=y-F*0.82-(h-F*0.82)/2-1;
+  ctx.save();
+  ctx.fillStyle=hexA(col,0.12); rr(x0,y0,w,h,4); ctx.fill();
+  ctx.lineWidth=1.3; ctx.strokeStyle=col; ctx.shadowColor=col; ctx.shadowBlur=hb(5); rr(x0,y0,w,h,4); ctx.stroke();
+  ctx.restore();
+  garText(k, x0+w/2, y, F, '#ffffff', 'center', 800);
+  return w;
+}
+/* build 111: the BACKSPACE key cap on the garage's BACK button: x, y = top-left */
+function garBkspCap(x,y){
+  var w=26, h=GKEY_H, col='#a99fdc', cx=x+w/2, cy=y+h/2;
+  ctx.save();
+  ctx.fillStyle=hexA(col,0.12); rr(x,y,w,h,4); ctx.fill();
+  ctx.lineWidth=1.3; ctx.strokeStyle=col; ctx.shadowColor=col; ctx.shadowBlur=hb(5); rr(x,y,w,h,4); ctx.stroke();
+  ctx.shadowBlur=0; ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.4; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(cx-8,cy); ctx.lineTo(cx-3.5,cy-4.5); ctx.lineTo(cx+7,cy-4.5); ctx.lineTo(cx+7,cy+4.5); ctx.lineTo(cx-3.5,cy+4.5); ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-0.5,cy-2); ctx.lineTo(cx+3.5,cy+2); ctx.moveTo(cx+3.5,cy-2); ctx.lineTo(cx-0.5,cy+2); ctx.stroke();
+  ctx.restore();
+}
+/* a row of keys, each in its own cap (sep '\u00b7' = a dot between groups), from x; returns the end x */
+function garKeys(x,y,keys,col,F){
+  for (var i=0;i<keys.length;i++){
+    if (keys[i]==='\u00b7'){ garText('\u00b7', x+5, y, F, '#8a7ec4', 'center', 800); x+=10; continue; }
+    x+=garKey(x,y,keys[i],col,F,'left')+4;
+  }
+  return x-4;
+}
 function garFooter(row){
   var k = (row && !row.list) ?
     [['TAB',T('GK_CAT')],['\u25b2 \u25bc',T('GK_PART')],['A-Z 0-9',T('GK_TYPE')],['\u232b',T('GK_DEL')]] :
     [['Q E',T('GK_CAT')],['\u25b2 \u25bc',T('GK_PART')],['\u25c0 \u25b6',T('GK_PICK')],['R',T('GK_RND')],['P',T('GK_PHOTO')],['1 2 3',T('GK_SLOT')],['S',T('GK_SAVE')]];
-  var F=10, i, tw=0, ws=[];
-  garFont(F,800);
-  for (i=0;i<k.length;i++){ var a=ctx.measureText(k[i][0]).width+8, b=ctx.measureText(k[i][1]).width; ws.push([a,b]); tw+=a+5+b+(i?16:0); }
+  /* build 110: every key in its own cap ('Q E' = two caps, '1 2 3' = three); 'A-Z 0-9' stays two wide caps */
+  var F=10, i, j, tw=0, ws=[], ks=[];
+  for (i=0;i<k.length;i++){
+    var parts=k[i][0].split(' '), a=0;
+    for (j=0;j<parts.length;j++) a+=garKeyW(parts[j],F)+(j?3:0);
+    garFont(F,700); var b=ctx.measureText(k[i][1]).width;
+    ks.push(parts); ws.push([a,b]); tw+=a+5+b+(i?14:0);
+  }
   var x=W/2-tw/2, y=490;
   for (i=0;i<k.length;i++){
-    if (i) x+=16;
-    ctx.strokeStyle='rgba(255,210,63,.7)'; ctx.lineWidth=1; rr(x,y-11,ws[i][0],15,3); ctx.stroke();
-    garText(k[i][0], x+ws[i][0]/2, y, F, '#ffd23f', 'center', 800); x+=ws[i][0]+5;
+    if (i) x+=14;
+    for (j=0;j<ks[i].length;j++){ if (j) x+=3; x+=garKey(x,y,ks[i][j],'#ffd23f',F,'left'); }
+    x+=5;
     garText(k[i][1], x, y, F, '#a99fdc', 'left', 700); x+=ws[i][1];
   }
 }
@@ -11982,7 +13549,7 @@ function setZone(id, keepSong){
   applyGrade();
   if (ZN.song && !keepSong) musLoadSong(ZN.song);
   for (var i=0;i<cars.length;i++)
-    cars[i].color = cars[i].weaver ? '#ffd23f'
+    cars[i].color = cars[i].weaver ? tvSwCol()   /* build 114 */
                                    : ZN.traffic[(Math.random()*ZN.traffic.length)|0];
 }
 
@@ -12199,6 +13766,8 @@ function cutStep(dt){
   cut.t += dt;
   cutScript(cut.kind, p, dt);
 
+  if (!cut.swapped && p>0.04) zcStep(cut.to);   /* build 117: the destination's layers, one a frame, before the swap */
+  if (p>0.04) sprPre(cut.to, SPR_RIDE_MS);        /* build 118: the destination's sprites, a few a frame */
   if (!cut.swapped && p>=CUTS[cut.kind].swapAt){
     cut.swapped=true;
     setZone(cut.to, true);      /* map now, song on drop-off (endAbduct) */
@@ -12250,7 +13819,7 @@ function cutScript(kind, p, dt){
   } else if (p<0.62){
     e=(p-0.16)/0.46;
     speed += (900-speed)*Math.min(1,dt*1.4);
-    cutCar.y   = -ease(e)*(430-(ufo?ufoCutDrop(ufo):0));   /* build 85: into the saucer where it now hangs */
+    cutCar.y   = -ease(e)*(ufo?ufoCutLift(ufo):430);   /* build 113: up into the saucer's dome at any camera zoom (was 430 - ufoCutDrop) */
     cutCar.x   = Math.sin(e*7.2)*46*(1-e*0.35);
     cutCar.tilt= Math.sin(e*5.1)*0.30 + Math.sin(e*11)*0.06;
     cutCar.sc  = 1 - ease(e)*0.68;
@@ -12317,6 +13886,9 @@ function drawCut(){
 }
 
 function render(){
+  if (resSave){ dpr=resSave; resSave=0; }   /* build 118: never left at the world's scale */
+  propTick();                             /* build 118: prop sprites, per frame */
+  bbM(1);                                /* build 116: black-box stage marks */
   var sx=0, sy=0;
   if (shake>0.3){
     /* Build 71: a smooth shake. Two sines per axis at 8-14 Hz (under half of
@@ -12329,7 +13901,7 @@ function render(){
     /* whole device pixels for EVERYTHING: the road's one-pixel rows never
        smear across two screen rows, and the cached sky and sun move with
        the rest instead of half a pixel apart */
-    sx=Math.round(sx*dpr)/dpr; sy=Math.round(sy*dpr)/dpr;
+    var dq=resK<1?dprW:dpr; sx=Math.round(sx*dq)/dq; sy=Math.round(sy*dq)/dq;   /* build 118: the world's pixels */
   }
   shX=sx; shY=sy;
 
@@ -12337,18 +13909,20 @@ function render(){
      full-canvas clear only matters for the strip a camera shake uncovers
      (build 70). The blits land on whole pixels, so the strip is exact. */
   useWorld();
+  if (resK<1 && dprW!==dpr){ resSave=dpr; dpr=dprW; }   /* build 118: the world at the stepped-down scale */
   ctx.setTransform(1,0,0,1,0,0);
   var ox=Math.round(sx*dpr), oy=Math.round(sy*dpr), CWd=cv.width, CHd=cv.height;
   if (ox>0) ctx.clearRect(0,0,ox,CHd); else if (ox<0) ctx.clearRect(CWd+ox,0,-ox,CHd);
   if (oy>0) ctx.clearRect(0,0,CWd,oy); else if (oy<0) ctx.clearRect(0,CHd+oy,CWd,-oy);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   /* build 104: the top layer starts empty every frame */
-  ctx2.setTransform(1,0,0,1,0,0); ctx2.clearRect(0,0,cv2.width,cv2.height); ctx2.setTransform(dpr,0,0,dpr,0,0);
+  ctx2.setTransform(1,0,0,1,0,0); ctx2.clearRect(0,0,cv2.width,cv2.height); ctx2.setTransform(sprD(),0,0,sprD(),0,0);
 
   if (state==='garage'){                 /* build 97: the showroom covers the whole stage; the road behind isn't drawn */
     if (!wBlank){                         /* build 104: nothing of the world (or its grade) is left under the garage */
       ctxW.setTransform(1,0,0,1,0,0); ctxW.clearRect(0,0,CWd,CHd); ctxW.setTransform(dpr,0,0,dpr,0,0); wBlank=true;
     }
+    if (resSave){ dpr=resSave; resSave=0; }
     useTop();
     drawGarage();
     plateInput(!!(GROWS[garRow] && GROWS[garRow].id==='ptxt'));
@@ -12361,10 +13935,15 @@ function render(){
 
   drawSky();
   drawGround();
+  bbM(2);
   drawRoad();
+  bbM(3);
   drawDecor();
+  bbM(4);
   drawPosts();
+  bbM(5);
   drawGate();
+  bbM(6);
 
   var sorted=cars.slice();
   for (var q3=0;q3<pickups.length;q3++) sorted.push(pickups[q3]);
@@ -12384,11 +13963,14 @@ function render(){
     else                        drawTraffic(sorted[i]);
   }
 
+  bbM(7);
   drawGroundFog();
   drawWeather(lastDt);                 /* build 104: weather belongs to the graded world (it now falls behind the car) */
   ctx.restore();
 
+  bbM(8);
   /* ---- build 104: from here on, the TOP layer (never graded) ---- */
+  if (resSave){ dpr=resSave; resSave=0; }   /* build 118 */
   useTop();
   ctx.save();
   ctx.translate(sx,sy);
@@ -12406,6 +13988,7 @@ function render(){
   if (state==='abduct') drawCut();
   fxDraw(2);                             /* build 83: effects over the frame, under the HUD */
 
+  bbM(9);
   if (state!=='garage' && state!=='info') drawHUD();
   if (state==='title'){   drawTitle(); drawMessages(); }   /* card on top (build 69) */
   if (state==='paused')   drawPause();
@@ -12454,8 +14037,17 @@ var GOV_WIN=2000, GOV_LATE=0.05, GOV_HOLD=3;
 var gov={tier:0, n:0, t:0, work:0, worst:0, bad:0, hold:GOV_HOLD, dirty:true,
          st:'', zone:-1, buf:new Float32Array(512),
          fps:0, hz:0, worstShow:0, workShow:0, lateShow:0};
-var fpsOn=false;
-try{ fpsOn = localStorage.getItem('vaporlane.fps')==='1'; }catch(_){}
+var fpsOn=false;   /* build 111: always starts OFF (the menu line is hidden, so a saved ON could never be switched off on a phone) */
+/* build 112: the hidden FPS METER gesture (the pause line was removed in 111) */
+var FPS_TAP_N = 5, FPS_TAP_T = 3000;   /* taps, within this many ms */
+var FPS_TAP_W = 140, FPS_TAP_H = 70;   /* the corner zone around the v.NNN label, canvas px (a thumb on a phone) */
+var fpsTaps = [], fpsNoteT = 0;
+function fpsTap(){
+  var now = performance.now();
+  fpsTaps.push(now);
+  while (fpsTaps.length && now-fpsTaps[0] > FPS_TAP_T) fpsTaps.shift();
+  if (fpsTaps.length >= FPS_TAP_N){ fpsTaps = []; toggleFps(); fpsNoteT = now + 1600; blip(fpsOn?880:440,0.06,'square',0.10); }
+}
 function toggleFps(){
   fpsOn=!fpsOn;
   try{ localStorage.setItem('vaporlane.fps', fpsOn?'1':'0'); }catch(_){}
@@ -12477,21 +14069,24 @@ function govFrame(raw, work, dt){
 
   var n=gov.n, v=gov.buf.subarray(0,n), i, late=0;
   v.sort();
-  var base=v[(n*0.25)|0], thr=Math.max(base*1.5, 20);
+  var base=v[(n*0.25)|0], thr=refThr();   /* build 117: the cap / title yardstick, no 20 ms floor (was max(1.5 x base, 20)) */
   for (i=n-1; i>=0 && v[i]>thr; i--) late++;
-  gov.fps=Math.round(n*1000/gov.t); gov.hz=Math.round(1000/base);
+  gov.fps=Math.round(n*1000/gov.t); gov.hz=Math.round(1000/(capMs>0?capMs:base));   /* build 117: the screen, not the drawn rhythm */
   gov.worstShow=gov.worst; gov.workShow=gov.work/n; gov.lateShow=late;
   if (state==='playing' && !gov.dirty && gov.tier<2){
     if (late > n*GOV_LATE){
       if (++gov.bad>=2){ gov.tier++; gov.bad=0; gov.hold=GOV_HOLD; }
     } else gov.bad=0;
   }
+  else if (state==='playing' && !gov.dirty && gov.tier>=2 && resK===1 && RES_K<1){   /* build 118: the resolution step */
+    if (late > n*GOV_LATE){ if (RES_K<1 && ++resBad>=RES_WIN) resStep(); } else resBad=0;   /* build 119: RES_K 1 = never */
+  }
   gov.n=0; gov.t=0; gov.work=0; gov.worst=0; gov.dirty=false;
 }
 function drawFps(){
-  var g=gov, tier=g.tier===0?'FULL':(g.tier===1?'LITE':'LITE+');
-  var txt=(g.fps||'--')+' FPS \u00b7 '+(g.hz||'--')+' HZ \u00b7 WORST '+Math.round(g.worstShow)+
-          ' MS \u00b7 JS '+g.workShow.toFixed(1)+' MS \u00b7 GLOW '+tier;
+  var g=gov, tier=(g.tier===0?'FULL':(g.tier===1?'LITE':'LITE+'))+(resK<1?' '+resName():'')+(SPR_ON?'':' · SPR OFF');
+  var txt=(g.fps||'--')+' FPS \u00b7 '+(g.hz||'--')+(capOn?' HZ CAP':' HZ')+' \u00b7 WORST '+Math.round(g.worstShow)+
+          ' MS \u00b7 JS '+g.workShow.toFixed(1)+' MS \u00b7 GLOW '+tier+(bbCur?' \u00b7 REC '+bbCur.hn:'');   /* build 116 */
   var fs=10*UI;
   ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.globalCompositeOperation='source-over';
@@ -12508,15 +14103,22 @@ function fpsLineY(){ return TOUCH ? H/2+50 : H/2+156; }
 
 var last=performance.now(), lastDt=0.016;
 function loop(now){
+  capTrack(now);                         /* build 117: the screen's refresh, from every callback */
+  if (capSkip(now)){ requestAnimationFrame(loop); return; }   /* build 117: the 60 FPS cap on fast screens */
   var raw=now-last;
   var dt=Math.min(0.05,raw/1000); last=now;
   lastDt=dt;
   var w0=performance.now();
+  bbBegin(w0);                           /* build 116: the black box (only while the FPS METER is on) */
   update(dt);
   syncPad();
   render();
-  govFrame(raw, performance.now()-w0, dt);
+  var w1=performance.now();
+  govFrame(raw, w1-w0, dt);
+  bbFrame(raw, w1, now);                 /* build 116 */
   if (fpsOn) drawFps();
+  if (state==='gameover' || state==='title') zcStep(START_ZONE);   /* build 117: the next race's layers, ahead */
+  if (state==='gameover' || state==='title') sprPre(START_ZONE, SPR_PRE_MS);   /* build 118: and its sprites */
   requestAnimationFrame(loop);
 }
 /* ---------------------------------------------------------------
@@ -12628,6 +14230,7 @@ function tutCar(lane, dz, spd){
             color:ZN.traffic[(Math.random()*ZN.traffic.length)|0], passed:false,
             weaver:false, phase:null, sigT:0, moveT:0, sigDir:0, fromX:0, toLane:0,
             changeT:99, scripted:true };
+  tvAssign(c);                          /* build 114 */
   cars.push(c);
   return c;
 }
