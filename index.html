@@ -762,7 +762,7 @@ function useWorld(){ ctx = ctxW; }
 function useTop(){ ctx = ctx2; }
 var wBlank = true;                 /* the world layer is empty (the garage covers the stage) */
 var W = 800, H = 500; // Base logical resolution
-var BUILD_NO = 120;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
+var BUILD_NO = 122;     /* build 99: Carlos's 2nd garage notes (classic lock, bigger NEW dot, green 'changed' dot, MODS, Q / E chevrons). Bump it with every build. */
 
 /* ------------------------------------------------------------------
    TYPE SCALE  (2026-09-04)
@@ -1239,7 +1239,8 @@ function cpBonus(l){     return Math.round(lapLength(l)/maxSpeedFor(l)*cpMult(l)
    Note that the spawn gate is what actually sets density here — clusterWin
    and maxCluster measured a 0% rejection rate at every lap, so they are not
    the lever and are left alone. */
-function trafficTop(l){  return l<=6 ? Math.min(6600, 3800 + (l-1)*560)
+function trafficTop(l){  return trafficTop0(l)*phTrafK(l); }   /* build 121: late laps faster (PH.tr) */
+function trafficTop0(l){ return l<=6 ? Math.min(6600, 3800 + (l-1)*560)
                                      : Math.min(7400, 6600 + (l-6)*115); }
 /* Density. Lap 1 was 0.83 cars a second — one car every 1.2 seconds spread
    across four lanes — which is why nobody who tried the game for ninety
@@ -1254,6 +1255,7 @@ function trafficTop(l){  return l<=6 ? Math.min(6600, 3800 + (l-1)*560)
 function spawnGap(l){
   var g = l<=7 ? Math.max(0.36, 0.83 - (l-1)*0.078)
                : Math.max(0.20, 0.36 - (l-7)*0.020);
+  g*=phGapK(l);                 /* build 121: the same cars on screen with faster late traffic (PH.tr) */
   return (EASY_ON && l>=1 && l<=3) ? g*EASY_GAP[l-1] : g;     /* build 72 */
 }
 function clusterWin(l){  return Math.max(2600, 4600 - (l-1)*260); }
@@ -2406,6 +2408,7 @@ function applyKeys(){
   keys.down = !!kbd.down || held.down>0;
   keys.left = !!kbd.left || held.left>0;
   keys.right= !!kbd.right|| held.right>0;
+  keys.hop  = !!kbd.hop;                 /* build 122 */
 }
 
 var PAL=['#ff2fbe','#21e6ff','#ffd23f','#7cff4f','#ff6a3d','#b06cff'];
@@ -2428,7 +2431,7 @@ function reset(){
   resReset();                            /* build 118: every race starts at full resolution */
   sprRace();                             /* build 118: sprites on (meter on: alternate per race) */
   trackReset();
-  position=0; playerX=0; speed=0; steerVel=0;
+  position=0; playerX=0; speed=0; steerVel=0; phReset();   /* build 121 */
   health=CH_().hp; lap=1; timeLeft=45; score=0; overtakes=0; coast=false; comboOwe=null;
   spinT=0; invT=0; shake=0; spinAng=0; bgX=0; curSlope=0; carRum=0;
   cars=[]; spawnT=0.8; msgs=[]; flash=0; hitFlash=0; pickups=[]; dinoT=0;
@@ -3666,7 +3669,8 @@ function musMix(){
    INPUT
 --------------------------------------------------------------- */
 var MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
-         KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
+         KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right',
+         ShiftLeft:'hop',ShiftRight:'hop',KeyX:'hop'};   /* build 122: the KART hop (X = backup: Windows' Sticky Keys) */
 
 /* ---------------------------------------------------------------
    BUILD 103 - START GATE + LEAVE-THE-RACE BOX
@@ -3750,6 +3754,7 @@ window.addEventListener('keydown', function(e){
   }
   if (leaveUp){ leaveKey(e); return; }
   if (bbRepUp){ bbKey(e); return; }            /* build 116: the FPS REPORT screen */
+  if (phUp){ phKey(e); return; }               /* build 121: the PHYSICS LAB */
   audioInit();
   var c=e.code;
   if (c.indexOf('Arrow')===0 || c==='Space' || (c==='Tab' && state==='garage')) e.preventDefault();   /* build 97: Tab = next category */
@@ -3763,6 +3768,7 @@ window.addEventListener('keydown', function(e){
     return;
   }
 
+  if (c==='KeyH' && state==='paused' && !e.repeat){ e.preventDefault(); phOpen(); return; }   /* build 121: the PHYSICS LAB */
   if (MAP[c]){ kbd[MAP[c]]=true; applyKeys(); }
 
   if (c==='Space' && state==='playing') fire();
@@ -4467,6 +4473,7 @@ cv.addEventListener('pointerdown', function(e){
     if (r.width>0 && r.height>0){
       var lx=(e.clientX-r.left)*W/r.width, ly=(e.clientY-r.top)*H/r.height;
       if (lx>W-FPS_TAP_W && ly>H-FPS_TAP_H) fpsTap();
+      else if (lx<FPS_TAP_W && ly<FPS_TAP_H) phTap();   /* build 121: 5 taps top-left = the PHYSICS LAB */
     }
   }
 });
@@ -4555,6 +4562,7 @@ function giveBolt(src){             /* build 96: src = 'pickup' / 'drift' / 'nm'
 /* `rear` is true when the car was behind your anchor at the moment of
    contact — it came in through the back face of the hitbox. */
 function crash(rear){
+  phCrash();                      /* build 121: contact ends the slide, no exit kick */
   chain=0; chainT=0;              /* any contact breaks the chain, always */
   hitFlash=1;
 
@@ -4738,6 +4746,7 @@ function update(dt){
     steerVel*=Math.pow(0.05,dt);
   } else {
     spinAng*=Math.pow(0.001,dt);
+    if (PH.v2){ phCtl(dt,maxS); } else {   /* build 121: physics V2 (PH.v2 false = 120's driving below) */
 
     // Calculate input first to check for drifting
     var input = (keys.left?-1:0) + (keys.right?1:0);
@@ -4789,6 +4798,7 @@ function update(dt){
     }
 
     steerVel += (input*agility-steerVel)*Math.min(1,resp*dt);
+    }
   }
 
   if (ofrOff()){
@@ -4807,16 +4817,17 @@ function update(dt){
   /* Came out of a drift still on the road: the pot becomes a bank, and a full
      bank is a bolt. Sits after the shoulder test so an exit that puts a wheel
      off the road has already been voided by it. */
-  screech(drifting ? 0.45+Math.min(1,Math.abs(steerVel)*0.9)*0.55 : 0);
+  screech(PH.v2 ? phScreech() : (drifting ? 0.45+Math.min(1,Math.abs(steerVel)*0.9)*0.55 : 0));   /* build 121 */
 
   if (wasDrift && !drifting && dPot>0){
     dBank += dPot; dPot=0;
     while (dBank>=1){ dBank-=1; giveBolt('drift'); }
   }
 
-  speed=clamp(speed,0,maxS);
+  speed=clamp(speed,0,PH.v2?phTop(maxS):maxS);   /* build 121: a drift's exit kick may pass top speed for a moment */
   spct =clamp(speed/maxS,0,1);
 
+  if (PH.v2) phMove(dt,maxS); else {   /* build 121 */
   playerX += steerVel*dt*Math.min(1, spct*3.2);
 
   /* the bend throws you wide — measured where the car actually is */
@@ -4826,9 +4837,10 @@ function update(dt){
      behaviour, untouched) and an authored zone raises it. 2.0 is the
      recommended value for the base game once it has been played on a Mac. */
   playerX -= curSlope*speed*dt*(0.007 + 0.024*Math.pow(spct,1.5))*Z().cf;
+  }
 
-  if (playerX> 1.55){ playerX= 1.55; steerVel=0; }
-  if (playerX<-1.55){ playerX=-1.55; steerVel=0; }
+  if (playerX> 1.55){ playerX= 1.55; steerVel=0; phLat=0; }
+  if (playerX<-1.55){ playerX=-1.55; steerVel=0; phLat=0; }
 
   position += speed*dt;
   addScore(speed*dt/220);
@@ -9876,6 +9888,595 @@ function resStep(){
 function resReset(){ resBad=0; if (resK!==1){ resK=1; fitCanvas(); } }
 function resName(){ return Math.round(RES_K*100)+'% RES'; }
 
+/* ===============================================================
+   BUILD 121 - PHYSICS V2 TEST + LATE-LAP TRAFFIC (Carlos 11-06)
+   Build 120's car had no sideways momentum: steering wrote straight into
+   playerX and the bend pushed it at a third of what steering cancels, so a
+   curve could never throw you off, and a drift was just more grip.
+   V2: the car carries a sideways speed (phLat). The bend pulls it outward
+   with speed squared, against a tyre grip budget; past that budget you slide
+   wide even at full lock. A drift is a held, signed angle (phA): its inward
+   pull is what you balance against the bend (into = wider, against =
+   straighter, through zero it flips). A clean drift charges bolts faster
+   and kicks you out of the bend. No spin-outs (Carlos).
+   PH.v2 false = 120's driving; PH.tr false = 120's traffic.
+   Hidden lab: H on the pause screen, or 5 taps on its top-left corner.
+
+   BUILD 122 - DRIFT STYLES TEST (Carlos 11-08: "CTR / Mario Kart drift feels natural")
+   PH.style picks the drift:
+     '121'    = build 121's drift, untouched (brake + arrow, the arrows turn the angle, can flip).
+     'outrun' = brake (or DRIFT) + arrow to start, then the ARROW SETS the angle and it never flips:
+                into the drift = the widest angle (tightest line), hands off = medium, against = the
+                smallest angle (wider line). The brake or the arrow INTO the drift keeps it going; without
+                either (hands off or counter-steer, no brake) it straightens out after PH_OR_LET.
+                Rewards as 121 (line bolts + exit kick).
+     'kart'   = the hop-drift: Shift or X (phone: DRIFT; brake + arrow works too) = a hop; land with
+                an arrow held and the drift locks to that side; keep holding to drift (same set-the-angle
+                rule as OUTRUN). Seconds of drift inside a bend charge sparks: cyan -> magenta -> lime.
+                Let go = a boost by spark tier, and more bolts per tier. No spin-outs.
+   Plus: one-tap presets P1-P7 in the lab, TYRE GRIP up to 3.0 (default 2.00 = 121's P1), late traffic
+   +35 % ramped in gradually from lap 3 to lap 8. Lab values now save under vaporlane.phys122.
+=============================================================== */
+var PH_STYLES = ['121','outrun','kart'];
+var PH_DEF = { v2:true, tr:true, ro:false, style:'kart', pre:'',
+  bend:1.00, grip:2.00, dpull:1.00, dgrip:0.60, ang:1.00, scrub:0.10, kick:0.06, line:0.25, yaw:1.00,
+  kmax:0.72, kmid:0.55, kmin:0.32, t1:0.50, t2:1.20, t3:2.20, k1:0.05, k2:0.10, k3:0.15, kscrub:0.04,
+  late:0.35, dens:1.00, ra:3, rb:8, zp:{ 'vapor':1.00, 'vapor-edit':0.80, 'haunted':0.90 } };
+function phCopyDef(){ var o={}, k; for (k in PH_DEF) o[k]=PH_DEF[k]; o.zp={}; for (k in PH_DEF.zp) o.zp[k]=PH_DEF.zp[k]; return o; }
+var PH = phCopyDef();
+
+var PH_VREF   = 14800;      /* 370 km/h: the lap-7 top speed (BALANCED) every number below is set at */
+var PH_ACK    = 3.4/(S_PEAK*PH_VREF*PH_VREF);   /* bend pull: 3.4 u/s^2 on the sharpest VAPOR bend at 370 km/h (bots: at 2.7 a
+                                                   perfect tap-steerer was never thrown off, even at lap 10) */
+var PH_G0     = 2.35;       /* tyre grip budget, u/s^2, x chassis grip x zone grip x TYRE GRIP */
+var PH_P0     = 3.0;        /* a full-angle drift's inward pull at 370 km/h, u/s^2 (scales with speed^2, like the bend) */
+var PH_DSTEER = 0.35;       /* share of normal steering the tyres still follow mid-drift */
+var PH_A0     = 0.35;       /* the angle a drift starts at */
+var PH_A_IN   = 1.6;        /* angle per second, steering into the slide */
+var PH_A_OUT  = 2.5;        /* angle per second, counter-steering */
+var PH_A_HOLD = 0.55;       /* hands off mid-drift: the angle settles here... */
+var PH_A_SET  = 0.8;        /* ...at this many angle units a second */
+var PH_DGAS   = 0.03;       /* throttle mid-drift: share of top speed regained per second (the scrub takes it back) */
+var PH_MINSPD = 0.70;       /* a drift pays from this share of top speed (120: 0.78, propped by both pedals' 80 % floor) */
+var PH_QHI    = 1.25;       /* bolt charge on the line, x 120's rate */
+var PH_QLO    = 0.5;        /* ...and off it */
+var PH_KICK_T = 1.0;        /* seconds of drift inside a bend before the exit kicks */
+var PH_KDUR   = 0.8;        /* the kick's overshoot eases back over this long */
+var PH_KOVER  = 0.05;       /* ...and may pass top speed by this share */
+var PH_YAW    = 0.22;       /* radians of body yaw at full angle (x CAR YAW) */
+var PH_DINO_G = 1.5;        /* the rampage grips harder */
+/* build 122 */
+var PH_K_RATE = 2.4;        /* OUTRUN / KART: angle units a second toward what the arrow asks (x ANGLE SPEED) */
+var PH_OR_LET = 0.25;       /* OUTRUN: seconds with no brake and no arrow before the drift straightens out */
+var PH_HOP    = 0.13;       /* KART: the hop, seconds */
+var PH_HOP_PX = 9;          /* ...and how high the car lifts, px */
+var PH_GRACE  = 0.20;       /* KART: landed with no arrow but still holding: an arrow this soon still starts the drift */
+var PH_KMINSP = 0.50;       /* KART: sparks charge from this share of top speed (inside a bend, drifting into it) */
+var PH_B_DUR  = [0, 0.50, 0.85, 1.20];   /* KART: boost seconds per spark tier (then it eases back over PH_KDUR) */
+var PH_B_ACC  = 1.6;        /* KART: during a boost, share of top speed gained per second (up to the boosted top) */
+var PH_BOLT   = [1, 1.20, 1.50, 1.90];   /* KART: the drift's bolt charge x this on a release at each tier */
+var PH_YAW_K  = 0.36;       /* KART: radians of body yaw at full angle (x CAR YAW): the clip's karts turn ~25-35 deg */
+var PH_TCOL   = ['#e8ecff','#21e6ff','#ff2fbe','#7cff4f'];   /* sparks: none yet / cyan / magenta / lime (Carlos: the game's neon) */
+
+var phLat=0, phA=0, phIn=0, phUse=0, phRatio=0, phLine=false, phKickT=0, phKickK=0, phYaw=0;
+var phDr={ on:false, t:0, bendT:0, lineT:0, clean:true };
+var phKOv=PH_KOVER, phOrT=0, phHopT=0, phHopDir=0, phHopPrev=false, phGrace=0, phCh=0, phTier=0,
+    phBoostT=0, phBoostK=0, phFlash=0, phFlashTier=0, phRs=12345;
+
+function phReset(){
+  phLat=0; phA=0; phIn=0; phUse=0; phRatio=0; phLine=false; phKickT=0; phKickK=0; phYaw=0;
+  phDr.on=false; phDr.t=0; phDr.bendT=0; phDr.lineT=0; phDr.clean=true;
+  phKOv=PH_KOVER; phOrT=0; phHopT=0; phHopDir=0; phHopPrev=false; phGrace=0; phCh=0; phTier=0;
+  phBoostT=0; phBoostK=0; phFlash=0; phFlashTier=0;
+}
+/* any contact: no kick / boost for this drift, and the slide is over */
+function phCrash(){
+  phDr.clean=false; if (phDr.on){ phDr.on=false; phA=0; phLine=false; phYaw=0; }
+  phCh=0; phTier=0; phBoostT=0; phGrace=0;
+}
+function phZonePull(){ var v=PH.zp[ZN.id]; return (typeof v==='number') ? v : 1; }
+function phTop(maxS){
+  if (phBoostT>0) return maxS*(1+phBoostK);
+  return maxS*(1+phKOv*Math.max(0,phKickT)/PH_KDUR);
+}
+function phKart(){ return PH.style==='kart'; }
+
+/* OUTRUN / KART: the arrow sets the angle (into = widest, none = medium, against = smallest); it never crosses zero */
+function phSetAng(s, input, dt){
+  var tg = input===0 ? PH.kmid : (input===s ? PH.kmax : PH.kmin);
+  var m=Math.abs(phA), d=PH_K_RATE*PH.ang*dt;
+  m += clamp(tg-m, -d, d);
+  phA=s*Math.max(0.02, m);
+}
+
+/* pedals, the drift's angle and its speed cost; runs where 120's steering block ran */
+function phCtl(dt, maxS){
+  var input=(keys.left?-1:0)+(keys.right?1:0);
+  var gasOn=keys.up && !coast, brake=!!keys.down;
+  phIn=input;
+  if (phKickT>0) phKickT=Math.max(0, phKickT-dt);
+  if (phKart()){ phCtlKart(dt, maxS, input, gasOn, brake); return; }
+  var orn = PH.style==='outrun';
+
+  /* in: brake (or both pedals, or the DRIFT button) + a direction.
+     out (121): let go of the brake. out (OUTRUN): no brake and no arrow for PH_OR_LET */
+  if (!phDr.on){
+    if (brake && input!==0 && speed>maxS*0.35){
+      phDr.on=true; phDr.t=0; phDr.bendT=0; phDr.lineT=0; phDr.clean=true; phA=input*PH_A0; phOrT=0;
+    }
+  } else if (orn){
+    if (brake || input===(phA>=0?1:-1)) phOrT=0; else phOrT+=dt;   /* the brake or the arrow INTO it keeps it going */
+    if (phOrT>=PH_OR_LET || speed<maxS*0.30) phExit(maxS);
+  } else if (!brake || speed<maxS*0.30){ phExit(maxS); }
+
+  if (phDr.on){
+    var s=phA>=0?1:-1;
+    if (orn) phSetAng(s, input, dt);
+    else if (input!==0){
+      if (input===s) phA+=input*PH_A_IN*PH.ang*dt;        /* into the slide: wider */
+      else           phA+=input*PH_A_OUT*PH.ang*dt;       /* against it: straighter, and through zero it flips */
+      phA=clamp(phA,-1,1);
+    } else {
+      var m=Math.abs(phA), d=PH_A_SET*PH.ang*dt;
+      m = m<PH_A_HOLD ? Math.min(PH_A_HOLD, m+d) : Math.max(PH_A_HOLD, m-d);
+      phA=s*m;
+    }
+    speed += (gasOn ? PH_DGAS*maxS : (brake ? -maxS/2.2 : -maxS/6.5))*dt;   /* throttle holds it; the brake alone still slows */
+    speed -= PH.scrub*phA*phA*maxS*dt;                    /* a wide slide scrubs speed, a tidy one hardly any */
+    drifting=true; phDr.t+=dt;
+
+    var bendF=Math.abs(curSlope)/S_PEAK, inB=bendF>DR_MIN_BEND, into=(curSlope>0)===(phA>0);
+    if (inB) phDr.bendT+=dt;
+    phLine = inB && into && Math.abs(phLat)<PH.line;
+    if (phLine) phDr.lineT+=dt;
+    if (inB && speed>=maxS*(learn?LEARN_DRIFT_SPD:PH_MINSPD)){
+      dPot += Math.min(1,bendF)*DR_RATE*(learn?LEARN_DRIFT:1)*(phLine?PH_QHI:PH_QLO)*dt;
+      if (learn && tut) tut.driftT += dt;
+    }
+  } else {
+    phA=0; phLine=false;
+    if (gasOn && keys.down){                               /* both pedals, no direction: 120's rule */
+      var floorS=maxS*DRIFT_HOLD;
+      if (speed>floorS){ speed-=(maxS/1.15)*dt; if (speed<floorS) speed=floorS; }
+    } else if (gasOn) speed += (maxS/3.1)*dt;
+    else if (keys.down) speed -= (maxS/1.15)*dt;
+    else speed -= (maxS/(coast?COAST_T:6.5))*dt;
+  }
+  phYaw=phA*PH_YAW*PH.yaw;
+}
+
+/* the drift ends: a clean one (a second or more inside a bend, on the road, no contact) kicks */
+function phExit(maxS){
+  if (phDr.clean && PH.kick>0 && phDr.bendT>=PH_KICK_T && !ofrOff() && spinT<=0){
+    var q=Math.min(1, phDr.lineT/Math.max(0.001, phDr.bendT));
+    phKickK=PH.kick*(0.4+0.6*q); phKOv=PH_KOVER;
+    speed=Math.min(speed+phKickK*maxS, maxS*(1+PH_KOVER));
+    phKickT=PH_KDUR;
+    phWhoosh(phKickK/0.06);
+  }
+  phDr.on=false; phA=0; phLine=false;
+}
+function phWhoosh(k){
+  k=Math.min(1.4, Math.max(0.3, k));
+  blip(200, 0.30, 'sawtooth', 0.08*k, 0, 3.4);
+  blip(420, 0.24, 'triangle', 0.07*k, 0, 2.6);
+}
+
+/* ---- KART: hop, locked drift, spark tiers, boost ---- */
+function phCtlKart(dt, maxS, input, gasOn, brake){
+  var hopKey=!!keys.hop, both=keys.up && brake;
+  var held = hopKey || brake;                              /* the hop key or the DRIFT / brake pedal holds the drift */
+  var trig = held && !phHopPrev && (hopKey || both || input!==0);   /* a plain brake (no arrow, no gas) stays a brake */
+  phHopPrev = held;
+  if (phFlash>0) phFlash=Math.max(0, phFlash-dt);
+
+  if (trig && !phDr.on && phHopT<=0){
+    phHopT=PH_HOP; phHopDir=input; phGrace=0;
+    blip(330, 0.07, 'triangle', 0.05, 0, 1.6);
+  }
+  if (phHopT>0){
+    phHopDir=input;                                        /* the arrow held at the landing picks the side (late one: PH_GRACE) */
+    phHopT-=dt;
+    if (phHopT<=0){
+      phHopT=0; blip(140, 0.05, 'square', 0.035, 0);
+      if (held){
+        if (phHopDir!==0 && speed>maxS*0.35) phKStart(phHopDir);
+        else phGrace=PH_GRACE;                             /* a hop with no arrow is just a hop (unless one comes quickly) */
+      }
+    }
+  } else if (phGrace>0){
+    phGrace-=dt;
+    if (!held) phGrace=0;
+    else if (input!==0 && speed>maxS*0.35){ phGrace=0; phKStart(input); }
+  }
+
+  if (phDr.on){
+    if (!held) phKRelease(maxS);                           /* let go = the boost */
+    else if (speed<maxS*0.30) phKEnd();                    /* too slow: over, no boost */
+  }
+
+  if (phDr.on){
+    var s=phA>=0?1:-1;
+    phSetAng(s, input, dt);
+    if (!gasOn) speed -= (maxS/6.5)*dt;                    /* the pedal that holds the drift is not a brake */
+    speed -= PH.kscrub*(Math.abs(phA)/0.55)*maxS*dt;       /* KART SCRUB: per second at the hands-off angle */
+    drifting=true; phDr.t+=dt; phLine=false;
+    var bendF=Math.abs(curSlope)/S_PEAK, inB=bendF>DR_MIN_BEND, into=(curSlope>0)===(phA>0);
+    if (inB) phDr.bendT+=dt;
+    if (inB && into && speed>=maxS*PH_KMINSP){             /* straights can't farm sparks */
+      phCh+=dt;
+      var nt = phCh>=PH.t3 ? 3 : (phCh>=PH.t2 ? 2 : (phCh>=PH.t1 ? 1 : 0));
+      if (nt>phTier){ phTier=nt; blip(520+nt*180, 0.08, 'square', 0.045, 0, 1.3); }
+    }
+    if (inB && speed>=maxS*(learn?LEARN_DRIFT_SPD:PH_MINSPD)){
+      dPot += Math.min(1,bendF)*DR_RATE*(learn?LEARN_DRIFT:1)*dt;
+      if (learn && tut) tut.driftT += dt;
+    }
+  } else {
+    phA=0; phLine=false;
+    if (gasOn) speed += (maxS/3.1)*dt;                     /* KART: both pedals = gas + DRIFT, no 80 % floor */
+    else if (brake) speed -= (maxS/1.15)*dt;
+    else speed -= (maxS/(coast?COAST_T:6.5))*dt;
+  }
+
+  if (phBoostT>0){
+    if (brake && !keys.up && !phDr.on) phBoostT=0;         /* braking ends a boost */
+    else {
+      phBoostT-=dt; speed += PH_B_ACC*maxS*dt;
+      if (phBoostT<=0){ phBoostT=0; phKickT=PH_KDUR; phKickK=phBoostK; phKOv=phBoostK; }
+    }
+  }
+  phYaw=phA*PH_YAW_K*PH.yaw;
+}
+function phKStart(dir){
+  phDr.on=true; phDr.t=0; phDr.bendT=0; phDr.lineT=0; phDr.clean=true;
+  phA=dir*PH.kmid; phCh=0; phTier=0;
+}
+function phKEnd(){ phDr.on=false; phA=0; phLine=false; phCh=0; phTier=0; }
+function phKRelease(maxS){
+  var t=phTier;
+  if (t>0 && phDr.clean && !ofrOff() && spinT<=0 && speed>=maxS*0.30){
+    var k=[0, PH.k1, PH.k2, PH.k3][t];
+    phBoostK=k; phBoostT=PH_B_DUR[t]; phKickT=0; phKickK=k; phKOv=k;
+    speed=Math.min(speed+k*maxS*0.5, maxS*(1+k));         /* half at once, the rest pushes in during the boost */
+    dPot*=PH_BOLT[t];
+    phFlash=0.28; phFlashTier=t;
+    if (k>0) phWhoosh(k/0.06);
+  }
+  phKEnd();
+}
+
+/* the car's hop height (px) and the KART effects, drawn in drawPlayer's car frame */
+function phHopY(){ return phHopT>0 ? Math.sin(Math.PI*(1-phHopT/PH_HOP))*PH_HOP_PX : 0; }
+function phRnd(){ phRs=(phRs*16807)%2147483647; return phRs/2147483647; }
+function phHopShadow(x, y){
+  if (phHopT<=0) return;
+  ctx.save(); ctx.globalAlpha=0.35; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.ellipse(x, y+2, PW*0.46, PW*0.07, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+}
+function phCarFx(pw){
+  if (!PH.v2 || !phKart()) return;
+  if (!(phDr.on || phBoostT>0 || phFlash>0)) return;
+  if (state!=='playing' && state!=='paused') return;
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.shadowBlur=0;
+  var i, w, side;
+  if (phDr.on){                                            /* sparks spray out of both rear wheels, sideways and back */
+    var t=phTier, col=PH_TCOL[t], n=t>0 ? 5+t*2 : 3, len=pw*(t>0 ? 0.13+0.05*t : 0.07), dir=phA>=0?1:-1;
+    if (t>0){                                              /* the glow under the spray */
+      ctx.fillStyle=col; ctx.globalAlpha=0.22;
+      for (w=-1; w<=1; w+=2){ ctx.beginPath(); ctx.arc(w*pw*0.41, -pw*0.02, pw*(0.07+0.02*t), 0, Math.PI*2); ctx.fill(); }
+    }
+    ctx.strokeStyle=col; ctx.lineWidth=t>0 ? 2.5 : 1.4; ctx.lineCap='round'; ctx.globalAlpha=t>0 ? 1 : 0.5;
+    ctx.beginPath();
+    for (w=-1; w<=1; w+=2){
+      var wx=w*pw*0.41, wy=-pw*0.02, base=(w<0 ? Math.PI : 0) + w*0.35 - dir*0.25;   /* outward, a little down, leaning off the drift */
+      for (i=0;i<n;i++){
+        var a=base + (phRnd()-0.5)*1.3, L=len*(0.35+phRnd()*0.9), r0=pw*0.02*phRnd();
+        ctx.moveTo(wx+Math.cos(a)*r0, wy+Math.sin(a)*r0); ctx.lineTo(wx+Math.cos(a)*(r0+L), wy+Math.sin(a)*(r0+L));
+      }
+    }
+    ctx.stroke();
+    if (t>0){
+      ctx.fillStyle='#ffffff'; ctx.globalAlpha=0.9;
+      for (w=-1; w<=1; w+=2){ ctx.beginPath(); ctx.arc(w*pw*0.41, -pw*0.02, pw*(0.018+0.006*t)*(0.8+0.4*phRnd()), 0, Math.PI*2); ctx.fill(); }
+    }
+  }
+  if (phBoostT>0 || phKickT>0){                            /* the boost: flames out of the exhausts in the tier's colour */
+    var bk = phBoostT>0 ? 1 : phKickT/PH_KDUR, c2=PH_TCOL[Math.max(1,phFlashTier)];
+    for (side=-1; side<=1; side+=2){
+      var fx=side*pw*0.30, Lf=pw*(0.20+0.10*phFlashTier)*bk*(0.8+0.35*phRnd());
+      if (Lf<1) continue;
+      var g=ctx.createLinearGradient(0, pw*0.02, 0, pw*0.02+Lf);
+      g.addColorStop(0, 'rgba(255,255,240,'+(0.95*bk).toFixed(3)+')'); g.addColorStop(0.35, hexA(c2,(0.85*bk).toFixed(3))); g.addColorStop(1, hexA(c2,0));
+      ctx.globalAlpha=1; ctx.fillStyle=g;
+      ctx.beginPath(); ctx.ellipse(fx, pw*0.02+Lf*0.5, pw*0.075, Lf*0.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle=hexA(c2,(0.25*bk).toFixed(3)); ctx.beginPath(); ctx.arc(fx, pw*0.03, pw*0.11, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  if (phFlash>0){                                          /* the release: one ring */
+    var f=phFlash/0.28;
+    ctx.globalAlpha=0.8*f; ctx.strokeStyle=PH_TCOL[Math.max(1,phFlashTier)]; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.ellipse(0, -pw*0.25, pw*(0.55+0.45*(1-f)), pw*(0.30+0.25*(1-f)), 0, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+/* the DRIFT bar's frame colour while drifting: lime on the line (121 / OUTRUN), the spark tier (KART); null = plain */
+function phFrameCol(){
+  if (!PH.v2 || !drifting) return null;
+  if (phKart()) return phTier>0 ? PH_TCOL[phTier] : null;
+  return phLine ? '#7cff4f' : null;
+}
+
+/* sideways motion, in fixed sub-steps so 30 Hz and 60 Hz drive the same */
+function phMove(dt, maxS){
+  var spct=clamp(speed/maxS,0,1), g=CH_().grip*Z().grip*(dinoT>0?PH_DINO_G:1);
+  var agility=(1.60-0.70*spct)*g, resp=(9.5-5.4*spct)*g, low=Math.min(1, spct*3.2);   /* 120's steering curves */
+  var vs=speed/PH_VREF, aB=-curSlope*speed*speed*PH_ACK*PH.bend*phZonePull();
+  var G=PH_G0*PH.grip*g, inp=spinT>0?0:phIn, dr=phDr.on && spinT<=0;
+  var tgt=dr ? inp*agility*PH_DSTEER*low : inp*agility*low;
+  var lim=dr ? G*PH.dgrip : G;
+  var P=dr ? phA*PH_P0*PH.dpull*vs*vs : 0;
+  var n=Math.max(1, Math.ceil(dt*120)), h=dt/n, F=0, k;
+  for (k=0;k<n;k++){
+    F=(tgt-phLat)*resp; if (F>lim) F=lim; else if (F<-lim) F=-lim;
+    phLat+=(F+P+aB)*h;
+    playerX+=phLat*h;
+  }
+  if (spinT>0){ phLat*=Math.pow(0.05,dt); phYaw=0; }
+  phUse = lim>0 ? Math.abs(F)/lim : 0;
+  phRatio = G>0 ? Math.abs(aB)/G : 0;
+  steerVel=clamp(phLat,-1.6,1.6);      /* the car leans with how fast it really moves sideways */
+}
+
+/* the tyres squeal in a drift (with the angle) and when a bend is near what they hold */
+function phScreech(){
+  if (phDr.on) return 0.35+0.65*Math.abs(phA);
+  if (phRatio>0.85 && phUse>0.95) return 0.2+0.6*Math.min(1,(phRatio-0.85)/0.3);
+  return 0;
+}
+
+/* ---- late-lap traffic: +PH.late, ramped in from lap PH.ra to full at lap PH.rb (121: 5 -> 7), spawns spaced to keep the cars on screen ---- */
+function phLateR(l){ var a=PH.ra-1, b=Math.max(a+1, PH.rb); return l<=a ? 0 : (l>=b ? 1 : (l-a)/(b-a)); }
+function phTrafK(l){ return PH.tr ? 1+PH.late*phLateR(l) : 1; }
+function phGapK(l){
+  if (!PH.tr) return 1;
+  var r=phLateR(l); if (r<=0) return 1;
+  var top0=trafficTop0(l), v=Math.min(14800, 11500+(l-1)*640);
+  var a0=v-0.775*top0, a1=v-0.775*top0*phTrafK(l);        /* closing speed on an average car, before / after */
+  return (a0/Math.max(1,a1)) / (1+(PH.dens-1)*r);
+}
+
+/* ---- the corner readout (SHOW READOUT) ---- */
+function phReadout(){
+  var sg=function(v){ return (v<0?'-':'+')+Math.abs(v).toFixed(2); };
+  var t=(PH.v2?'NEW '+PH.style.toUpperCase():'OLD')+'  LAT '+sg(PH.v2?phLat:steerVel)+'  ANG '+sg(phA)+'  GRIP '+Math.round(phUse*100)+'%'+
+        '  BEND/GRIP '+phRatio.toFixed(2)+
+        (phKart()&&phDr.on?'  CHARGE '+phCh.toFixed(1)+'s T'+phTier:'')+
+        (phBoostT>0?'  BOOST +'+Math.round(phBoostK*100)+'%':(phKickT>0?'  KICK +'+Math.round(phKickK*100)+'%':''))+
+        (phLine&&drifting?'  LINE':'')+'  '+Math.round(speed/40)+' KM/H';
+  var fs=10*UI;
+  ctx.save(); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.globalCompositeOperation='source-over';
+  ctx.font='700 '+fs+'px ui-monospace,Menlo,"Courier New",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  var w=ctx.measureText(t).width+14, y=128;   /* under the top HUD row (BEST / PAUSE) */
+  ctx.fillStyle='rgba(6,2,14,.78)'; ctx.fillRect(W/2-w/2, y-fs*0.5-4, w, fs+8);
+  ctx.fillStyle = phRatio>1 ? '#ff6a3d' : (phFrameCol() || '#e8fbff');
+  ctx.fillText(t, W/2, y);
+  ctx.restore();
+}
+
+/* ---- the hidden lab panel ---- */
+var PH_SL=[
+  ['bend', 'BEND PULL',   'How hard a fast bend throws you wide.',                          0.3, 2.5, 0.05, 'x'],
+  ['grip', 'TYRE GRIP',   'How much bend the tyres hold before you slide wide. Low = sluggish dodges.', 0.5, 3.0, 0.05, 'x'],
+  ['dpull','DRIFT PULL',  'How hard a drift pulls you into the bend.',                     0.3, 2.0, 0.05, 'x'],
+  ['dgrip','DRIFT GRIP',  'Tyre grip kept while sliding (share of normal).',               0.2, 1.0, 0.05, ''],
+  ['ang',  'ANGLE SPEED', 'How fast the drift angle answers your steering.',               0.5, 2.0, 0.05, 'x'],
+  ['scrub','DRIFT SCRUB', '121 / OUTRUN: top speed lost per second at full angle.',        0.0, 0.3, 0.01, '%'],
+  ['kick', 'EXIT KICK',   '121 / OUTRUN: speed surge out of a clean drift.',               0.0, 0.15,0.01, '%'],
+  ['line', 'LINE BAND',   '121 / OUTRUN: sideways speed still counted as ON THE LINE (lime bar).', 0.1, 0.5, 0.01, ''],
+  ['yaw',  'CAR YAW',     'How far the car body turns in a drift.',                        0.0, 2.0, 0.1,  'x'],
+  ['zp',   'ZONE PULL',   'Bend pull in the zone you are in now.',                         0.5, 1.5, 0.05, 'x']
+];
+var PH_SLK=[
+  ['kmax', 'ANGLE INTO',     'Arrow held INTO the drift: the widest angle (tightest line).', 0.3, 1.0, 0.05, ''],
+  ['kmid', 'ANGLE HANDS OFF','No arrow: the medium angle.',                                 0.2, 0.9, 0.05, ''],
+  ['kmin', 'ANGLE AGAINST',  'Arrow AGAINST the drift: the smallest angle (wider line). Never flips.', 0.05, 0.6, 0.05, ''],
+  ['t1',   'CYAN SPARKS AT', 'KART: seconds of drift inside a bend for tier 1.',             0.2, 1.5, 0.05, 's'],
+  ['t2',   'MAGENTA AT',     'KART: seconds for tier 2 (a normal bend should reach it).',    0.5, 2.5, 0.05, 's'],
+  ['t3',   'LIME AT',        'KART: seconds for tier 3 (long bends only).',                  1.0, 4.0, 0.05, 's'],
+  ['k1',   'BOOST CYAN',     'KART: boost on release at tier 1 (share of top speed).',       0.0, 0.2, 0.01, '%'],
+  ['k2',   'BOOST MAGENTA',  'KART: boost at tier 2.',                                       0.0, 0.25,0.01, '%'],
+  ['k3',   'BOOST LIME',     'KART: boost at tier 3.',                                       0.0, 0.3, 0.01, '%'],
+  ['kscrub','KART SCRUB',    'KART: top speed lost per second of drift (hands-off angle).',  0.0, 0.2, 0.01, '%']
+];
+var PH_SLT=[
+  ['late', 'LATE TRAFFIC SPEED', 'Extra traffic speed once the ramp is full.',              0.0, 0.5, 0.05, '%'],
+  ['ra',   'RAMP STARTS AT',     'First lap with faster traffic.',                          1,   9,   1,    'lap'],
+  ['rb',   'FULL AT',            'Lap where the full extra speed is reached.',              2,   12,  1,    'lap'],
+  ['dens', 'LATE DENSITY',       '1.00 = the same number of cars on screen as build 120.',  0.6, 1.6, 0.05, 'x']
+];
+/* one-tap mixes (claude/vapor-lane-physics-presets-121.md): driving sliders only; style, KART and traffic stay */
+var PH_PRE={
+  P1:{ grip:2.00 },
+  P2:{ grip:2.00, bend:1.80, dpull:1.80, dgrip:0.90, ang:0.70 },
+  P3:{ grip:1.80, bend:1.40, dpull:1.20, dgrip:1.00, ang:0.55, scrub:0.03, kick:0.08, line:0.40, yaw:0.80 },
+  P4:{ grip:1.60, bend:1.40, dpull:1.60, dgrip:0.35, ang:1.30, scrub:0.05, kick:0.10, line:0.18, yaw:1.60 },
+  P5:{ grip:1.80, bend:1.40, dpull:1.20, dgrip:1.00, ang:0.55, scrub:0.15, kick:0.15, line:0.35, yaw:1.20 },
+  P6:{ grip:1.40, bend:2.20, dpull:2.00, dgrip:0.80 },
+  P7:{ grip:2.00, bend:0.60, dpull:0.60, dgrip:1.00, ang:0.60, line:0.40 }
+};
+var PH_PRE_N={ P1:'SNAPPY', P2:'OUTRUN BITE', P3:'CALM DRIFT', P4:'RIDGE SLIDE', P5:'MINI-TURBO', P6:'DRIFT OR DIE', P7:'SUNDAY' };
+var PH_DRV=['bend','grip','dpull','dgrip','ang','scrub','kick','line','yaw'];
+var PH_BASE={ bend:1.00, grip:1.00, dpull:1.00, dgrip:0.60, ang:1.00, scrub:0.10, kick:0.06, line:0.25, yaw:1.00 };   /* 121's RESET */
+function phPreset(id){
+  var p=PH_PRE[id], i, k; if (!p) return;
+  for (i=0;i<PH_DRV.length;i++){ k=PH_DRV[i]; PH[k]=(k in p) ? p[k] : PH_BASE[k]; }
+  for (k in PH_DEF.zp) PH.zp[k]=PH_DEF.zp[k];
+  PH.pre=id;
+}
+var phUp=false, phEl=null, phTaps=[], phOpenT=0;
+function phVal(k){ return k==='zp' ? phZonePull() : PH[k]; }
+function phFmt(v,u){ return u==='%' ? Math.round(v*100)+'%' : (u==='x' ? v.toFixed(2)+'x' : (u==='s' ? v.toFixed(2)+'s' : (u==='lap' ? 'LAP '+Math.round(v) : v.toFixed(2)))); }
+function phSave(){ try{ localStorage.setItem('vaporlane.phys122', JSON.stringify(PH)); }catch(_){} }
+function phLoad(){
+  try{
+    var o=JSON.parse(localStorage.getItem('vaporlane.phys122')||'null'), k;
+    if (!o || typeof o!=='object') return;
+    for (k in PH_DEF) if (k!=='zp' && typeof o[k]===typeof PH_DEF[k]) PH[k]=o[k];
+    if (PH_STYLES.indexOf(PH.style)<0) PH.style=PH_DEF.style;
+    if (o.zp && typeof o.zp==='object') for (k in PH_DEF.zp) if (typeof o.zp[k]==='number') PH.zp[k]=o.zp[k];
+  }catch(_){}
+}
+function phTap(){
+  var now=performance.now();
+  phTaps.push(now);
+  while (phTaps.length && now-phTaps[0]>3000) phTaps.shift();
+  if (phTaps.length>=5){ phTaps=[]; phOpen(); }
+}
+function phText(){
+  var f=function(v){ return (+v).toFixed(2); }, L=[];
+  L.push('VAPOR LANE PHYSICS LAB  v.'+BUILD_NO);
+  L.push('PHYSICS '+(PH.v2?'NEW':'OLD')+'  TRAFFIC '+(PH.tr?'NEW':'OLD')+'  DRIFT STYLE '+PH.style.toUpperCase()+'  PRESET '+(PH.pre||'-'));
+  L.push('BEND PULL '+f(PH.bend)+'  TYRE GRIP '+f(PH.grip)+'  DRIFT PULL '+f(PH.dpull)+'  DRIFT GRIP '+f(PH.dgrip));
+  L.push('ANGLE SPEED '+f(PH.ang)+'  DRIFT SCRUB '+f(PH.scrub)+'  EXIT KICK '+f(PH.kick)+'  LINE BAND '+f(PH.line)+'  CAR YAW '+f(PH.yaw));
+  L.push('ANGLE INTO '+f(PH.kmax)+'  HANDS OFF '+f(PH.kmid)+'  AGAINST '+f(PH.kmin));
+  L.push('SPARKS AT '+f(PH.t1)+' / '+f(PH.t2)+' / '+f(PH.t3)+' s  BOOST '+f(PH.k1)+' / '+f(PH.k2)+' / '+f(PH.k3)+'  KART SCRUB '+f(PH.kscrub));
+  L.push('ZONE PULL  VAPOR '+f(PH.zp['vapor'])+'  ALIEN PLAINS '+f(PH.zp['vapor-edit'])+'  HAUNTED '+f(PH.zp['haunted']));
+  L.push('LATE TRAFFIC SPEED +'+Math.round(PH.late*100)+'%  RAMP LAP '+Math.round(PH.ra)+' -> '+Math.round(PH.rb)+'  LATE DENSITY '+f(PH.dens));
+  L.push('CHASSIS '+CH_().n+'  '+(TOUCH?'TOUCH':'KEYBOARD')+'  '+String(navigator.userAgent||'').slice(0,100));
+  return L.join('\n');
+}
+function phBuild(){
+  if (phEl) return;
+  var st=document.createElement('style');
+  st.textContent=
+    '#phLab{position:fixed;left:0;top:0;right:0;bottom:0;z-index:86;display:none;align-items:center;justify-content:center;'+
+      'background:rgba(4,2,12,.6);font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace;}'+
+    '#phLab.on{display:flex}'+
+    '#phLab .pb{width:min(560px,94vw);max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;'+
+      'background:#0b0718;border:1px solid #2b1f52;border-left:4px solid #21e6ff;box-shadow:0 0 30px rgba(33,230,255,.16);'+
+      'padding:14px 16px 16px;color:#cfc6f5}'+
+    '#phLab h2{margin:0 0 2px;font-size:18px;letter-spacing:3px;color:#e8fbff;text-shadow:0 0 10px #21e6ff}'+
+    '#phLab .nt{font-size:11px;line-height:1.5;color:#8f86b8;margin:4px 0 8px}'+
+    '#phLab .nt b{color:#e8fbff}'+
+    '#phLab .sw{display:flex;align-items:center;gap:8px;margin:7px 0}'+
+    '#phLab .sw span{flex:0 0 92px;font-size:12px;letter-spacing:1px}'+
+    '#phLab button{font:inherit;font-size:12px;letter-spacing:1px;padding:9px 8px;border-radius:6px;border:1px solid #3a2d6e;'+
+      'background:#150f2b;color:#cfc6f5;cursor:pointer;flex:1;touch-action:manipulation}'+
+    '#phLab button.on{background:#ff2fbe;border-color:#ff2fbe;color:#fff;box-shadow:0 0 12px rgba(255,47,190,.45)}'+
+    '#phLab .pr{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}'+
+    '#phLab .pr button{flex:1 0 21%;padding:8px 4px;font-size:11px;line-height:1.3}'+
+    '#phLab .pr button i{display:block;font-style:normal;font-size:9px;color:#8f86b8}'+
+    '#phLab .pr button.on i{color:#fff}'+
+    '#phLab .row{margin:10px 0 0}'+
+    '#phLab .lb{display:flex;justify-content:space-between;font-size:12px;letter-spacing:1px}'+
+    '#phLab .lb b{color:#fff}'+
+    '#phLab .ds{font-size:10px;color:#7d74a6;margin-top:2px}'+
+    '#phLab input[type=range]{width:100%;margin:6px 0 0;accent-color:#ff2fbe;height:24px;touch-action:pan-y}'+
+    '#phLab .sec{margin-top:14px;font-size:12px;letter-spacing:2px;color:#21e6ff;border-top:1px solid #2b1f52;padding-top:10px}'+
+    '#phLab .bt{display:flex;gap:8px;margin-top:14px}'+
+    '#phLab textarea{display:none;width:100%;height:130px;margin-top:10px;box-sizing:border-box;background:#06030f;color:#cfc6f5;'+
+      'border:1px solid #3a2d6e;font:inherit;font-size:10px}';
+  document.head.appendChild(st);
+  phEl=document.createElement('div'); phEl.id='phLab';
+  var h='<div class="pb"><h2>PHYSICS LAB</h2><div class="nt">Build '+BUILD_NO+' test. <b>DRIFT STYLE</b>: '+
+    '<b>KART</b> = hop with <b>Shift</b> or <b>X</b> (phone: <b>DRIFT</b>) + an arrow, keep holding to drift: the side locks at the landing, '+
+    'INTO = tighter, nothing = medium, AGAINST = wider. Hold it through a bend for sparks (cyan, magenta, lime), let go for a boost. '+
+    '<b>OUTRUN</b> = brake / DRIFT + arrow to start (a tap is enough), the arrow sets the angle the same way and it never flips; '+
+    'the brake or the arrow INTO the drift keeps it going, counter-steer or hands off straightens out. '+
+    '<b>121</b> = last build\'s drift. Values save on this device.</div>'+
+    '<div class="sw"><span>PHYSICS</span><button data-k="v2" data-v="0">OLD 120</button><button data-k="v2" data-v="1">NEW</button></div>'+
+    '<div class="sw"><span>DRIFT STYLE</span><button data-st="121">121</button><button data-st="outrun">OUTRUN</button><button data-st="kart">KART</button></div>'+
+    '<div class="sw"><span>TRAFFIC</span><button data-k="tr" data-v="0">OLD 120</button><button data-k="tr" data-v="1">NEW</button></div>'+
+    '<div class="sw"><span>READOUT</span><button data-k="ro" data-v="0">OFF</button><button data-k="ro" data-v="1">ON</button></div>'+
+    '<div class="sec">PRESETS (driving sliders only)</div><div class="pr">';
+  var i, j, d, pk;
+  for (pk in PH_PRE) h+='<button data-p="'+pk+'">'+pk+'<i>'+PH_PRE_N[pk]+'</i></button>';
+  h+='<button data-a="reset">RESET<i>ALL</i></button></div>';
+  var secs=[['DRIVING',PH_SL],['KART + OUTRUN DRIFT',PH_SLK],['LATE-LAP TRAFFIC',PH_SLT]];
+  for (j=0;j<secs.length;j++){
+    h+='<div class="sec">'+secs[j][0]+'</div>';
+    for (i=0;i<secs[j][1].length;i++){
+      d=secs[j][1][i];
+      h+='<div class="row"><div class="lb"><span>'+d[1]+(d[0]==='zp'?' <i data-zn></i>':'')+'</span><b data-o="'+d[0]+'"></b></div>'+
+         '<input type="range" data-s="'+d[0]+'" min="'+d[3]+'" max="'+d[4]+'" step="'+d[5]+'"><div class="ds">'+d[2]+'</div></div>';
+    }
+  }
+  h+='<div class="bt"><button data-a="copy">COPY VALUES</button><button data-a="close">CLOSE</button></div>'+
+     '<textarea readonly></textarea></div>';
+  phEl.innerHTML=h;
+  document.body.appendChild(phEl);
+  phEl.addEventListener('click', function(e){
+    if (performance.now()-phOpenT<450) return;          /* the opening tap's follow-up click */
+    var b=e.target.closest ? e.target.closest('button') : null; if (!b) return;
+    var k=b.getAttribute('data-k'), a=b.getAttribute('data-a'), sv=b.getAttribute('data-st'), pv=b.getAttribute('data-p');
+    if (k){ PH[k]=b.getAttribute('data-v')==='1'; if (k==='v2') phReset(); phSave(); phSync(); }
+    else if (sv){ PH.style=sv; phReset(); phSave(); phSync(); }
+    else if (pv){ phPreset(pv); phSave(); phSync(); }
+    else if (a==='reset'){ PH=phCopyDef(); phReset(); phSave(); phSync(); }
+    else if (a==='copy') phCopy(b);
+    else if (a==='close') phClose();
+  });
+  phEl.addEventListener('input', function(e){
+    var k=e.target.getAttribute && e.target.getAttribute('data-s'); if (!k) return;
+    if (performance.now()-phOpenT<450){ phSync(); return; }
+    var v=+e.target.value;
+    if (k==='zp') PH.zp[ZN.id]=v; else PH[k]=v;
+    if (PH_DRV.indexOf(k)>=0 || k==='zp'){ PH.pre=''; phSyncPre(); }
+    phOut(k);
+  });
+  phEl.addEventListener('change', phSave);
+}
+function phDesc(k){ var a=PH_SL.concat(PH_SLK).concat(PH_SLT), i; for (i=0;i<a.length;i++) if (a[i][0]===k) return a[i]; return null; }
+function phOut(k){
+  var o=phEl.querySelector('[data-o="'+k+'"]'), d=phDesc(k);
+  if (o && d) o.textContent=phFmt(phVal(k), d[6]);
+}
+function phSyncPre(){
+  var ps=phEl.querySelectorAll('button[data-p]'), i;
+  for (i=0;i<ps.length;i++) ps[i].classList.toggle('on', ps[i].getAttribute('data-p')===PH.pre);
+}
+function phSync(){
+  if (!phEl) return;
+  var bs=phEl.querySelectorAll('button[data-k]'), i, ss=phEl.querySelectorAll('input[data-s]'), sts=phEl.querySelectorAll('button[data-st]');
+  for (i=0;i<bs.length;i++){ var b=bs[i]; b.classList.toggle('on', (!!PH[b.getAttribute('data-k')])===(b.getAttribute('data-v')==='1')); }
+  for (i=0;i<sts.length;i++) sts[i].classList.toggle('on', sts[i].getAttribute('data-st')===PH.style);
+  phSyncPre();
+  for (i=0;i<ss.length;i++){ var k=ss[i].getAttribute('data-s'); ss[i].value=phVal(k); phOut(k); }
+  var z=phEl.querySelector('[data-zn]'); if (z) z.textContent='· '+ZN.name;
+}
+function phCopy(b){
+  var txt=phText(), ta=phEl.querySelector('textarea');
+  function said(w){ b.textContent=w; setTimeout(function(){ b.textContent='COPY VALUES'; }, 1800); }
+  function hand(){
+    ta.value=txt; ta.style.display='block';
+    var ok=false; try{ ta.focus(); ta.select(); ta.setSelectionRange(0,txt.length); ok=document.execCommand('copy'); }catch(_){}
+    said(ok ? 'COPIED' : 'SELECT + COPY BELOW');
+  }
+  try{ if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(function(){ said('COPIED'); }, hand); return; } }catch(_){}
+  hand();
+}
+function phOpen(){
+  if (state!=='paused') return;
+  phBuild(); phSync();
+  var ta=phEl.querySelector('textarea'); if (ta) ta.style.display='none';
+  phOpenT=performance.now(); phUp=true; phEl.classList.add('on');
+  kbd={}; applyKeys();
+}
+function phClose(){ phUp=false; if (phEl) phEl.classList.remove('on'); phSave(); }
+function phKey(e){
+  var c=e.code||'';
+  if (c==='Escape' || c==='KeyH' || c==='KeyP' || c==='Backspace' || c==='Enter'){
+    if (e.target && e.target.tagName==='TEXTAREA' && c==='Backspace') return;
+    e.preventDefault(); phClose(); return;
+  }
+  if (c.indexOf('Arrow')===0 && !(e.target && e.target.tagName==='INPUT')) e.preventDefault();
+}
+phLoad();
+
 function heartPath(x,y,s){
   ctx.beginPath();
   ctx.moveTo(x,y);
@@ -11274,7 +11875,7 @@ function drawPlayerDino(lean){
   ctx.save();
   ctx.translate(W/2+lean*9 + carRum*RUMBLE_X*Math.sin(shT*71.3),
                 PLAYER_Y+(frame===1?-h*0.03:0) + carRum*RUMBLE_Y*Math.sin(shT*103.7+1.9));
-  ctx.rotate(spinT>0?spinAng:(-lean*0.05-curSlope*92));
+  ctx.rotate(spinT>0?spinAng:(-lean*0.05-curSlope*92+phYaw));
   ctx.globalAlpha=fade*0.30;
   ctx.fillStyle='hsl('+((t/6)%360)+',100%,60%)';
   ctx.beginPath(); ctx.ellipse(0,4,w*0.48,h*0.10,0,0,Math.PI*2); ctx.fill();
@@ -11295,17 +11896,19 @@ function drawPlayer(){
 
   if (cutCar.alpha<=0.01) return;
   trailDraw();                          /* build 94: under the car, while drifting */
+  if (PH.v2) phHopShadow(W/2 + lean*9 + cutCar.x, PLAYER_Y + cutCar.y);   /* build 122: the KART hop */
   ctx.save();
   /* Build 71: the drift rumble shakes the car, not the world. About a pixel
      each way at 11-17 Hz while the tyres scream; the road stays still. */
   var rmX=carRum*RUMBLE_X*Math.sin(shT*71.3), rmY=carRum*RUMBLE_Y*Math.sin(shT*103.7+1.9),
       rmR=carRum*RUMBLE_ROLL*Math.sin(shT*83.0+0.4);
-  ctx.translate(W/2 + lean*9 + cutCar.x + rmX, PLAYER_Y + cutCar.y + rmY);
+  ctx.translate(W/2 + lean*9 + cutCar.x + rmX, PLAYER_Y + cutCar.y + rmY - phHopY());   /* build 122: - the hop */
   if (cutCar.sc!==1) ctx.scale(cutCar.sc, cutCar.sc);
-  ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92)) + cutCar.tilt + cutCar.spin + rmR);
+  ctx.rotate((spinT>0 ? spinAng : (-lean*0.07 - curSlope*92 + phYaw)) + cutCar.tilt + cutCar.spin + rmR);
   ctx.globalAlpha=(blink?0.42:1)*cutCar.alpha;
   var auraOn = odT>0 ? (odT<=DINO_WARN ? (0.45+0.55*Math.abs(Math.sin(odT*9))) : 1) : 0;
   paintCar(PW,{brake:!!keys.down&&spinT<=0, glow:spct, aura:auraOn, rx:rxNow(), gas:!!keys.up});
+  phCarFx(PW);                          /* build 122: KART sparks, boost flames, release ring */
   if (cutCar.lit>0.01 && ufo){            /* build 83: the beam lights the car */
     var ph8=PW*0.62, lg=ctx.createRadialGradient(0,-ph8*0.55,2,0,-ph8*0.45,PW*0.75);
     lg.addColorStop(0,hexA(ufo.color,(0.42*cutCar.lit).toFixed(3))); lg.addColorStop(1,hexA(ufo.color,0));
@@ -11497,8 +12100,14 @@ function drawHUD(){
       ctx.fillRect(16,400,wB,13); ctx.shadowBlur=0;
     }
     if (wP>0){ ctx.fillStyle='#ffd23f'; ctx.fillRect(16+wB,400,wP,13); }
+    var phFc=phFrameCol();
+    if (phFc){   /* build 121: on the line; 122: the KART spark tier */
+      ctx.strokeStyle=phFc; ctx.shadowColor=phFc; ctx.shadowBlur=hb(8); ctx.lineWidth=2;
+      ctx.strokeRect(16.5,400.5,199,12); ctx.shadowBlur=0; ctx.lineWidth=1;
+    } else {
     ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1;
     ctx.strokeRect(16.5,400.5,199,12);
+    }
 
     hudTag(odT>0?T('UNLIMITED'):T('SHOTS'),16,444,BTAG,
            odT>0?'#ffd23f':(shots>0?'#21e6ff':'#b9aef0'));
@@ -13745,6 +14354,7 @@ function endAbduct(){
   cut=null; cutCarRest();
   ufo=null; ufoT=ufoWait(18); hailCool=HAIL_COOL;   /* build 85: the zone has swapped already */
   spinT=0; spinAng=0;                 /* never set down mid-spin */
+  phReset();                          /* build 121: no sideways speed carried through a ride */
   invT=Math.max(invT,1.2);            /* a beat to read the new road */
   state='playing';
   var zn=ZONES[zoneI];
@@ -14117,6 +14727,7 @@ function loop(now){
   govFrame(raw, w1-w0, dt);
   bbFrame(raw, w1, now);                 /* build 116 */
   if (fpsOn) drawFps();
+  if (PH.ro && (state==='playing'||state==='paused')) phReadout();   /* build 121 */
   if (state==='gameover' || state==='title') zcStep(START_ZONE);   /* build 117: the next race's layers, ahead */
   if (state==='gameover' || state==='title') sprPre(START_ZONE, SPR_PRE_MS);   /* build 118: and its sprites */
   requestAnimationFrame(loop);
